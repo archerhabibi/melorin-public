@@ -22,6 +22,16 @@ return [
             'driver' => 'session',
             'provider' => 'admins',
         ],
+
+        // پنل وب نماینده (R5 سند معماری Reseller Platform). همان مدل
+        // User (چون طبق «Identity Model»، Reseller یک Profile روی همان
+        // User مرکزی است، نه یک هویت جدا) ولی guard جداگانه تا Session
+        // پنل نماینده هرگز با ورود مشتری معمولی در سایت (guard web)
+        // قاطی نشود.
+        'reseller' => [
+            'driver' => 'session',
+            'provider' => 'users',
+        ],
     ],
 
     'providers' => [

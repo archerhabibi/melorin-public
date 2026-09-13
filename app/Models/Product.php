@@ -48,4 +48,29 @@ class Product extends Model
 
         return $custom ? (float) $custom->custom_price : (float) $this->price;
     }
+
+    /**
+     * قیمت فروشِ واقعاً قابل‌استفاده برای این نماینده، یا null اگر این
+     * محصول برای این نماینده اصلاً قابل‌فروش نیست. برخلاف
+     * priceForReseller() (که برای سازگاری با کد قدیمی نگه داشته شده و
+     * در نبود تنظیمات به قیمت پایه سقوط می‌کند)، این متد طبق بند ۵ سند
+     * نیازمندی Reseller Platform یک مدل opt-in واقعی است: محصول فقط
+     * وقتی قابل‌فروش است که هم در سیستم اصلی فعال باشد و هم خودِ نماینده
+     * صراحتاً آن را فعال و قیمت‌گذاری کرده باشد. این دقیقاً همان قانونی
+     * است که در سند تصریح شده: «اگر Admin اصلی Product را غیرفعال کند،
+     * فعال‌سازی محلی نماینده نباید آن را قابل‌فروش کند.»
+     */
+    public function sellingPriceForReseller(Reseller $reseller): ?float
+    {
+        if ($this->status !== 'active') {
+            return null;
+        }
+
+        $setting = $this->resellerPrices()
+            ->where('reseller_id', $reseller->id)
+            ->where('is_enabled', true)
+            ->first();
+
+        return $setting ? (float) $setting->custom_price : null;
+    }
 }

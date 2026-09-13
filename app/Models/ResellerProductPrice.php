@@ -7,9 +7,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ResellerProductPrice extends Model
 {
-    protected $fillable = ['reseller_id', 'product_id', 'custom_price'];
+    protected $fillable = ['reseller_id', 'product_id', 'custom_price', 'is_enabled'];
 
-    protected $casts = ['custom_price' => 'decimal:2'];
+    protected $casts = [
+        'custom_price' => 'decimal:2',
+        'is_enabled' => 'boolean',
+    ];
 
     public function reseller(): BelongsTo
     {

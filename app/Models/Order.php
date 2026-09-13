@@ -47,6 +47,16 @@ class Order extends Model
         return $this->hasOne(Account::class);
     }
 
+    /**
+     * محدودسازی به سفارش‌های یک نماینده‌ی مشخص (بند ۵ سند معماری
+     * Reseller: «هیچ Query مربوط به Reseller نباید بدون Scope استفاده
+     * شود»). این متد نقطه‌ی واحد اعمال آن قانون برای Order است.
+     */
+    public function scopeOfReseller($query, int $resellerId)
+    {
+        return $query->where('reseller_id', $resellerId);
+    }
+
     /** سود نماینده از این سفارش (بند ۲۱ سند نیازمندی) */
     public function resellerProfit(): float
     {

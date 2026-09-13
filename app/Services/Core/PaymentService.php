@@ -4,9 +4,11 @@ namespace App\Services\Core;
 
 use App\DataTransferObjects\GatewayInitiationResult;
 use App\Events\PaymentConfirmed;
+use App\Exceptions\ResellerScopeViolationException;
 use App\Models\Admin;
 use App\Models\Payment;
 use App\Models\PaymentMethod;
+use App\Models\Reseller;
 use App\Models\User;
 use App\Services\Core\Payments\PaymentGatewayFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -25,6 +27,14 @@ class PaymentService
     /**
      * ایجاد یک پرداخت جدید و شروع آن نزد درگاه.
      *
+     * برای شارژهای ربات نماینده دو حالت وجود دارد (طبق تصمیم صریح:
+     * «شارژ حساب مشتری» را خودِ نماینده تایید می‌کند چون پول را مستقیم
+     * می‌گیرد؛ «شارژ حساب نماینده» هم‌چنان با ادمین اصلی است):
+     * - مشتری کیف‌پول شخصی‌اش را شارژ می‌کند: $reseller = نماینده‌ی
+     *   همان ربات (برای Scope و تایید توسط او)، walletOwnerType='user'
+     * - نماینده کیف‌پول خودش را شارژ می‌کند: $reseller = خودش،
+     *   walletOwnerType='reseller' (تایید هم‌چنان با ادمین اصلی)
+     *
      * @return array{payment: Payment, initiation: GatewayInitiationResult}
      */
     public function initiate(
@@ -34,6 +44,8 @@ class PaymentService
         string $purpose,
         ?Model $reference = null,
         ?string $receiptImage = null,
+        ?Reseller $reseller = null,
+        string $walletOwnerType = 'user',
     ): array {
         if ($amount <= 0) {
             throw new \InvalidArgumentException('مبلغ باید بزرگ‌تر از صفر باشد.');
@@ -43,6 +55,14 @@ class PaymentService
             throw new \InvalidArgumentException("purpose نامعتبر: {$purpose}");
         }
 
+        if (! in_array($walletOwnerType, ['user', 'reseller'], true)) {
+            throw new \InvalidArgumentException("wallet_owner_type نامعتبر: {$walletOwnerType}");
+        }
+
+        if ($walletOwnerType === 'reseller' && ! $reseller) {
+            throw new \InvalidArgumentException('برای شارژ کیف‌پول نماینده، reseller الزامی است.');
+        }
+
         $payment = Payment::create([
             'user_id' => $user->id,
             'payment_method_id' => $method->id,
@@ -50,6 +70,8 @@ class PaymentService
             'purpose' => $purpose,
             'receipt_image' => $receiptImage,
             'status' => 'pending',
+            'wallet_owner_type' => $walletOwnerType,
+            'reseller_id' => $reseller?->id,
         ]);
 
         $gateway = PaymentGatewayFactory::make($method);
@@ -65,10 +87,15 @@ class PaymentService
 
     /**
      * تایید دستی توسط ادمین برای درگاه‌های دستی مثل کارت‌به‌کارت
-     * (بند ۱۲: «بررسی رسید»، «تأیید پرداخت»).
+     * (بند ۱۲: «بررسی رسید»، «تأیید پرداخت»). برای شارژ کیف‌پول شخصیِ
+     * مشتریِ ربات نماینده استفاده نشود — آن مسیر confirmManualByReseller است.
      */
     public function confirmManual(Payment $payment, Admin $admin): Payment
     {
+        if ($payment->wallet_owner_type === 'user' && $payment->reseller_id !== null) {
+            throw new ResellerScopeViolationException('شارژ کیف‌پول مشتریِ ربات نماینده فقط توسط خودِ نماینده تایید می‌شود.');
+        }
+
         $gateway = PaymentGatewayFactory::make($payment->paymentMethod);
 
         if (! $gateway->isManual()) {
@@ -77,7 +104,36 @@ class PaymentService
 
         $this->assertPending($payment);
 
-        return $this->finalize($payment, $admin);
+        return $this->finalize($payment, admin: $admin);
+    }
+
+    /**
+     * تایید «شارژ حساب مشتری» در ربات نماینده، توسط خودِ نماینده — طبق
+     * تصمیم صریح: چون نماینده پول را مستقیم (نقدی/کارت‌به‌کارت با
+     * مشتری‌اش) دریافت می‌کند، فقط او صلاحیت تشخیص واقعی‌بودن رسید را
+     * دارد، نه ادمین اصلیِ پلتفرم.
+     *
+     * @throws ResellerScopeViolationException اگر این پرداخت اصلاً مال این نماینده نباشد یا در واقع شارژِ کیف‌پول خودِ نماینده باشد
+     */
+    public function confirmManualByReseller(Payment $payment, Reseller $reseller): Payment
+    {
+        if ($payment->reseller_id !== $reseller->id) {
+            throw new ResellerScopeViolationException('این پرداخت متعلق به این نماینده نیست.');
+        }
+
+        if ($payment->wallet_owner_type !== 'user') {
+            throw new ResellerScopeViolationException('شارژ کیف‌پول خودِ نماینده فقط توسط ادمین اصلی تایید می‌شود.');
+        }
+
+        $gateway = PaymentGatewayFactory::make($payment->paymentMethod);
+
+        if (! $gateway->isManual()) {
+            throw new \LogicException('این پرداخت از یک درگاه آنلاین است و باید از طریق callback تایید شود، نه دستی.');
+        }
+
+        $this->assertPending($payment);
+
+        return $this->finalize($payment, reseller: $reseller);
     }
 
     /**
@@ -124,10 +180,31 @@ class PaymentService
     }
 
     /**
+     * @throws ResellerScopeViolationException اگر این پرداخت مال این نماینده نباشد یا شارژِ کیف‌پول خودِ نماینده باشد
+     */
+    public function rejectByReseller(Payment $payment, Reseller $reseller, ?string $reason = null): Payment
+    {
+        if ($payment->reseller_id !== $reseller->id || $payment->wallet_owner_type !== 'user') {
+            throw new ResellerScopeViolationException('این پرداخت قابل‌ردکردن توسط این نماینده نیست.');
+        }
+
+        $this->assertPending($payment);
+
+        $payment->update([
+            'status' => 'rejected',
+            'reviewed_by_reseller_id' => $reseller->id,
+            'reviewed_at' => now(),
+        ]);
+
+        return $payment;
+    }
+
+    /**
      * بازگشت وجه یک پرداخت تاییدشده (بند ۱۲). فقط برای purpose=wallet_charge
-     * معنا دارد چون مستقیماً از کیف پول کاربر کسر می‌کند؛ اگر کاربر آن
-     * موجودی را قبلاً خرج کرده باشد، InsufficientBalanceException پرتاب
-     * می‌شود — یعنی بازگشت وجه باید با تنظیم دستی موجودی توسط ادمین دنبال شود.
+     * معنا دارد چون مستقیماً از کیف پولِ هدف (کاربر یا نماینده، بسته به
+     * wallet_owner_type) کسر می‌کند؛ اگر آن موجودی قبلاً خرج شده باشد،
+     * InsufficientBalanceException پرتاب می‌شود — یعنی بازگشت وجه باید
+     * با تنظیم دستی موجودی توسط ادمین دنبال شود.
      */
     public function refund(Payment $payment, ?Admin $admin = null): Payment
     {
@@ -138,7 +215,7 @@ class PaymentService
         return DB::transaction(function () use ($payment, $admin) {
             if ($payment->purpose === 'wallet_charge') {
                 $this->walletService->adminAdjust(
-                    $payment->user,
+                    $payment->walletOwner(),
                     -1 * (float) $payment->amount,
                     $payment,
                     "بازگشت وجه پرداخت #{$payment->id}"
@@ -155,21 +232,25 @@ class PaymentService
         });
     }
 
-    protected function finalize(Payment $payment, ?Admin $admin = null): Payment
+    protected function finalize(Payment $payment, ?Admin $admin = null, ?Reseller $reseller = null): Payment
     {
-        return DB::transaction(function () use ($payment, $admin) {
+        return DB::transaction(function () use ($payment, $admin, $reseller) {
             $payment->update([
                 'status' => 'confirmed',
                 'reviewed_by' => $admin?->id,
+                'reviewed_by_reseller_id' => $reseller?->id,
                 'reviewed_at' => now(),
             ]);
 
             // فقط شارژ کیف پول مستقیماً داخل هسته انجام می‌شود؛ برای
             // purpose=order، تصمیم این‌که سفارش چطور تکمیل شود به کانالی
             // که آن سفارش را ساخته (از طریق PaymentConfirmed) واگذار می‌شود.
+            // مقصدِ شارژ بسته به wallet_owner_type فرق می‌کند: کیف‌پول
+            // شخصیِ کاربر (مشتری عادی یا مشتریِ یک نماینده) یا کیف‌پول
+            // (اعتبار) خودِ نماینده نزد پلتفرم.
             if ($payment->purpose === 'wallet_charge') {
                 $this->walletService->charge(
-                    $payment->user,
+                    $payment->walletOwner(),
                     (float) $payment->amount,
                     $payment,
                     "شارژ کیف پول — پرداخت #{$payment->id}"

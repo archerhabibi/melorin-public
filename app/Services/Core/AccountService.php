@@ -4,6 +4,7 @@ namespace App\Services\Core;
 
 use App\DataTransferObjects\PanelAccountRequest;
 use App\Exceptions\InsufficientBalanceException;
+use App\Exceptions\ResellerScopeViolationException;
 use App\Models\Account;
 use App\Models\Order;
 use App\Models\Product;
@@ -57,7 +58,46 @@ class AccountService
     ): Account {
         return DB::transaction(function () use ($user, $product, $manualPanel, $salesChannel, $reseller, $customUsername, $isTest, $testTrafficMb, $testDurationHours) {
 
-            $soldPrice = $isTest ? 0.0 : $product->priceForReseller($reseller);
+            // طبق سند معماری Reseller Platform نسخه‌ی ۱.۱ (بخش ۷،
+            // «Double-Debit Purchase») — نه یک پرداخت ساده، بلکه دو
+            // کسر مستقل هم‌زمان: مشتری قیمتِ فروشِ نماینده را از کیف‌پول
+            // خودش می‌پردازد، و نماینده هم‌زمان هزینه‌ی پایه/عمده‌فروشی
+            // را از اعتبار خودش نزد پلتفرم می‌پردازد. سودِ نماینده هرگز
+            // به‌صورت جداگانه پرداخت نمی‌شود — همان تفاوتِ این دو عدد
+            // است که نماینده در دنیای واقعی (نقدی/کارت‌به‌کارت مستقیم
+            // با مشتری‌اش) از قبل دریافت کرده. طبق بند ۵ سند نیازمندی:
+            // محصول باید صراحتاً توسط همین نماینده فعال و قیمت‌گذاری
+            // شده باشد (مدل opt-in)، وگرنه غیرقابل‌فروش است.
+            $sellingPrice = null;
+
+            if ($reseller && ! $isTest) {
+                // «Customer belongs to reseller scope» — طبق بخش ۷ سند
+                // Melorin-Reseller-Platform-Spec. تغییر id در callback/
+                // request نباید بتواند این چک را دور بزند.
+                if ($user->reseller_id !== $reseller->id) {
+                    throw new ResellerScopeViolationException('این کاربر مشتری این نماینده نیست.');
+                }
+
+                $sellingPrice = $product->sellingPriceForReseller($reseller);
+
+                if ($sellingPrice === null) {
+                    throw new \RuntimeException('این محصول برای این نماینده قابل‌فروش نیست.');
+                }
+
+                // هر دو موجودی پیش از هر کسری بررسی می‌شوند (طبق سند:
+                // «customer_balance >= sold_price، reseller_balance >=
+                // base_price») تا در حالت معمولِ «موجودی ناکافی» اصلاً
+                // نیازی به کسر-و-بازگشتِ یکی از دو طرف نباشد.
+                if ($this->walletService->balance($user) < $sellingPrice) {
+                    throw new InsufficientBalanceException('موجودی کیف پول مشتری کافی نیست.');
+                }
+
+                if ($this->walletService->balance($reseller) < (float) $product->price) {
+                    throw new InsufficientBalanceException('موجودی اعتبار نماینده کافی نیست.');
+                }
+            }
+
+            $soldPrice = $isTest ? 0.0 : ($sellingPrice ?? $product->priceForReseller($reseller));
 
             // ۱. انتخاب سرور — دستی یا خودکار بسته به تنظیمات دسته‌بندی (بند ۶)
             $panel = $manualPanel ?? $this->serverSelection->select($product->category);
@@ -77,17 +117,31 @@ class AccountService
                 'status' => 'pending',
             ]);
 
-            // ۳. کسر مبلغ — از کیف پول نماینده (اگر فروش نمایندگی بود) یا کاربر.
+            // ۳. کسر مبلغ.
+            // فروش مستقیم ربات اصلی: فقط کیف‌پول کاربر، به‌اندازه‌ی
+            // قیمت فروش، کسر می‌شود (بدون تغییر نسبت به قبل).
+            // فروش نمایندگی: طبق بخش ۷ سند معماری Reseller Platform
+            // (Double-Debit)، دو کسرِ مستقل: کیف‌پول مشتری به‌اندازه‌ی
+            // sold_price، و اعتبار نماینده به‌اندازه‌ی base_price —
+            // هر دو در همین Transaction دیتابیسی، تا هرگز حالتی مثل
+            // «مشتری کسر شد ولی نماینده نه» یا برعکس باقی نماند.
             // برای اکانت تست، مبلغ همیشه صفر است پس اصلاً کیف‌پولی کسر نمی‌شود.
-            $payer = $reseller ?? $user;
-
             if (! $isTest) {
                 $this->walletService->purchase(
-                    $payer,
+                    $user,
                     (float) $soldPrice,
                     $order,
                     "خرید محصول «{$product->name}» — سفارش #{$order->id}"
                 );
+
+                if ($reseller) {
+                    $this->walletService->purchase(
+                        $reseller,
+                        (float) $product->price,
+                        $order,
+                        "هزینه‌ی پایه‌ی فروش نمایندگی — سفارش #{$order->id}"
+                    );
+                }
             }
 
             $order->update(['status' => 'paid']);
@@ -137,10 +191,17 @@ class AccountService
             $result = $driver->createAccount($panel, $panelRequest);
 
             if (! $result->success) {
-                // بازگشت وجه در صورت شکست ساخت اکانت، تا کاربر متضرر نشود —
-                // برای اکانت تست چیزی کسر نشده بود، پس چیزی هم برنمی‌گردد
+                // بازگشت وجه در صورت شکست ساخت اکانت، تا کسی متضرر نشود —
+                // برای فروش نمایندگی هر دو طرف (مشتری و نماینده) که کسر
+                // شده بودند، هر دو برمی‌گردند (طبق سند: «No orphan
+                // debit»). برای اکانت تست چیزی کسر نشده بود، پس چیزی هم
+                // برنمی‌گردد.
                 if (! $isTest) {
-                    $this->walletService->refund($payer, (float) $soldPrice, $order, 'بازگشت به دلیل خطای ساخت اکانت');
+                    $this->walletService->refund($user, (float) $soldPrice, $order, 'بازگشت به دلیل خطای ساخت اکانت');
+
+                    if ($reseller) {
+                        $this->walletService->refund($reseller, (float) $product->price, $order, 'بازگشت هزینه‌ی پایه به دلیل خطای ساخت اکانت');
+                    }
                 }
                 $order->update(['status' => 'failed']);
 
