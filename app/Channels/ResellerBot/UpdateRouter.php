@@ -13,7 +13,6 @@ use App\Models\Reseller;
 use App\Models\ResellerBotSetting;
 use App\Models\User;
 use App\Services\Resellers\ResellerService;
-use Illuminate\Support\Facades\URL;
 use Telegram\Bot\Api;
 use Telegram\Bot\Objects\Update;
 
@@ -168,21 +167,22 @@ class UpdateRouter
      * (بند ۴ سند نیازمندی). پنل وب نماینده هنوز ساخته نشده (R5)، پس
      * فعلاً به یک مسیر placeholder اشاره می‌کند.
      */
+    /**
+     * طبق تصمیم صریح: از وقتی نماینده هنگام ساخت، ایمیل/رمز ورود واقعی
+     * دریافت می‌کند، دیگر لازم نیست اینجا یک لینک موقتِ امضاشده نشان
+     * داده شود (که هم منقضی می‌شد هم گیج‌کننده بود) — آدرس همیشگیِ
+     * خودِ پنل (بر اساس نام لاتینش) کافی است؛ ورود با همان ایمیل/رمز
+     * انجام می‌شود.
+     */
     protected function handleAdminCommand(Reseller $reseller, int $chatId, User $user): void
     {
         if (! $this->resellerService->isOwner($reseller, $user)) {
             return;
         }
 
-        $loginUrl = URL::temporarySignedRoute(
-            'reseller.login',
-            now()->addMinutes(10),
-            ['reseller' => $reseller->id]
-        );
-
         $this->telegram->sendMessage([
             'chat_id' => $chatId,
-            'text' => "🔑 برای ورود به پنل مدیریت فروشگاه (فقط برای ۱۰ دقیقه معتبر است):\n{$loginUrl}",
+            'text' => "🔑 پنل مدیریت فروشگاه شما:\n".$reseller->panelUrl()."\n\nبا ایمیل و رمز عبوری که برایتان تنظیم شده وارد شوید.",
         ]);
     }
 }

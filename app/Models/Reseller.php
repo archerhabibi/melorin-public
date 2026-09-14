@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Filament\Models\Contracts\HasName;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Support\Str;
 
-class Reseller extends Model
+class Reseller extends Model implements HasName
 {
     use HasFactory;
 
@@ -65,6 +66,18 @@ class Reseller extends Model
     public function panelUrl(): string
     {
         return rtrim(config('app.url'), '/').'/'.$this->slug;
+    }
+
+    /**
+     * برای منوی Tenant Switcher و عنوان صفحات پنل نماینده. بدون این،
+     * Filament به دنبال ستونی به‌نام دقیقاً «name» روی خودِ Reseller
+     * می‌گشت (که چنین ستونی هرگز وجود نداشته) و باعث همان TypeError
+     * واقعی «Return value must be of type string, null returned»
+     * می‌شد (این‌بار برای Tenant، نه User).
+     */
+    public function getFilamentName(): string
+    {
+        return $this->user?->full_name ?: ('فروشگاه '.$this->slug);
     }
 
     protected static function booted(): void

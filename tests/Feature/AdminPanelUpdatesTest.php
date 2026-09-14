@@ -10,6 +10,7 @@ use App\Filament\Widgets\SalesOverviewWidget;
 use App\Models\Admin;
 use App\Models\BotContentSetting;
 use App\Models\Order;
+use App\Models\Reseller;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -58,6 +59,27 @@ class AdminPanelUpdatesTest extends TestCase
             ->filterTable('role', 'customer')
             ->assertCanSeeTableRecords([$customer])
             ->assertCanNotSeeTableRecords([$botAdmin]);
+    }
+
+    /**
+     * قبل از این، بعد از ارتقای یک کاربر به نماینده، در لیست کاربران
+     * هم‌چنان با برچسب «مشتری» نمایش داده می‌شد — هیچ نشانه‌ای نبود که
+     * این کاربر دیگر فقط یک مشتری عادی نیست.
+     */
+    /** @test */
+    public function a_promoted_users_role_shows_as_reseller_not_customer(): void
+    {
+        $this->actingAsAdmin();
+
+        $reseller = Reseller::factory()->create();
+        $resellerOwner = $reseller->user;
+        $plainCustomer = User::factory()->create();
+
+        Livewire::test(ListUsers::class)
+            ->assertCanSeeTableRecords([$resellerOwner, $plainCustomer])
+            ->filterTable('role', 'reseller')
+            ->assertCanSeeTableRecords([$resellerOwner])
+            ->assertCanNotSeeTableRecords([$plainCustomer]);
     }
 
     /** @test */

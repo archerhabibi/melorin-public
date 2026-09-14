@@ -2,7 +2,6 @@
 
 namespace App\Services\Resellers;
 
-use App\Exceptions\ResellerScopeViolationException;
 use App\Models\Reseller;
 use App\Models\ResellerAdmin;
 use App\Models\User;
@@ -11,19 +10,22 @@ use Illuminate\Support\Facades\Http;
 /**
  * ResellerService — طبق سند معماری Reseller Platform، بخش ۳
  * (Core/Resellers/Services/ResellerService). مسئول چرخه‌ی حیات خودِ
- * Reseller (ساخت/فعال/غیرفعال) و مدیریت مدیران آن (بند ۱۳ سند
- * نیازمندی: Owner می‌تواند Manager اضافه/حذف کند) است — نه مشتریان یا
- * قیمت‌گذاری، که در سرویس‌های مجزا (ResellerCustomerService،
- * ResellerPricingService) پیاده‌سازی شده‌اند تا هر سرویس یک مسئولیت
- * واحد داشته باشد.
+ * Reseller (ساخت/فعال/غیرفعال) است — نه مشتریان یا قیمت‌گذاری، که در
+ * سرویس‌های مجزا (ResellerCustomerService، ResellerPricingService)
+ * پیاده‌سازی شده‌اند تا هر سرویس یک مسئولیت واحد داشته باشد.
+ *
+ * نکته: مفهوم «Manager» (نقش دومِ reseller_admins) به‌طور کامل حذف شده
+ * است — برداشت اشتباهی از آن شده بود و در هیچ بخشی از ربات/پنل واقعاً
+ * استفاده نمی‌شد. هر Reseller دقیقاً یک owner دارد؛ جدول
+ * reseller_admins هنوز به‌همین شکل باقی است (برای اینکه isOwner/
+ * isAdminOf یک مسیر واحد و قابل‌تست داشته باشند) ولی هیچ راهی برای
+ * افزودن نقش دومی روی آن وجود ندارد.
  */
 class ResellerService
 {
     /**
      * یک نماینده‌ی جدید می‌سازد و همان کاربر را با نقش owner در
-     * reseller_admins ثبت می‌کند — طبق تصمیم معماری، «مالک بودن» هم از
-     * همان جدول admins خوانده می‌شود تا isAdminOf() یک مسیر واحد داشته
-     * باشد، نه دو مسیر جداگانه برای owner و manager.
+     * reseller_admins ثبت می‌کند.
      */
     public function create(User $ownerUser, array $attributes = []): Reseller
     {
@@ -61,54 +63,6 @@ class ResellerService
         return $reseller;
     }
 
-    /**
-     * فقط owner مجاز است manager اضافه کند — این چک اینجا (نه در لایه‌ی
-     * بالاتر) انجام می‌شود چون «امنیت نباید به Controller/UI وابسته
-     * باشد» (سند معماری، بند ۵).
-     *
-     * @throws ResellerScopeViolationException اگر $actor خودش owner/manager این Reseller نباشد
-     */
-    public function addAdmin(Reseller $reseller, User $actor, User $newAdmin, string $role = 'manager'): ResellerAdmin
-    {
-        if (! $this->isOwner($reseller, $actor)) {
-            throw new ResellerScopeViolationException('فقط مالک نماینده می‌تواند مدیر اضافه کند.');
-        }
-
-        if ($role === 'owner') {
-            throw new ResellerScopeViolationException('نمی‌توان بیش از یک owner برای یک نماینده تعیین کرد.');
-        }
-
-        return ResellerAdmin::query()->updateOrCreate(
-            ['reseller_id' => $reseller->id, 'user_id' => $newAdmin->id],
-            ['role' => $role],
-        );
-    }
-
-    /**
-     * @throws ResellerScopeViolationException اگر $actor مالک نباشد، یا تلاش شود owner حذف شود
-     */
-    public function removeAdmin(Reseller $reseller, User $actor, User $adminToRemove): void
-    {
-        if (! $this->isOwner($reseller, $actor)) {
-            throw new ResellerScopeViolationException('فقط مالک نماینده می‌تواند مدیر حذف کند.');
-        }
-
-        $row = ResellerAdmin::query()
-            ->where('reseller_id', $reseller->id)
-            ->where('user_id', $adminToRemove->id)
-            ->first();
-
-        if (! $row) {
-            return;
-        }
-
-        if ($row->isOwner()) {
-            throw new ResellerScopeViolationException('مالک نماینده قابل‌حذف نیست.');
-        }
-
-        $row->delete();
-    }
-
     public function isOwner(Reseller $reseller, User $user): bool
     {
         return ResellerAdmin::query()
@@ -118,16 +72,7 @@ class ResellerService
             ->exists();
     }
 
-    public function isManager(Reseller $reseller, User $user): bool
-    {
-        return ResellerAdmin::query()
-            ->where('reseller_id', $reseller->id)
-            ->where('user_id', $user->id)
-            ->where('role', 'manager')
-            ->exists();
-    }
-
-    /** owner یا manager — یعنی این کاربر اصلاً روی این Reseller دسترسی مدیریتی دارد */
+    /** فعلاً معادل isOwner() است (چون Manager حذف شده)؛ به‌عنوان نقطه‌ی واحدِ چک «آیا این کاربر روی این Reseller دسترسی مدیریتی دارد؟» نگه داشته شده تا کد صداکننده مجبور به تغییر نباشد */
     public function isAdminOf(Reseller $reseller, User $user): bool
     {
         return ResellerAdmin::query()

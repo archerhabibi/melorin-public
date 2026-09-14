@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Services\Resellers\ResellerService;
 use Filament\Models\Contracts\FilamentUser;
+use Filament\Models\Contracts\HasName;
 use Filament\Models\Contracts\HasTenants;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Collection;
@@ -16,7 +17,7 @@ use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 
-class User extends Authenticatable implements FilamentUser, HasTenants
+class User extends Authenticatable implements FilamentUser, HasName, HasTenants
 {
     use HasFactory;
     use SoftDeletes;
@@ -95,6 +96,18 @@ class User extends Authenticatable implements FilamentUser, HasTenants
     public function isBotAdmin(): bool
     {
         return in_array((string) $this->telegram_id, config('telegram.admin_ids', []), true);
+    }
+
+    /**
+     * پیش از این، User هیچ پیاده‌سازی‌ای برای HasName نداشت و Filament
+     * به‌صورت پیش‌فرض دنبال ستونی به نام دقیقاً «name» می‌گشت — که در
+     * جدول users اصلاً وجود ندارد (اینجا full_name است) — و همین باعث
+     * TypeError واقعی («Return value must be of type string, null
+     * returned») هنگام رندر آواتار/منوی کاربر در پنل نماینده می‌شد.
+     */
+    public function getFilamentName(): string
+    {
+        return $this->full_name ?: ($this->email ?: "کاربر #{$this->id}");
     }
 
     /**

@@ -11,6 +11,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 /** مدیریت کاربران (بند ۱۴ سند نیازمندی) */
 class UserResource extends Resource
@@ -47,9 +48,15 @@ class UserResource extends Resource
                 Tables\Columns\TextColumn::make('role')
                     ->label('نقش')
                     ->badge()
-                    ->getStateUsing(fn (User $record) => $record->isBotAdmin() ? 'admin' : 'customer')
-                    ->colors(['warning' => 'admin', 'gray' => 'customer'])
-                    ->formatStateUsing(fn (string $state) => $state === 'admin' ? '🔑 ادمین ربات' : 'مشتری'),
+                    ->getStateUsing(fn (User $record) => match (true) {
+                        $record->resellerAccount !== null => 'reseller',
+                        $record->isBotAdmin() => 'admin',
+                        default => 'customer',
+                    })
+                    ->colors(['success' => 'reseller', 'warning' => 'admin', 'gray' => 'customer'])
+                    ->formatStateUsing(fn (string $state) => match ($state) {
+                        'reseller' => '🏬 نماینده', 'admin' => '🔑 ادمین ربات', default => 'مشتری',
+                    }),
                 Tables\Columns\TextColumn::make('wallet.balance')->label('موجودی کیف پول')
                     ->money('IRT', divideBy: 1)
                     ->default(0),
@@ -70,14 +77,16 @@ class UserResource extends Resource
 
                 Tables\Filters\SelectFilter::make('role')
                     ->label('نقش')
-                    ->options(['admin' => '🔑 ادمین ربات', 'customer' => 'مشتری'])
-                    ->query(function (\Illuminate\Database\Eloquent\Builder $query, array $data) {
+                    ->options(['reseller' => '🏬 نماینده', 'admin' => '🔑 ادمین ربات', 'customer' => 'مشتری'])
+                    ->query(function (Builder $query, array $data) {
                         $adminIds = array_map('intval', config('telegram.admin_ids', []));
 
-                        if ($data['value'] === 'admin') {
-                            $query->whereIn('telegram_id', $adminIds);
+                        if ($data['value'] === 'reseller') {
+                            $query->whereHas('resellerAccount');
+                        } elseif ($data['value'] === 'admin') {
+                            $query->whereIn('telegram_id', $adminIds)->whereDoesntHave('resellerAccount');
                         } elseif ($data['value'] === 'customer') {
-                            $query->whereNotIn('telegram_id', $adminIds);
+                            $query->whereNotIn('telegram_id', $adminIds)->whereDoesntHave('resellerAccount');
                         }
                     }),
             ])
