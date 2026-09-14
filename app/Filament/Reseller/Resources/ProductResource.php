@@ -58,9 +58,14 @@ class ProductResource extends Resource
                     ->with('category')
             )
             ->columns([
-                Tables\Columns\TextColumn::make('category.name')->label('سبد فروش'),
                 Tables\Columns\TextColumn::make('name')->label('نام محصول')->searchable(),
-                Tables\Columns\TextColumn::make('price')->label('قیمت پایه')->money('IRT', divideBy: 1),
+                // طبق درخواست صریح: این عددی که واقعاً از اعتبار نماینده
+                // کسر می‌شود (resellerBasePrice — قیمت نمایندگان، نه
+                // قیمت خرده‌فروشی/مشتری) باید اینجا دیده شود، نه
+                // products.price.
+                Tables\Columns\TextColumn::make('reseller_price')
+                    ->label('قیمت نمایندگان')
+                    ->getStateUsing(fn (Product $record) => number_format($record->resellerBasePrice()).' تومان'),
                 Tables\Columns\TextColumn::make('duration_days')->label('مدت (روز)'),
                 Tables\Columns\IconColumn::make('is_enabled')
                     ->label('فعال برای من')
@@ -98,7 +103,7 @@ class ProductResource extends Resource
                             ->minValue(0),
                     ])
                     ->fillForm(fn (Product $record) => [
-                        'selling_price' => $record->sellingPriceForReseller($reseller) ?? $record->price,
+                        'selling_price' => $record->sellingPriceForReseller($reseller) ?? $record->resellerBasePrice(),
                     ])
                     ->action(function (Product $record, array $data) use ($reseller, $pricingService) {
                         try {
