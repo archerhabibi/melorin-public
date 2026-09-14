@@ -89,6 +89,16 @@ class ProductResource extends Resource
                 Tables\Columns\BadgeColumn::make('status')->label('وضعیت')
                     ->colors(['success' => 'active', 'danger' => 'inactive']),
             ])
+            // طبق درخواست صریح: محصولات هر سبد فروش زیرمجموعه‌ی همان
+            // سبد نمایش داده شوند و سبدها از هم تفکیک شده باشند — تا
+            // بازبینی راحت‌تر شود. defaultGroup یعنی همین از ابتدا،
+            // بدون نیاز به فعال‌کردن دستی، فعال است؛ کاربر هنوز می‌تواند
+            // از منوی «گروه‌بندی» آن را خاموش/عوض کند.
+            ->defaultGroup(
+                Tables\Grouping\Group::make('category.name')
+                    ->label('سبد فروش')
+                    ->collapsible()
+            )
             ->filters([
                 Tables\Filters\SelectFilter::make('category_id')
                     ->label('دسته‌بندی')

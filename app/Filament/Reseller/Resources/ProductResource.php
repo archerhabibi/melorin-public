@@ -66,6 +66,18 @@ class ProductResource extends Resource
                         return $price !== null ? number_format($price).' تومان' : '—';
                     }),
             ])
+            // طبق درخواست صریح: محصولات هر سبد فروش زیرمجموعه‌ی همان
+            // سبد نمایش داده شوند تا بررسیِ نماینده هم راحت‌تر باشد.
+            ->defaultGroup(
+                Tables\Grouping\Group::make('category.name')
+                    ->label('سبد فروش')
+                    ->collapsible()
+            )
+            ->filters([
+                Tables\Filters\SelectFilter::make('category_id')
+                    ->label('سبد فروش')
+                    ->relationship('category', 'name'),
+            ])
             ->actions([
                 Tables\Actions\Action::make('set_price')
                     ->label('تنظیم قیمت')
