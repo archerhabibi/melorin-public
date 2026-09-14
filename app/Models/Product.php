@@ -12,12 +12,13 @@ class Product extends Model
     use HasFactory;
 
     protected $fillable = [
-        'category_id', 'name', 'price', 'traffic_gb', 'duration_days',
+        'category_id', 'name', 'price', 'reseller_price', 'traffic_gb', 'duration_days',
         'protocol_id', 'status', 'sale_limit', 'allowed_panel_ids',
     ];
 
     protected $casts = [
         'price' => 'decimal:2',
+        'reseller_price' => 'decimal:2',
         'traffic_gb' => 'decimal:2',
         'allowed_panel_ids' => 'array',
     ];
@@ -30,6 +31,19 @@ class Product extends Model
     public function protocol(): BelongsTo
     {
         return $this->belongsTo(Protocol::class);
+    }
+
+    /**
+     * قیمتی که پلتفرم از اعتبار نماینده کسر می‌کند (Double-Debit
+     * base_price) — نه قیمت فروش نماینده (که sellingPriceForReseller
+     * برمی‌گرداند و کاملاً در اختیار خودِ نماینده است). اگر ادمین برای
+     * این محصول reseller_price ست نکرده باشد، به قیمت خرده‌فروشی/مشتری
+     * سقوط می‌کند — یعنی محصولات قدیمی بدون اقدام صریح رفتارشان عوض
+     * نمی‌شود.
+     */
+    public function resellerBasePrice(): float
+    {
+        return (float) ($this->reseller_price ?? $this->price);
     }
 
     public function resellerPrices(): HasMany

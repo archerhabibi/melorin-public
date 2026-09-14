@@ -90,6 +90,7 @@ class TicketResource extends Resource
                     ->formatStateUsing(fn ($state) => $state === 'reseller_request' ? '🤖 درخواست نمایندگی' : '🎧 پشتیبانی'),
                 Tables\Columns\BadgeColumn::make('priority')
                     ->label('اولویت')
+                    ->toggleable(isToggledHiddenByDefault: true)
                     ->colors([
                         'gray' => 'low',
                         'info' => 'normal',

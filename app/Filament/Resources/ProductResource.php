@@ -51,6 +51,12 @@ class ProductResource extends Resource
                     ->required(),
             ]),
 
+            Forms\Components\TextInput::make('reseller_price')
+                ->label('قیمت نمایندگان (تومان)')
+                ->helperText('قیمتی که ما این محصول را به نماینده می‌فروشیم — نه قیمت فروش نماینده (که همیشه دست خودِ نماینده است و اینجا تعیین نمی‌شود). معمولاً باید پایین‌تر از «قیمت پایه» باشد. خالی = همان «قیمت پایه» برای نماینده هم اعمال می‌شود.')
+                ->numeric()
+                ->suffix('تومان'),
+
             Forms\Components\Select::make('protocol_id')
                 ->label('پروتکل')
                 ->relationship('protocol', 'name')
@@ -77,6 +83,7 @@ class ProductResource extends Resource
                 Tables\Columns\TextColumn::make('name')->label('نام')->searchable(),
                 Tables\Columns\TextColumn::make('category.name')->label('دسته‌بندی'),
                 Tables\Columns\TextColumn::make('price')->label('قیمت')->money('IRT', divideBy: 1)->sortable(),
+                Tables\Columns\TextColumn::make('reseller_price')->label('قیمت نمایندگان')->money('IRT', divideBy: 1)->placeholder('—')->toggleable(),
                 Tables\Columns\TextColumn::make('duration_days')->label('مدت (روز)'),
                 Tables\Columns\TextColumn::make('traffic_gb')->label('حجم (گیگ)')->placeholder('نامحدود'),
                 Tables\Columns\BadgeColumn::make('status')->label('وضعیت')

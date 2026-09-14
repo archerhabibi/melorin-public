@@ -2,14 +2,12 @@
 
 namespace Tests\Feature\ResellerPanel;
 
-use App\Filament\Resources\ResellerResource\Pages\EditReseller;
-use App\Filament\Resources\ResellerResource\RelationManagers\ProductPricesRelationManager;
+use App\Filament\Resources\ProductResource\Pages\EditProduct;
 use App\Models\Admin;
 use App\Models\Product;
 use App\Models\Reseller;
 use App\Models\ResellerAdmin;
 use App\Models\User;
-use App\Services\Resellers\ResellerPricingService;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -31,6 +29,7 @@ class ResellerPanelRenderTest extends TestCase
     protected function ownerOf(Reseller $reseller): User
     {
         $owner = $reseller->user;
+
         ResellerAdmin::query()->firstOrCreate(
             ['reseller_id' => $reseller->id, 'user_id' => $owner->id],
             ['role' => 'owner']
@@ -66,6 +65,7 @@ class ResellerPanelRenderTest extends TestCase
     {
         $reseller = Reseller::factory()->create(['slug' => 'noname']);
         $owner = $reseller->user;
+
         $owner->update(['full_name' => null]);
         $this->ownerOf($reseller);
 
@@ -75,21 +75,31 @@ class ResellerPanelRenderTest extends TestCase
     }
 
     /** @test */
-    public function admin_can_set_a_resellers_product_price_from_the_main_admin_panel(): void
+    public function admin_can_set_a_resellers_base_price_from_the_main_admin_panel(): void
     {
         Filament::setCurrentPanel(Filament::getPanel('admin'));
 
         $admin = Admin::factory()->create();
         $this->actingAs($admin, 'admin');
 
-        $reseller = Reseller::factory()->create();
-        $product = Product::factory()->create(['price' => 100000, 'status' => 'active']);
+        $product = Product::factory()->create([
+            'price' => 150000,
+            'reseller_price' => null,
+            'status' => 'active',
+        ]);
 
-        Livewire::test(ProductPricesRelationManager::class, ['ownerRecord' => $reseller, 'pageClass' => EditReseller::class])
-            ->callTableAction('set_price', $product, data: ['selling_price' => 135000])
-            ->assertHasNoTableActionErrors();
+        Livewire::test(EditProduct::class, [
+            'record' => $product->getRouteKey(),
+        ])
+            ->fillForm([
+                'reseller_price' => 100000,
+            ])
+            ->call('save')
+            ->assertHasNoFormErrors();
 
-        $this->assertEquals(135000, $product->fresh()->sellingPriceForReseller($reseller));
-        $this->assertTrue(app(ResellerPricingService::class)->isSellable($reseller, $product));
+        $this->assertEquals(
+            100000,
+            (float) $product->fresh()->reseller_price
+        );
     }
 }

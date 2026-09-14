@@ -3,7 +3,6 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\ResellerResource\Pages;
-use App\Filament\Resources\ResellerResource\RelationManagers\ProductPricesRelationManager;
 use App\Models\Reseller;
 use App\Models\User;
 use App\Services\Resellers\ResellerService;
@@ -137,13 +136,6 @@ class ResellerResource extends Resource
                 Tables\Actions\EditAction::make(),
             ])
             ->defaultSort('created_at', 'desc');
-    }
-
-    public static function getRelations(): array
-    {
-        return [
-            ProductPricesRelationManager::class,
-        ];
     }
 
     public static function getPages(): array

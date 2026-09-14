@@ -65,7 +65,12 @@ class ResellerPricingService
     protected function assertPriceAllowed(Reseller $reseller, Product $product, float $sellingPrice): void
     {
         $rule = $reseller->min_sale_price_rule ?? [];
-        $basePrice = (float) $product->price;
+        // طبق درخواست صریح: قیمت نمایندگان (اگر ست شده) هزینه‌ی واقعیِ
+        // نماینده است، نه products.price خرده‌فروشی — سود و «حداقل
+        // قیمت مجاز» باید نسبت به همین عدد محاسبه شوند، وگرنه نماینده
+        // هیچ‌وقت نمی‌تواند بین reseller_price و price قیمت‌گذاری کند،
+        // در حالی که دقیقاً همان بازه‌ای است که باید سودآور باشد.
+        $basePrice = $product->resellerBasePrice();
         $profit = $sellingPrice - $basePrice;
 
         if (isset($rule['min_price']) && $sellingPrice < (float) $rule['min_price']) {

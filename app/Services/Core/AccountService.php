@@ -92,7 +92,7 @@ class AccountService
                     throw new InsufficientBalanceException('موجودی کیف پول مشتری کافی نیست.');
                 }
 
-                if ($this->walletService->balance($reseller) < (float) $product->price) {
+                if ($this->walletService->balance($reseller) < $product->resellerBasePrice()) {
                     throw new InsufficientBalanceException('موجودی اعتبار نماینده کافی نیست.');
                 }
             }
@@ -112,7 +112,7 @@ class AccountService
                 'product_id' => $product->id,
                 'reseller_id' => $reseller?->id,
                 'sales_channel' => $salesChannel,
-                'base_price' => $product->price,
+                'base_price' => $reseller ? $product->resellerBasePrice() : $product->price,
                 'sold_price' => $soldPrice,
                 'status' => 'pending',
             ]);
@@ -137,7 +137,7 @@ class AccountService
                 if ($reseller) {
                     $this->walletService->purchase(
                         $reseller,
-                        (float) $product->price,
+                        $product->resellerBasePrice(),
                         $order,
                         "هزینه‌ی پایه‌ی فروش نمایندگی — سفارش #{$order->id}"
                     );
@@ -200,7 +200,7 @@ class AccountService
                     $this->walletService->refund($user, (float) $soldPrice, $order, 'بازگشت به دلیل خطای ساخت اکانت');
 
                     if ($reseller) {
-                        $this->walletService->refund($reseller, (float) $product->price, $order, 'بازگشت هزینه‌ی پایه به دلیل خطای ساخت اکانت');
+                        $this->walletService->refund($reseller, $product->resellerBasePrice(), $order, 'بازگشت هزینه‌ی پایه به دلیل خطای ساخت اکانت');
                     }
                 }
                 $order->update(['status' => 'failed']);
