@@ -81,7 +81,6 @@ class ProductResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('name')->label('نام')->searchable(),
-                Tables\Columns\TextColumn::make('category.name')->label('دسته‌بندی'),
                 Tables\Columns\TextColumn::make('price')->label('قیمت')->money('IRT', divideBy: 1)->sortable(),
                 Tables\Columns\TextColumn::make('reseller_price')->label('قیمت نمایندگان')->money('IRT', divideBy: 1)->placeholder('—')->toggleable(),
                 Tables\Columns\TextColumn::make('duration_days')->label('مدت (روز)'),

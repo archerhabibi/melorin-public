@@ -48,7 +48,15 @@ class ProductResource extends Resource
         $pricingService = app(ResellerPricingService::class);
 
         return $table
-            ->query(Product::query()->where('status', 'active')->with('category'))
+            // طبق درخواست صریح: وقتی مدیر Core یک سبد فروش را برای همه‌ی
+            // نمایندگان غیرفعال می‌کند، آن سبد و محصولاتش اصلاً در
+            // فروشگاه نماینده دیده نشوند (نه فقط غیرقابل‌فعال‌سازی).
+            ->query(
+                Product::query()
+                    ->where('status', 'active')
+                    ->whereHas('category', fn ($q) => $q->where('available_to_resellers', true))
+                    ->with('category')
+            )
             ->columns([
                 Tables\Columns\TextColumn::make('category.name')->label('سبد فروش'),
                 Tables\Columns\TextColumn::make('name')->label('نام محصول')->searchable(),

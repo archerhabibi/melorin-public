@@ -6,6 +6,7 @@ use App\Filament\Resources\CategoryResource\Pages;
 use App\Models\Category;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -59,6 +60,11 @@ class CategoryResource extends Resource
                 ->formatStateUsing(fn ($state) => $state === 'active')
                 ->dehydrateStateUsing(fn ($state) => $state ? 'active' : 'inactive')
                 ->default(true),
+
+            Forms\Components\Toggle::make('available_to_resellers')
+                ->label('فعال برای نمایندگان')
+                ->default(true)
+                ->helperText('در صورت خاموش‌بودن، این سبد فروش و محصولاتش برای همه‌ی نمایندگان (نه یک نماینده‌ی خاص) مخفی و غیرقابل‌فروش می‌شوند.'),
         ]);
     }
 
@@ -76,8 +82,53 @@ class CategoryResource extends Resource
                 Tables\Columns\TextColumn::make('products_count')->counts('products')->label('تعداد محصول'),
                 Tables\Columns\BadgeColumn::make('status')->label('وضعیت')
                     ->colors(['success' => 'active', 'danger' => 'inactive']),
+                Tables\Columns\IconColumn::make('available_to_resellers')
+                    ->label('برای نمایندگان')
+                    ->boolean(),
             ])
-            ->actions([Tables\Actions\EditAction::make(), Tables\Actions\DeleteAction::make()]);
+            ->actions([
+                // طبق درخواست صریح: دکمه‌ی فعال/غیرفعال‌سازی این سبد برای
+                // «همه‌ی نمایندگان» یک‌جا — نه برای یک نماینده‌ی خاص.
+                // تنظیم قیمت/فعال‌سازیِ تک‌تکِ نمایندگان دست‌نخورده باقی
+                // می‌ماند (ResellerProductPrice)؛ این کلید فقط سراسری روی
+                // آن‌ها سوار می‌شود.
+                Tables\Actions\Action::make('enable_for_resellers')
+                    ->label('فعال برای نمایندگان')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->visible(fn (Category $record) => ! $record->available_to_resellers)
+                    ->requiresConfirmation()
+                    ->modalHeading('فعال‌سازی این سبد فروش برای همه‌ی نمایندگان')
+                    ->modalDescription('این سبد فروش برای همه‌ی نمایندگان یک‌جا فعال می‌شود، نه یک نماینده‌ی خاص.')
+                    ->action(function (Category $record) {
+                        $record->update(['available_to_resellers' => true]);
+
+                        Notification::make()
+                            ->title('سبد فروش برای همه‌ی نمایندگان فعال شد.')
+                            ->success()
+                            ->send();
+                    }),
+
+                Tables\Actions\Action::make('disable_for_resellers')
+                    ->label('غیرفعال برای نمایندگان')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->visible(fn (Category $record) => $record->available_to_resellers)
+                    ->requiresConfirmation()
+                    ->modalHeading('غیرفعال‌سازی این سبد فروش برای همه‌ی نمایندگان')
+                    ->modalDescription('این سبد فروش و محصولاتش برای همه‌ی نمایندگان یک‌جا غیرفعال می‌شود، نه یک نماینده‌ی خاص.')
+                    ->action(function (Category $record) {
+                        $record->update(['available_to_resellers' => false]);
+
+                        Notification::make()
+                            ->title('سبد فروش برای همه‌ی نمایندگان غیرفعال شد.')
+                            ->success()
+                            ->send();
+                    }),
+
+                Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make(),
+            ]);
     }
 
     public static function getPages(): array

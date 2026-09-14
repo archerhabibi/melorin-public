@@ -41,16 +41,28 @@ class ResellerPricingService
             ->update(['is_enabled' => false]);
     }
 
+    /**
+     * طبق درخواست صریح: مدیر Core باید بتواند یک سبد فروش را برای
+     * همه‌ی نمایندگان یک‌جا غیرفعال کند (Category::available_to_resellers).
+     * این کلید سراسری بالادستِ تنظیم فی‌نفسه‌ی هر نماینده است — یعنی
+     * حتی اگر نماینده‌ای خودش محصول را فعال/قیمت‌گذاری کرده باشد،
+     * وقتی سبدش سراسری غیرفعال شود، دیگر قابل‌فروش نیست.
+     */
     public function isSellable(Reseller $reseller, Product $product): bool
     {
+        if (! $product->category?->available_to_resellers) {
+            return false;
+        }
+
         return $product->sellingPriceForReseller($reseller) !== null;
     }
 
-    /** لیست محصولاتی که همین الان برای این نماینده واقعاً قابل‌فروش‌اند (هم فعال در سیستم اصلی، هم فعال/قیمت‌گذاری‌شده توسط خودِ نماینده) */
+    /** لیست محصولاتی که همین الان برای این نماینده واقعاً قابل‌فروش‌اند (هم فعال در سیستم اصلی و سبدش برای نمایندگان باز باشد، هم فعال/قیمت‌گذاری‌شده توسط خودِ نماینده) */
     public function sellableProducts(Reseller $reseller): Collection
     {
         return Product::query()
             ->where('status', 'active')
+            ->whereHas('category', fn ($q) => $q->where('available_to_resellers', true))
             ->whereHas('resellerPrices', fn ($q) => $q->where('reseller_id', $reseller->id)->where('is_enabled', true))
             ->get();
     }

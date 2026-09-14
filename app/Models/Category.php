@@ -11,9 +11,9 @@ class Category extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'status', 'settings', 'server_selection_mode', 'naming_mode'];
+    protected $fillable = ['name', 'status', 'settings', 'server_selection_mode', 'naming_mode', 'available_to_resellers'];
 
-    protected $casts = ['settings' => 'array'];
+    protected $casts = ['settings' => 'array', 'available_to_resellers' => 'boolean'];
 
     public function serverPanels(): BelongsToMany
     {
