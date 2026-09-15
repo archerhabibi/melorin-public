@@ -45,7 +45,29 @@ class AdminPanelProvider extends PanelProvider
             ->authGuard('admin')
             ->colors([
                 'primary' => Color::Indigo,
+                'gray' => Color::Slate,
+                'success' => Color::Emerald,
+                'warning' => Color::Amber,
+                'danger' => Color::Rose,
             ])
+            ->brandName('ملورین')
+            // چیدمان ناوبری: بدون این، Filament همه‌ی Resourceها را در
+            // یک لیست تخت الفبایی می‌ریزد و با رشد پنل (کاربران،
+            // نمایندگان، سرورها، مالی، پشتیبانی، ...) پیدا کردن هر چیز
+            // سخت می‌شود. ترتیب گروه‌ها از «کار روزمره» به «تنظیمات
+            // زیرساخت» است.
+            ->navigationGroups([
+                'فروشگاه',
+                'کاربران',
+                'نمایندگان',
+                'مالی',
+                'زیرساخت',
+                'پشتیبانی',
+                'پیام‌رسانی',
+                'تنظیمات',
+            ])
+            ->sidebarCollapsibleOnDesktop()
+            ->maxContentWidth('full')
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([

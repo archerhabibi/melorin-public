@@ -31,6 +31,10 @@ class ProductResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-tag';
 
+    protected static ?string $navigationGroup = 'فروشگاه من';
+
+    protected static ?int $navigationSort = 2;
+
     protected static ?string $navigationLabel = 'محصولات';
 
     protected static ?string $modelLabel = 'محصول';
@@ -115,6 +119,44 @@ class ProductResource extends Resource
                         }
 
                         Notification::make()->title('قیمت ثبت و محصول فعال شد.')->success()->send();
+                    }),
+
+                // طبق درخواست صریح: «در کنار هر محصول دکمه‌ای برای فعال
+                // کردن آن محصول برای ربات خودِ همان نماینده باشد».
+                // این دکمه فقط وقتی دیده می‌شود که محصول از قبل
+                // قیمت‌گذاری شده ولی خاموش است — یعنی فعال‌سازی دوباره
+                // بدون نیاز به وارد کردن مجدد قیمت. اگر هنوز هیچ قیمتی
+                // ثبت نشده، فعال‌سازی بی‌معناست و کاربر باید از «تنظیم
+                // قیمت» شروع کند (که خودش به‌صورت ضمنی فعال هم می‌کند).
+                Tables\Actions\Action::make('enable')
+                    ->label('فعال کردن')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->visible(fn (Product $record) => ! $pricingService->isSellable($reseller, $record)
+                        && $record->resellerPrices()->where('reseller_id', $reseller->id)->exists())
+                    ->action(function (Product $record) use ($reseller, $pricingService) {
+                        $price = $record->resellerPrices()
+                            ->where('reseller_id', $reseller->id)
+                            ->value('custom_price');
+
+                        try {
+                            $pricingService->setSellingPrice($reseller, $record, (float) $price);
+                        } catch (InvalidArgumentException $e) {
+                            // قیمتِ ذخیره‌شده ممکن است با قوانین فعلی
+                            // (که ادمین از آن زمان تغییر داده) دیگر مجاز
+                            // نباشد — در آن صورت کاربر باید قیمت جدید
+                            // بدهد، نه اینکه یک قیمت نامعتبر بی‌سروصدا
+                            // دوباره فعال شود.
+                            Notification::make()
+                                ->title('قیمت قبلی دیگر مجاز نیست: '.$e->getMessage())
+                                ->body('لطفاً از «تنظیم قیمت» یک قیمت جدید وارد کنید.')
+                                ->danger()
+                                ->send();
+
+                            return;
+                        }
+
+                        Notification::make()->title('محصول در ربات شما فعال شد.')->success()->send();
                     }),
 
                 Tables\Actions\Action::make('disable')

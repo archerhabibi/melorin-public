@@ -32,6 +32,19 @@ class BroadcastMessage extends Page implements HasForms
 
     public ?array $data = [];
 
+    /**
+     * رفع باگ گزارش‌شده («پیام همگانی درست کار نمی‌کند»): بدون این
+     * mount()، فرم هیچ‌وقت مقداردهی اولیه نمی‌شد. در Filament v3 یک
+     * Page ای که از InteractsWithForms استفاده می‌کند، برخلاف
+     * Resourceها، این کار را خودکار انجام نمی‌دهد؛ نتیجه‌اش این بود که
+     * $data خالی می‌ماند و getState() در send() با خطا/حالت ناقص مواجه
+     * می‌شد — یعنی دکمه‌ی ارسال ظاهراً بی‌اثر به‌نظر می‌رسید.
+     */
+    public function mount(): void
+    {
+        $this->form->fill();
+    }
+
     public function form(Forms\Form $form): Forms\Form
     {
         return $form

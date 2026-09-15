@@ -18,6 +18,10 @@ class OrderResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-shopping-bag';
 
+    protected static ?string $navigationGroup = 'مشتریان و فروش';
+
+    protected static ?int $navigationSort = 2;
+
     protected static ?string $navigationLabel = 'سفارش‌ها';
 
     protected static ?string $modelLabel = 'سفارش';

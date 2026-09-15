@@ -37,6 +37,12 @@ class Reseller extends Model implements HasName
         return $this->hasMany(User::class, 'reseller_id');
     }
 
+    /** تنظیمات فعال/غیرفعال بودن هر سبد فروش در ربات این نماینده (v3.0.6) */
+    public function categorySettings(): HasMany
+    {
+        return $this->hasMany(ResellerCategorySetting::class);
+    }
+
     public function productPrices(): HasMany
     {
         return $this->hasMany(ResellerProductPrice::class);

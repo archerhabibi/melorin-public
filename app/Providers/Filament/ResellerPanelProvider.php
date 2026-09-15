@@ -3,6 +3,7 @@
 namespace App\Providers\Filament;
 
 use App\Models\Reseller;
+use Filament\Facades\Filament;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -54,7 +55,25 @@ class ResellerPanelProvider extends PanelProvider
             ->tenant(Reseller::class, slugAttribute: 'slug')
             ->colors([
                 'primary' => Color::Emerald,
+                'gray' => Color::Slate,
+                'success' => Color::Emerald,
+                'warning' => Color::Amber,
+                'danger' => Color::Rose,
             ])
+            // نامِ برند در پنل نماینده، نامِ خودِ نماینده است نه
+            // «ملورین» — نماینده این پنل را به‌عنوان فروشگاه خودش
+            // می‌بیند. از Tenant فعلی خوانده می‌شود، و در صفحه‌ی ورود
+            // (که هنوز Tenant حل نشده) به یک نام عمومی سقوط می‌کند.
+            ->brandName(fn () => Filament::getTenant()?->getFilamentName() ?? 'پنل نمایندگی')
+            ->navigationGroups([
+                'فروشگاه من',
+                'مشتریان و فروش',
+                'مالی',
+                'پیام‌رسانی',
+                'تنظیمات',
+            ])
+            ->sidebarCollapsibleOnDesktop()
+            ->maxContentWidth('full')
             ->discoverResources(in: app_path('Filament/Reseller/Resources'), for: 'App\\Filament\\Reseller\\Resources')
             ->discoverPages(in: app_path('Filament/Reseller/Pages'), for: 'App\\Filament\\Reseller\\Pages')
             ->pages([

@@ -24,6 +24,10 @@ class ContentSettings extends Page implements HasForms
 
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
 
+    protected static ?string $navigationGroup = 'تنظیمات';
+
+    protected static ?int $navigationSort = 1;
+
     protected static ?string $navigationLabel = 'محتوای ربات';
 
     protected static string $view = 'filament.reseller.pages.content-settings';

@@ -30,6 +30,10 @@ class PaymentResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-banknotes';
 
+    protected static ?string $navigationGroup = 'مالی';
+
+    protected static ?int $navigationSort = 1;
+
     protected static ?string $navigationLabel = 'شارژهای در انتظار';
 
     protected static ?string $modelLabel = 'پرداخت';

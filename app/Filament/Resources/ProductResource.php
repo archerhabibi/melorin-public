@@ -82,7 +82,12 @@ class ProductResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('name')->label('نام')->searchable(),
                 Tables\Columns\TextColumn::make('price')->label('قیمت')->money('IRT', divideBy: 1)->sortable(),
-                Tables\Columns\TextColumn::make('reseller_price')->label('قیمت نمایندگان')->money('IRT', divideBy: 1)->placeholder('—')->toggleable(),
+                // طبق درخواست صریح: این ستون همیشه دیده شود. قبلاً ->toggleable()
+                // داشت که آن را به یک ستون اختیاری تبدیل می‌کرد و با بقیه‌ی
+                // ستون‌های قیمت (که ثابت‌اند) ناهماهنگ بود — در حالی که این
+                // عدد، هزینه‌ی واقعیِ نماینده و مبنای کل معماری قیمت‌گذاری
+                // نمایندگی است.
+                Tables\Columns\TextColumn::make('reseller_price')->label('قیمت نمایندگان')->money('IRT', divideBy: 1)->placeholder('—')->sortable(),
                 Tables\Columns\TextColumn::make('duration_days')->label('مدت (روز)'),
                 Tables\Columns\TextColumn::make('traffic_gb')->label('حجم (گیگ)')->placeholder('نامحدود'),
                 Tables\Columns\BadgeColumn::make('status')->label('وضعیت')

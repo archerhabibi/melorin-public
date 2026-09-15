@@ -2,8 +2,10 @@
 
 namespace App\Services\Resellers;
 
+use App\Models\Category;
 use App\Models\Product;
 use App\Models\Reseller;
+use App\Models\ResellerCategorySetting;
 use App\Models\ResellerProductPrice;
 use Illuminate\Support\Collection;
 use InvalidArgumentException;
@@ -54,15 +56,59 @@ class ResellerPricingService
             return false;
         }
 
+        if (! $this->isCategoryEnabled($reseller, $product->category)) {
+            return false;
+        }
+
         return $product->sellingPriceForReseller($reseller) !== null;
+    }
+
+    /**
+     * آیا این سبد فروش در ربات این نماینده نمایش داده می‌شود؟ (درخواست
+     * صریح: «نماینده باید بتواند سبد فروش ربات خودش را فعال و یا غیرفعال
+     * کند».) نبودِ رکورد یعنی فعال — تا نمایندگان فعلی که هیچ تنظیمی
+     * ثبت نکرده‌اند، با افزودن این قابلیت ناگهان فروششان قطع نشود.
+     *
+     * توجه: این متد عمداً available_to_resellers را دوباره چک نمی‌کند؛
+     * آن یک لایه‌ی مستقلِ بالادست است و در isSellable/sellableProducts
+     * جداگانه اعمال می‌شود. یعنی اگر Core سبدی را ببندد، فعال‌بودنِ
+     * محلیِ نماینده هیچ اثری ندارد.
+     */
+    public function isCategoryEnabled(Reseller $reseller, Category $category): bool
+    {
+        $setting = ResellerCategorySetting::query()
+            ->where('reseller_id', $reseller->id)
+            ->where('category_id', $category->id)
+            ->first();
+
+        return $setting ? $setting->is_enabled : true;
+    }
+
+    /** فعال/غیرفعال کردن یک سبد فروش برای ربات همین نماینده */
+    public function setCategoryEnabled(Reseller $reseller, Category $category, bool $enabled): ResellerCategorySetting
+    {
+        return ResellerCategorySetting::query()->updateOrCreate(
+            ['reseller_id' => $reseller->id, 'category_id' => $category->id],
+            ['is_enabled' => $enabled],
+        );
     }
 
     /** لیست محصولاتی که همین الان برای این نماینده واقعاً قابل‌فروش‌اند (هم فعال در سیستم اصلی و سبدش برای نمایندگان باز باشد، هم فعال/قیمت‌گذاری‌شده توسط خودِ نماینده) */
     public function sellableProducts(Reseller $reseller): Collection
     {
+        // سبدهایی که خودِ نماینده صراحتاً بسته است. چون «نبودِ رکورد =
+        // فعال»، فقط رکوردهای is_enabled=false را استثنا می‌کنیم — نه
+        // اینکه به whereHas مثبت تکیه کنیم، که نمایندگانِ بدون رکورد را
+        // هم حذف می‌کرد.
+        $disabledCategoryIds = ResellerCategorySetting::query()
+            ->where('reseller_id', $reseller->id)
+            ->where('is_enabled', false)
+            ->pluck('category_id');
+
         return Product::query()
             ->where('status', 'active')
             ->whereHas('category', fn ($q) => $q->where('available_to_resellers', true))
+            ->whereNotIn('category_id', $disabledCategoryIds)
             ->whereHas('resellerPrices', fn ($q) => $q->where('reseller_id', $reseller->id)->where('is_enabled', true))
             ->get();
     }
