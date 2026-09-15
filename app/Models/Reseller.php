@@ -15,13 +15,23 @@ class Reseller extends Model implements HasName
 {
     use HasFactory;
 
-    protected $fillable = ['user_id', 'bot_token', 'webhook_slug', 'webhook_secret', 'slug', 'status', 'min_sale_price_rule'];
+    protected $fillable = [
+        'user_id', 'bot_token', 'webhook_slug', 'webhook_secret', 'slug', 'status', 'min_sale_price_rule',
+        'webhook_status', 'webhook_error', 'webhook_registered_at',
+    ];
 
     protected $casts = [
         'bot_token' => 'encrypted',
         'webhook_secret' => 'encrypted',
         'min_sale_price_rule' => 'array',
+        'webhook_registered_at' => 'datetime',
     ];
+
+    /** آیا آخرین تلاش ثبت وب‌هوک موفق بوده؟ (برای نمایش در پنل و تشخیص سریع ربات‌های از کار افتاده) */
+    public function hasWorkingWebhook(): bool
+    {
+        return $this->webhook_status === 'ok';
+    }
 
     /**
      * secret وب‌هوک این نماینده؛ اگر هنوز ساخته نشده (نماینده‌ای که

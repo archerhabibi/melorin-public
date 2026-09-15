@@ -118,7 +118,13 @@ class WalletHandler
             return;
         }
 
-        Payment::query()->whereKey($paymentId)->update(['receipt_image' => $fileId]);
+        $payment = Payment::findPendingForReceipt($paymentId, $user, $reseller, 'user');
+
+        if (! $payment) {
+            return;
+        }
+
+        $payment->update(['receipt_image' => $fileId]);
 
         $this->state->set($reseller, $chatId, ConversationState::WALLET_AWAITING_DEPOSITOR_NAME, ['payment_id' => $paymentId], $user);
 
@@ -147,7 +153,7 @@ class WalletHandler
             return;
         }
 
-        $payment = Payment::query()->whereKey($paymentId)->first();
+        $payment = Payment::findPendingForReceipt($paymentId, $user, $reseller, 'user');
         $payment?->update(['depositor_name' => $depositorName]);
 
         $this->state->reset($reseller, $chatId);

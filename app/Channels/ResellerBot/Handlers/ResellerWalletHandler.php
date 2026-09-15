@@ -119,7 +119,13 @@ class ResellerWalletHandler
             return;
         }
 
-        Payment::query()->whereKey($paymentId)->update(['receipt_image' => $fileId]);
+        $payment = Payment::findPendingForReceipt($paymentId, $user, $reseller, 'reseller');
+
+        if (! $payment) {
+            return;
+        }
+
+        $payment->update(['receipt_image' => $fileId]);
         $this->state->set($reseller, $chatId, ConversationState::RESELLER_WALLET_AWAITING_DEPOSITOR_NAME, ['payment_id' => $paymentId], $user);
 
         $this->telegram->sendMessage([
@@ -147,7 +153,8 @@ class ResellerWalletHandler
             return;
         }
 
-        Payment::query()->whereKey($paymentId)->update(['depositor_name' => $depositorName]);
+        Payment::findPendingForReceipt($paymentId, $user, $reseller, 'reseller')
+            ?->update(['depositor_name' => $depositorName]);
         $this->state->reset($reseller, $chatId);
 
         $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => 'ثبت شد. پس از تأیید ادمین اصلی، اعتبار شما شارژ خواهد شد. ✅']);

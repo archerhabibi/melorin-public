@@ -6,6 +6,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
+
 /**
  * P0 گزارش امنیتی: وب‌هوک ربات نماینده هیچ authentication ای نداشت.
  *
@@ -22,17 +23,29 @@ use Illuminate\Support\Str;
  * secret هنوز نزد تلگرام ثبت نشده، اجرای دوباره‌ی «ثبت وب‌هوک» از پنل
  * ادمین برای هر نماینده‌ی فعال لازم است (ر.ک. یادداشت ارتقا در VERSION).
  */
+
 return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('resellers', function (Blueprint $table) {
-            $table->string('webhook_secret')->nullable()->after('webhook_slug');
-        });
+        if (Schema::hasColumn('resellers', 'webhook_secret')) {
+            Schema::table('resellers', function (Blueprint $table) {
+                $table->text('webhook_secret')->nullable()->change();
+            });
+        } else {
+            Schema::table('resellers', function (Blueprint $table) {
+                $table->text('webhook_secret')->nullable()->after('webhook_slug');
+            });
+        }
 
-        Reseller::query()->whereNull('webhook_secret')->get()->each(function (Reseller $reseller) {
-            $reseller->forceFill(['webhook_secret' => Str::random(48)])->saveQuietly();
-        });
+        Reseller::query()
+            ->whereNull('webhook_secret')
+            ->get()
+            ->each(function (Reseller $reseller) {
+                $reseller->forceFill([
+                    'webhook_secret' => Str::random(48),
+                ])->saveQuietly();
+            });
     }
 
     public function down(): void

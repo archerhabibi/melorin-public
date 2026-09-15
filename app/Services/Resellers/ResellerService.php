@@ -5,6 +5,7 @@ namespace App\Services\Resellers;
 use App\Models\Reseller;
 use App\Models\ResellerAdmin;
 use App\Models\User;
+use App\Services\Core\AuditService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 
@@ -48,6 +49,11 @@ class ResellerService
                 'role' => 'owner',
             ]);
 
+            app(AuditService::class)->record('reseller.created', $reseller, after: [
+                'owner_user_id' => $ownerUser->id,
+                'slug' => $reseller->slug,
+            ]);
+
             return $reseller;
         });
     }
@@ -55,6 +61,13 @@ class ResellerService
     public function activate(Reseller $reseller): Reseller
     {
         $reseller->update(['status' => 'active']);
+
+        app(AuditService::class)->record(
+            'reseller.activated',
+            $reseller,
+            before: ['status' => 'inactive'],
+            after: ['status' => 'active'],
+        );
 
         return $reseller;
     }
@@ -68,6 +81,13 @@ class ResellerService
     public function deactivate(Reseller $reseller): Reseller
     {
         $reseller->update(['status' => 'inactive']);
+
+        app(AuditService::class)->record(
+            'reseller.deactivated',
+            $reseller,
+            before: ['status' => 'active'],
+            after: ['status' => 'inactive'],
+        );
 
         return $reseller;
     }
@@ -123,13 +143,48 @@ class ResellerService
                 ]);
 
             $body = $response->json();
+            $ok = (bool) ($body['ok'] ?? false);
+            $description = $body['description'] ?? ($response->successful() ? 'ثبت شد.' : 'خطای نامشخص از تلگرام.');
 
-            return [
-                'success' => (bool) ($body['ok'] ?? false),
-                'description' => $body['description'] ?? ($response->successful() ? 'ثبت شد.' : 'خطای نامشخص از تلگرام.'),
-            ];
+            $this->recordWebhookResult($reseller, $ok, $description);
+
+            return ['success' => $ok, 'description' => $description];
         } catch (\Throwable $e) {
+            $this->recordWebhookResult($reseller, false, $e->getMessage());
+
             return ['success' => false, 'description' => $e->getMessage()];
         }
+    }
+
+    /**
+     * آخرین نتیجه‌ی ثبت وب‌هوک را روی خودِ نماینده ذخیره می‌کند تا در
+     * پنل ادمین قابل‌مشاهده باشد. بدون این، شکستِ ثبت وب‌هوک کاملاً
+     * بی‌صدا بود و فقط وقتی کشف می‌شد که ربات نماینده در عمل جواب
+     * نمی‌داد (P1 گزارش امنیتی، مورد #14).
+     */
+    protected function recordWebhookResult(Reseller $reseller, bool $ok, string $description): void
+    {
+        $reseller->forceFill([
+            'webhook_status' => $ok ? 'ok' : 'failed',
+            'webhook_error' => $ok ? null : mb_substr($description, 0, 1000),
+            'webhook_registered_at' => $ok ? now() : $reseller->webhook_registered_at,
+        ])->save();
+    }
+
+    /**
+     * اگر توکن ربات عوض شده باشد، وب‌هوک باید دوباره ثبت شود — وگرنه
+     * توکن جدید هیچ وب‌هوکی ندارد و ربات کاملاً از کار می‌افتد، بدون
+     * اینکه هیچ خطایی جایی دیده شود (P1 گزارش امنیتی، مورد #15).
+     * صداکننده‌ها (فرم ویرایش نماینده) این متد را بعد از ذخیره صدا
+     * می‌زنند؛ اگر توکن تغییری نکرده باشد، هیچ درخواستی به تلگرام
+     * فرستاده نمی‌شود.
+     */
+    public function syncWebhookIfTokenChanged(Reseller $reseller, ?string $previousToken): array
+    {
+        if ($previousToken === $reseller->bot_token) {
+            return ['success' => true, 'description' => 'توکن تغییر نکرده — نیازی به ثبت مجدد نبود.'];
+        }
+
+        return $this->registerWebhook($reseller);
     }
 }

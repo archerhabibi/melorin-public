@@ -109,6 +109,15 @@ class ResellerResource extends Resource
                     ->label('وضعیت')
                     ->colors(['success' => 'active', 'gray' => 'inactive'])
                     ->formatStateUsing(fn ($state) => $state === 'active' ? 'فعال' : 'غیرفعال'),
+                Tables\Columns\BadgeColumn::make('webhook_status')
+                    ->label('وب‌هوک')
+                    ->colors(['success' => 'ok', 'danger' => 'failed', 'gray' => null])
+                    ->formatStateUsing(fn ($state) => match ($state) {
+                        'ok' => '✅ متصل',
+                        'failed' => '❌ ناموفق',
+                        default => '— ثبت نشده',
+                    })
+                    ->tooltip(fn (Reseller $record) => $record->webhook_error),
                 Tables\Columns\TextColumn::make('created_at')->label('تاریخ ایجاد')->dateTime('Y-m-d'),
             ])
             ->actions([

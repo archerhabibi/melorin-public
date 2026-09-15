@@ -16,6 +16,7 @@ use App\Services\Core\Panels\SupportsUsernameAvailability;
 use App\Services\Core\ServerSelection\ServerSelectionStrategy;
 use App\Services\Resellers\ResellerPricingService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /**
@@ -226,26 +227,58 @@ class AccountService
             // را به‌روز نگه می‌دارند و با تغییر بعدیِ حجم/انقضا نیازی به
             // تحویل دوباره‌ی کانفیگ به کاربر نیست. rawResponse فقط برای
             // اشکال‌زدایی/سوابق نگه داشته می‌شود، نه برای نمایش به کاربر.
-            $account = Account::create([
-                'user_id' => $user->id,
-                'order_id' => $order->id,
-                'product_id' => $product->id,
-                'server_panel_id' => $panel->id,
-                'protocol_id' => $product->protocol_id,
-                'panel_username' => $username,
-                'panel_client_uuid' => $clientUuid,
-                'subscription_id' => $result->panelExtra['subscription_id'] ?? null,
-                'subscription_url' => $result->subscriptionUrl,
-                'config_data' => json_encode(['raw' => $result->rawResponse]),
-                'starts_at' => now(),
-                'expires_at' => $expiresAt,
-                'traffic_gb' => $accountTrafficGb,
-                'status' => 'active',
-                'is_test' => $isTest,
-            ]);
+            //
+            // جبران‌سازی Orphan Account (P2 گزارش امنیتی، مورد #12):
+            // اکانت همین الان روی پنل ساخته شده، ولی یک تراکنش دیتابیس
+            // نمی‌تواند یک فراخوانی API خارجی را rollback کند. اگر از
+            // این نقطه به بعد چیزی شکست بخورد، rollback فقط ردیف‌های
+            // دیتابیس را برمی‌گرداند و اکانت روی پنل بدون هیچ رکوردی در
+            // ملورین باقی می‌ماند — یعنی ظرفیت و ترافیک مصرف می‌کند
+            // بدون اینکه به کسی فروخته شده باشد یا قابل مدیریت باشد.
+            // پس خودمان صریحاً پاکش می‌کنیم و بعد خطا را بالا می‌دهیم.
+            try {
+                $account = Account::create([
+                    'user_id' => $user->id,
+                    'order_id' => $order->id,
+                    'product_id' => $product->id,
+                    'server_panel_id' => $panel->id,
+                    'protocol_id' => $product->protocol_id,
+                    'panel_username' => $username,
+                    'panel_client_uuid' => $clientUuid,
+                    'subscription_id' => $result->panelExtra['subscription_id'] ?? null,
+                    'subscription_url' => $result->subscriptionUrl,
+                    'config_data' => json_encode(['raw' => $result->rawResponse]),
+                    'starts_at' => now(),
+                    'expires_at' => $expiresAt,
+                    'traffic_gb' => $accountTrafficGb,
+                    'status' => 'active',
+                    'is_test' => $isTest,
+                ]);
 
-            $order->update(['status' => 'account_created']);
-            $panel->increment('active_accounts_count');
+                $order->update(['status' => 'account_created']);
+                $panel->increment('active_accounts_count');
+            } catch (\Throwable $e) {
+                try {
+                    $driver->deleteAccount($panel, $username);
+                    Log::warning('orphan_account_compensated', [
+                        'panel_id' => $panel->id,
+                        'panel_username' => $username,
+                        'reason' => $e->getMessage(),
+                    ]);
+                } catch (\Throwable $cleanupError) {
+                    // اگر خودِ پاک‌سازی هم شکست بخورد، دیگر کاری از دست
+                    // کد برنمی‌آید — ولی این دقیقاً موردی است که باید
+                    // دستی پیگیری شود، پس با شدت بالاتر لاگ می‌شود.
+                    Log::critical('orphan_account_cleanup_failed', [
+                        'panel_id' => $panel->id,
+                        'panel_username' => $username,
+                        'original_error' => $e->getMessage(),
+                        'cleanup_error' => $cleanupError->getMessage(),
+                    ]);
+                }
+
+                throw $e;
+            }
 
             return $account;
         });

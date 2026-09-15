@@ -176,6 +176,14 @@ class PaymentService
             'reviewed_at' => now(),
         ]);
 
+        app(AuditService::class)->record(
+            'payment.rejected',
+            $payment,
+            before: ['status' => 'pending'],
+            after: ['status' => 'rejected', 'reason' => $reason, 'amount' => (float) $payment->amount],
+            actor: $admin,
+        );
+
         return $payment;
     }
 
@@ -195,6 +203,14 @@ class PaymentService
             'reviewed_by_reseller_id' => $reseller->id,
             'reviewed_at' => now(),
         ]);
+
+        app(AuditService::class)->record(
+            'payment.rejected',
+            $payment,
+            before: ['status' => 'pending'],
+            after: ['status' => 'rejected', 'reason' => $reason, 'amount' => (float) $payment->amount],
+            actor: $reseller,
+        );
 
         return $payment;
     }
@@ -276,6 +292,19 @@ class PaymentService
             }
 
             PaymentConfirmed::dispatch($payment->fresh());
+
+            app(AuditService::class)->record(
+                'payment.approved',
+                $payment,
+                before: ['status' => 'pending'],
+                after: [
+                    'status' => 'confirmed',
+                    'amount' => (float) $payment->amount,
+                    'purpose' => $payment->purpose,
+                    'wallet_owner_type' => $payment->wallet_owner_type,
+                ],
+                actor: $admin ?? $reseller,
+            );
 
             return $payment->fresh();
         });

@@ -144,6 +144,38 @@ class PaymentServiceTest extends TestCase
     }
 
     #[Test]
+    public function zarinpal_callback_does_not_trust_amount_from_query_string(): void
+    {
+        Http::fake([
+            '*/payment/request.json' => Http::response([
+                'data' => ['code' => 100, 'authority' => 'AUTH123'],
+            ], 200),
+            '*/payment/verify.json' => Http::response([
+                'data' => ['code' => 100, 'ref_id' => 998877],
+            ], 200),
+        ]);
+
+        $user = User::factory()->create();
+        $method = PaymentMethod::factory()->zarinpal()->create();
+
+        ['payment' => $payment] = $this->payments->initiate(
+            $user, $method, 150000, 'wallet_charge'
+        );
+
+        $this->payments->handleCallback($payment, [
+            'Authority' => 'AUTH123',
+            'Status' => 'OK',
+            'amount' => '1',
+        ]);
+
+        $this->assertEquals(150000, $this->wallet->balance($user));
+        Http::assertSent(function ($request) {
+            return str_contains($request->url(), 'verify.json')
+                && ($request->data()['amount'] ?? null) === 1500000;
+        });
+    }
+
+    #[Test]
     public function zarinpal_cancelled_callback_rejects_payment_without_calling_verify(): void
     {
         Http::fake([

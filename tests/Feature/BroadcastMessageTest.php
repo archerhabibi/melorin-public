@@ -87,7 +87,7 @@ class BroadcastMessageTest extends TestCase
 
         $telegram = Mockery::mock(Api::class);
         $telegram->shouldReceive('sendMessage')
-            ->once()
+            ->times(3)
             ->withArgs(fn (array $params) => $params['chat_id'] === $userA->telegram_id)
             ->andThrow(new \Exception('کاربر ربات را بلاک کرده است.'));
         $telegram->shouldReceive('sendMessage')
@@ -97,4 +97,39 @@ class BroadcastMessageTest extends TestCase
 
         (new SendBroadcastMessage('متن پیام.'))->handle($telegram);
     }
+    #[Test]
+    public function telegram_rate_limit_does_not_consume_a_broadcast_attempt(): void
+    {
+        $user = User::factory()->create(['telegram_id' => 333]);
+
+        // First 429 must be followed by another attempt; retry_after=0 keeps the suite fast.
+        $telegram = Mockery::mock(Api::class);
+        $telegram->shouldReceive('sendMessage')
+            ->once()
+            ->withArgs(fn (array $params) => $params['chat_id'] === $user->telegram_id)
+            ->andThrow(new \Exception('429 Too Many Requests: retry_after 0'));
+        $telegram->shouldReceive('sendMessage')
+            ->once()
+            ->withArgs(fn (array $params) => $params['chat_id'] === $user->telegram_id)
+            ->andReturn($this->fakeMessage());
+
+        (new SendBroadcastMessage('متن پیام.'))->handle($telegram);
+
+        $this->assertDatabaseHas('broadcast_recipients', [
+            'user_id' => $user->id,
+            'status' => 'sent',
+            'attempts' => 1,
+        ]);
+    }
+
+    #[Test]
+    public function retry_after_is_not_capped_at_sixty_seconds(): void
+    {
+        $service = app(\App\Services\Core\BroadcastService::class);
+        $method = new \ReflectionMethod($service, 'retryAfterSeconds');
+        $method->setAccessible(true);
+
+        $this->assertSame(120, $method->invoke($service, new \Exception('429 Too Many Requests: retry_after 120')));
+    }
+
 }

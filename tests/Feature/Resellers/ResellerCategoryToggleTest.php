@@ -131,10 +131,20 @@ class ResellerCategoryToggleTest extends TestCase
         $product = $this->sellableProduct($reseller, ['available_to_resellers' => false]);
         $pricing = app(ResellerPricingService::class);
 
-        $pricing->setCategoryEnabled($reseller, $product->category, true);
+        try {
+            $pricing->setCategoryEnabled($reseller, $product->category, true);
+            $this->fail('Expected core-disabled category to be rejected.');
+        } catch (\InvalidArgumentException $e) {
+            $this->assertSame(
+                'این سبد فروش توسط مدیر اصلی برای نمایندگان غیرفعال شده است.',
+                $e->getMessage()
+            );
+        }
 
         $this->assertFalse($pricing->isSellable($reseller, $product));
-        $this->assertFalse($pricing->sellableProducts($reseller)->contains('id', $product->id));
+        $this->assertFalse(
+            $pricing->sellableProducts($reseller)->contains('id', $product->id)
+        );
     }
 
     /**

@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\Reseller;
 use App\Models\ResellerCategorySetting;
 use App\Models\ResellerProductPrice;
+use App\Services\Core\AuditService;
 use Illuminate\Support\Collection;
 use InvalidArgumentException;
 
@@ -30,10 +31,25 @@ class ResellerPricingService
     {
         $this->assertPriceAllowed($reseller, $product, $sellingPrice);
 
-        return ResellerProductPrice::query()->updateOrCreate(
+        $previous = ResellerProductPrice::query()
+            ->where('reseller_id', $reseller->id)
+            ->where('product_id', $product->id)
+            ->first();
+
+        $setting = ResellerProductPrice::query()->updateOrCreate(
             ['reseller_id' => $reseller->id, 'product_id' => $product->id],
             ['custom_price' => $sellingPrice, 'is_enabled' => true],
         );
+
+        app(AuditService::class)->record(
+            'product.price_changed',
+            $product,
+            before: ['custom_price' => $previous?->custom_price, 'is_enabled' => $previous?->is_enabled],
+            after: ['custom_price' => $sellingPrice, 'is_enabled' => true, 'reseller_id' => $reseller->id],
+            actor: $reseller,
+        );
+
+        return $setting;
     }
 
     public function disable(Reseller $reseller, Product $product): void
@@ -42,6 +58,13 @@ class ResellerPricingService
             ->where('reseller_id', $reseller->id)
             ->where('product_id', $product->id)
             ->update(['is_enabled' => false]);
+
+        app(AuditService::class)->record(
+            'product.disabled',
+            $product,
+            after: ['is_enabled' => false, 'reseller_id' => $reseller->id],
+            actor: $reseller,
+        );
     }
 
     /**
@@ -134,13 +157,34 @@ class ResellerPricingService
         return $setting ? $setting->is_enabled : true;
     }
 
-    /** فعال/غیرفعال کردن یک سبد فروش برای ربات همین نماینده */
+    /**
+     * فعال/غیرفعال کردن یک سبد فروش برای ربات همین نماینده.
+     *
+     * قانون سراسری (available_to_resellers) اینجا هم اعمال می‌شود، نه
+     * فقط در UI (P2 گزارش امنیتی، مورد #18): پیش از این، تنها چیزی که
+     * جلوی فعال‌کردن یک سبدِ سراسری‌بسته را می‌گرفت این بود که
+     * CategoryResource آن را در لیست نشان نمی‌داد — و UI هیچ‌وقت یک مرز
+     * امنیتی نیست. یک درخواست Livewire دست‌ساز می‌توانست از آن عبور کند.
+     */
     public function setCategoryEnabled(Reseller $reseller, Category $category, bool $enabled): ResellerCategorySetting
     {
-        return ResellerCategorySetting::query()->updateOrCreate(
+        if ($enabled && ! $category->available_to_resellers) {
+            throw new InvalidArgumentException('این سبد فروش توسط مدیر اصلی برای نمایندگان غیرفعال شده است.');
+        }
+
+        $setting = ResellerCategorySetting::query()->updateOrCreate(
             ['reseller_id' => $reseller->id, 'category_id' => $category->id],
             ['is_enabled' => $enabled],
         );
+
+        app(AuditService::class)->record(
+            $enabled ? 'category.enabled' : 'category.disabled',
+            $category,
+            after: ['reseller_id' => $reseller->id, 'is_enabled' => $enabled],
+            actor: $reseller,
+        );
+
+        return $setting;
     }
 
     /** لیست محصولاتی که همین الان برای این نماینده واقعاً قابل‌فروش‌اند (هم فعال در سیستم اصلی و سبدش برای نمایندگان باز باشد، هم فعال/قیمت‌گذاری‌شده توسط خودِ نماینده) */

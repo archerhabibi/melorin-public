@@ -131,11 +131,16 @@ class WalletHandler
             return;
         }
 
-        $payment = Payment::query()->find($paymentId);
+        $payment = Payment::findPendingForReceipt($paymentId, $user, null, 'user');
+
+        if (! $payment) {
+            return;
+        }
+
         // fileId تلگرام همین‌جا به‌عنوان مرجع رسید ذخیره می‌شود؛ دانلود و
         // ذخیره‌ی فایل واقعی روی storage در پیاده‌سازی نهایی باید از طریق
         // Api::getFile() انجام شود.
-        $payment?->update(['receipt_image' => $fileId]);
+        $payment->update(['receipt_image' => $fileId]);
 
         // قبل از بستن جریان، اسم صاحب کارتِ واریزکننده را می‌پرسیم — چون
         // ممکن است با نام کاربر تلگرام یکی نباشد و ادمین برای تطبیق با
@@ -167,7 +172,8 @@ class WalletHandler
             return;
         }
 
-        Payment::query()->whereKey($paymentId)->update(['depositor_name' => $depositorName]);
+        Payment::findPendingForReceipt($paymentId, $user, null, 'user')
+            ?->update(['depositor_name' => $depositorName]);
 
         $this->state->reset($chatId);
 
