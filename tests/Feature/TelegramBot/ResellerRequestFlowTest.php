@@ -11,6 +11,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Mockery;
+use PHPUnit\Framework\Attributes\Test;
 use Telegram\Bot\Api;
 use Telegram\Bot\Objects\Update;
 use Tests\Concerns\FakesTelegram;
@@ -34,7 +35,7 @@ class ResellerRequestFlowTest extends TestCase
     use FakesTelegram;
     use RefreshDatabase;
 
-    /** @test */
+    #[Test]
     public function bot_admin_sees_the_pro_version_message_and_is_not_put_into_the_description_flow(): void
     {
         config(['telegram.admin_ids' => ['999']]);
@@ -57,7 +58,7 @@ class ResellerRequestFlowTest extends TestCase
         $this->assertNotSame(ConversationState::RESELLER_REQUEST_AWAITING_DESCRIPTION, $state->step);
     }
 
-    /** @test */
+    #[Test]
     public function regular_user_without_an_open_request_is_prompted_for_a_new_one(): void
     {
         config(['telegram.admin_ids' => []]);
@@ -79,7 +80,7 @@ class ResellerRequestFlowTest extends TestCase
         $this->assertSame(ConversationState::RESELLER_REQUEST_AWAITING_DESCRIPTION, $state->step);
     }
 
-    /** @test */
+    #[Test]
     public function regular_user_with_an_already_open_request_continues_that_thread_instead_of_starting_a_new_one(): void
     {
         config(['telegram.admin_ids' => []]);
@@ -107,7 +108,7 @@ class ResellerRequestFlowTest extends TestCase
         $this->assertSame(1, Ticket::where('user_id', $user->id)->where('type', 'reseller_request')->count());
     }
 
-    /** @test */
+    #[Test]
     public function submitting_a_description_creates_a_ticket_of_type_reseller_request_and_dispatches_ticket_created(): void
     {
         Event::fake([TicketCreated::class]);
@@ -144,7 +145,7 @@ class ResellerRequestFlowTest extends TestCase
         $this->assertSame(ConversationState::IDLE, $state->step);
     }
 
-    /** @test */
+    #[Test]
     public function tapping_the_menu_button_actually_routes_to_the_handler(): void
     {
         // همان رگرسیونی که باعث شد این دکمه در نسخه‌های قبلی بی‌صدا از

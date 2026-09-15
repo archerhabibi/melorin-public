@@ -2,12 +2,12 @@
 
 namespace App\Services\Resellers;
 
+use App\Exceptions\ProductNotSellableException;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\Reseller;
 use App\Models\ResellerCategorySetting;
 use App\Models\ResellerProductPrice;
-use App\Exceptions\ProductNotSellableException;
 use Illuminate\Support\Collection;
 use InvalidArgumentException;
 

@@ -12,6 +12,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Livewire\Livewire;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -33,7 +34,7 @@ class TicketResourceTest extends TestCase
         return $admin;
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_load_the_ticket_list_page(): void
     {
         $this->actingAsAdmin();
@@ -51,7 +52,7 @@ class TicketResourceTest extends TestCase
             ->assertCanSeeTableRecords([$ticket]);
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_open_a_ticket_and_see_its_messages(): void
     {
         $this->actingAsAdmin();
@@ -75,7 +76,7 @@ class TicketResourceTest extends TestCase
             ->assertCanSeeTableRecords([$firstMessage]);
     }
 
-    /** @test */
+    #[Test]
     public function admin_replying_creates_a_message_marks_the_ticket_answered_and_dispatches_the_event(): void
     {
         Event::fake([TicketAnswered::class]);
@@ -111,7 +112,7 @@ class TicketResourceTest extends TestCase
         Event::assertDispatched(TicketAnswered::class, fn ($event) => $event->message->ticket_id === $ticket->id);
     }
 
-    /** @test */
+    #[Test]
     public function reply_action_is_hidden_once_a_ticket_is_closed(): void
     {
         $this->actingAsAdmin();
@@ -126,7 +127,7 @@ class TicketResourceTest extends TestCase
             ->assertTableActionHidden('reply');
     }
 
-    /** @test */
+    #[Test]
     public function closing_a_ticket_from_the_list_updates_its_status(): void
     {
         $this->actingAsAdmin();

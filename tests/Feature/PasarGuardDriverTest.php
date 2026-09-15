@@ -8,6 +8,7 @@ use App\Services\Core\Panels\PanelDriverFactory;
 use App\Services\Core\Panels\PasarGuardDriver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class PasarGuardDriverTest extends TestCase
@@ -19,13 +20,13 @@ class PasarGuardDriverTest extends TestCase
         return ServerPanel::factory()->create(['panel_type' => 'pasarguard']);
     }
 
-    /** @test */
+    #[Test]
     public function factory_resolves_pasarguard_to_its_own_driver(): void
     {
         $this->assertInstanceOf(PasarGuardDriver::class, PanelDriverFactory::make('pasarguard'));
     }
 
-    /** @test */
+    #[Test]
     public function it_authenticates_and_creates_an_account(): void
     {
         Http::fake([
@@ -53,7 +54,7 @@ class PasarGuardDriverTest extends TestCase
         });
     }
 
-    /** @test */
+    #[Test]
     public function it_forwards_group_ids_when_provided(): void
     {
         Http::fake([
@@ -77,7 +78,7 @@ class PasarGuardDriverTest extends TestCase
         });
     }
 
-    /** @test */
+    #[Test]
     public function failed_creation_returns_a_failure_result_without_throwing(): void
     {
         Http::fake([
@@ -98,7 +99,7 @@ class PasarGuardDriverTest extends TestCase
         $this->assertNotNull($result->errorMessage);
     }
 
-    /** @test */
+    #[Test]
     public function delete_account_calls_the_correct_endpoint(): void
     {
         Http::fake([

@@ -6,6 +6,7 @@ use App\Exceptions\InsufficientBalanceException;
 use App\Models\User;
 use App\Services\Core\WalletService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class WalletServiceTest extends TestCase
@@ -20,7 +21,7 @@ class WalletServiceTest extends TestCase
         $this->wallet = app(WalletService::class);
     }
 
-    /** @test */
+    #[Test]
     public function it_creates_a_wallet_with_zero_balance_on_first_access(): void
     {
         $user = User::factory()->create();
@@ -28,7 +29,7 @@ class WalletServiceTest extends TestCase
         $this->assertEquals(0.0, $this->wallet->balance($user));
     }
 
-    /** @test */
+    #[Test]
     public function charging_increases_balance_and_records_a_transaction(): void
     {
         $user = User::factory()->create();
@@ -40,7 +41,7 @@ class WalletServiceTest extends TestCase
         $this->assertEquals(100000, $tx->balance_after);
     }
 
-    /** @test */
+    #[Test]
     public function purchase_deducts_balance_when_sufficient(): void
     {
         $user = User::factory()->create();
@@ -51,7 +52,7 @@ class WalletServiceTest extends TestCase
         $this->assertEquals(50000, $this->wallet->balance($user));
     }
 
-    /** @test */
+    #[Test]
     public function purchase_throws_when_balance_is_insufficient(): void
     {
         $user = User::factory()->create();
@@ -62,7 +63,7 @@ class WalletServiceTest extends TestCase
         $this->wallet->purchase($user, 50000);
     }
 
-    /** @test */
+    #[Test]
     public function refund_increases_balance_again(): void
     {
         $user = User::factory()->create();
@@ -74,7 +75,7 @@ class WalletServiceTest extends TestCase
         $this->assertEquals(100000, $this->wallet->balance($user));
     }
 
-    /** @test */
+    #[Test]
     public function admin_adjust_can_go_negative_amount_but_never_below_zero_total(): void
     {
         $user = User::factory()->create();
@@ -88,7 +89,7 @@ class WalletServiceTest extends TestCase
         $this->wallet->adminAdjust($user, -1000000);
     }
 
-    /** @test */
+    #[Test]
     public function transaction_history_matches_balance_after_multiple_operations(): void
     {
         $user = User::factory()->create();

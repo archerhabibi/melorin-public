@@ -10,6 +10,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Livewire\Livewire;
 use Mockery;
+use PHPUnit\Framework\Attributes\Test;
 use Telegram\Bot\Api;
 use Tests\Concerns\FakesTelegram;
 use Tests\TestCase;
@@ -27,7 +28,7 @@ class BroadcastMessageTest extends TestCase
         return $admin;
     }
 
-    /** @test */
+    #[Test]
     public function admin_sending_a_broadcast_dispatches_the_job_with_the_message_text(): void
     {
         Bus::fake();
@@ -44,7 +45,7 @@ class BroadcastMessageTest extends TestCase
         Bus::assertDispatched(SendBroadcastMessage::class, fn ($job) => $job->text === 'اطلاعیه: امشب سرورها آپدیت می‌شوند.');
     }
 
-    /** @test */
+    #[Test]
     public function no_job_is_dispatched_when_there_are_no_recipients(): void
     {
         Bus::fake();
@@ -58,7 +59,7 @@ class BroadcastMessageTest extends TestCase
         Bus::assertNotDispatched(SendBroadcastMessage::class);
     }
 
-    /** @test */
+    #[Test]
     public function the_job_sends_the_message_to_every_user_with_a_telegram_id(): void
     {
         $userA = User::factory()->create(['telegram_id' => 111]);
@@ -78,7 +79,7 @@ class BroadcastMessageTest extends TestCase
         (new SendBroadcastMessage('متن پیام همگانی تست.'))->handle($telegram);
     }
 
-    /** @test */
+    #[Test]
     public function a_failure_for_one_recipient_does_not_stop_the_rest_of_the_broadcast(): void
     {
         $userA = User::factory()->create(['telegram_id' => 111]);

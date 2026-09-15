@@ -6,6 +6,7 @@ use App\Exceptions\InsufficientBalanceException;
 use App\Models\User;
 use App\Services\Core\WalletService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -28,7 +29,7 @@ class WalletServiceIsolationTest extends TestCase
         $this->wallet = app(WalletService::class);
     }
 
-    /** @test */
+    #[Test]
     public function purchases_only_ever_affect_the_correct_owners_wallet(): void
     {
         // عمداً چند کیف پول با ترتیب ایجاد متفاوت می‌سازیم؛ اگر کوئری قفل
@@ -45,7 +46,7 @@ class WalletServiceIsolationTest extends TestCase
         $this->wallet->purchase($poor, 50_000);
     }
 
-    /** @test */
+    #[Test]
     public function a_purchase_never_changes_another_owners_balance(): void
     {
         $userA = User::factory()->create();

@@ -20,6 +20,7 @@ use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\URL;
 use Livewire\Livewire;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\Concerns\FakesTelegram;
 use Tests\TestCase;
 
@@ -70,7 +71,7 @@ class ResellerPanelIsolationTest extends TestCase
         return $owner;
     }
 
-    /** @test */
+    #[Test]
     public function signed_login_link_logs_the_owner_into_only_their_own_reseller_panel(): void
     {
         $reseller = Reseller::factory()->create(['slug' => 'parismobile']);
@@ -86,7 +87,7 @@ class ResellerPanelIsolationTest extends TestCase
         $this->assertAuthenticatedAs($owner, 'reseller');
     }
 
-    /** @test */
+    #[Test]
     public function tampering_the_reseller_id_in_an_otherwise_valid_signed_link_is_rejected(): void
     {
         $reseller = Reseller::factory()->create();
@@ -100,7 +101,7 @@ class ResellerPanelIsolationTest extends TestCase
         $this->get($tampered)->assertForbidden();
     }
 
-    /** @test */
+    #[Test]
     public function an_expired_signed_login_link_is_rejected(): void
     {
         $reseller = Reseller::factory()->create();
@@ -111,7 +112,7 @@ class ResellerPanelIsolationTest extends TestCase
         $this->get($url)->assertForbidden();
     }
 
-    /** @test */
+    #[Test]
     public function reseller_cannot_see_another_resellers_customers(): void
     {
         $resellerA = Reseller::factory()->create();
@@ -128,7 +129,7 @@ class ResellerPanelIsolationTest extends TestCase
             ->assertCanNotSeeTableRecords([$customerB]);
     }
 
-    /** @test */
+    #[Test]
     public function reseller_cannot_see_another_resellers_orders(): void
     {
         $resellerA = Reseller::factory()->create();
@@ -145,7 +146,7 @@ class ResellerPanelIsolationTest extends TestCase
             ->assertCanNotSeeTableRecords([$orderB]);
     }
 
-    /** @test */
+    #[Test]
     public function reseller_cannot_see_or_approve_another_resellers_pending_payments(): void
     {
         $resellerA = Reseller::factory()->create();
@@ -169,7 +170,7 @@ class ResellerPanelIsolationTest extends TestCase
         app(PaymentService::class)->confirmManualByReseller($paymentB, $resellerA);
     }
 
-    /** @test */
+    #[Test]
     public function reseller_can_approve_their_own_customers_pending_payment_from_the_panel(): void
     {
         $reseller = Reseller::factory()->create();
@@ -190,7 +191,7 @@ class ResellerPanelIsolationTest extends TestCase
         $this->assertEquals(300000, app(WalletService::class)->balance($customer));
     }
 
-    /** @test */
+    #[Test]
     public function reseller_can_set_a_valid_selling_price_but_not_one_below_base_price(): void
     {
         $reseller = Reseller::factory()->create([

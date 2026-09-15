@@ -14,6 +14,7 @@ use App\Services\Core\WalletService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Mockery;
+use PHPUnit\Framework\Attributes\Test;
 use Telegram\Bot\Api;
 use Telegram\Bot\Objects\Message;
 use Telegram\Bot\Objects\User as TelegramUser;
@@ -100,7 +101,7 @@ class AccountSummaryAndRenewMessagingTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function inquiry_summary_shows_account_name_and_remaining_traffic(): void
     {
         Http::fake();
@@ -118,7 +119,7 @@ class AccountSummaryAndRenewMessagingTest extends TestCase
         $this->assertStringContainsString('حجم باقی‌مانده: 30.00 گیگ', $summary['text']);
     }
 
-    /** @test */
+    #[Test]
     public function renew_success_message_shows_balance_before_and_after(): void
     {
         Http::fake([
@@ -140,7 +141,7 @@ class AccountSummaryAndRenewMessagingTest extends TestCase
         $this->assertStringContainsString('موجودی کیف پول بعد از تمدید: 150,000 تومان', $success['text']);
     }
 
-    /** @test */
+    #[Test]
     public function referrer_receives_a_notification_message_after_being_credited(): void
     {
         Http::fake();
@@ -162,7 +163,7 @@ class AccountSummaryAndRenewMessagingTest extends TestCase
         $this->assertStringContainsString('موجودی فعلی: 30,000 تومان', $notification['text']);
     }
 
-    /** @test */
+    #[Test]
     public function no_notification_is_sent_when_referrer_has_no_telegram_id(): void
     {
         Http::fake();

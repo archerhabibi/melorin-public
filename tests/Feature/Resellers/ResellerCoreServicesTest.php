@@ -12,6 +12,7 @@ use App\Services\Resellers\ResellerCustomerService;
 use App\Services\Resellers\ResellerPricingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use InvalidArgumentException;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -33,7 +34,7 @@ class ResellerCoreServicesTest extends TestCase
         $this->pricing = app(ResellerPricingService::class);
     }
 
-    /** @test */
+    #[Test]
     public function assigning_a_customer_already_owned_by_another_reseller_is_rejected(): void
     {
         $resellerA = Reseller::factory()->create();
@@ -44,7 +45,7 @@ class ResellerCoreServicesTest extends TestCase
         $this->customers->assign($resellerB, $customer);
     }
 
-    /** @test */
+    #[Test]
     public function assigning_the_same_customer_to_the_same_reseller_twice_is_idempotent(): void
     {
         $reseller = Reseller::factory()->create();
@@ -55,7 +56,7 @@ class ResellerCoreServicesTest extends TestCase
         $this->assertEquals($reseller->id, $customer->fresh()->reseller_id);
     }
 
-    /** @test */
+    #[Test]
     public function reseller_a_cannot_remove_a_customer_belonging_to_reseller_b(): void
     {
         $resellerA = Reseller::factory()->create();
@@ -68,7 +69,7 @@ class ResellerCoreServicesTest extends TestCase
         $this->assertEquals($resellerB->id, $customerOfB->fresh()->reseller_id);
     }
 
-    /** @test */
+    #[Test]
     public function customers_query_never_leaks_across_resellers(): void
     {
         $resellerA = Reseller::factory()->create();
@@ -80,7 +81,7 @@ class ResellerCoreServicesTest extends TestCase
         $this->assertCount(2, $this->customers->customersQuery($resellerB)->get());
     }
 
-    /** @test */
+    #[Test]
     public function order_and_account_scopes_never_leak_across_resellers(): void
     {
         $resellerA = Reseller::factory()->create();
@@ -100,7 +101,7 @@ class ResellerCoreServicesTest extends TestCase
         $this->assertCount(1, $scopedAccounts);
     }
 
-    /** @test */
+    #[Test]
     public function selling_price_below_base_price_is_rejected(): void
     {
         $reseller = Reseller::factory()->create();
@@ -110,7 +111,7 @@ class ResellerCoreServicesTest extends TestCase
         $this->pricing->setSellingPrice($reseller, $product, 90000);
     }
 
-    /** @test */
+    #[Test]
     public function central_min_max_price_and_profit_rules_are_enforced(): void
     {
         $reseller = Reseller::factory()->create([
@@ -128,7 +129,7 @@ class ResellerCoreServicesTest extends TestCase
         $this->assertTrue($setting->is_enabled);
     }
 
-    /** @test */
+    #[Test]
     public function disabling_a_product_makes_it_unsellable_again(): void
     {
         $reseller = Reseller::factory()->create();
@@ -141,7 +142,7 @@ class ResellerCoreServicesTest extends TestCase
         $this->assertFalse($this->pricing->isSellable($reseller, $product));
     }
 
-    /** @test */
+    #[Test]
     public function sellable_products_excludes_globally_inactive_products_even_if_reseller_enabled_them(): void
     {
         $reseller = Reseller::factory()->create();

@@ -8,6 +8,7 @@ use App\Models\Reseller;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
+use PHPUnit\Framework\Attributes\Test;
 use Telegram\Bot\Api;
 use Tests\Concerns\FakesTelegram;
 use Tests\TestCase;
@@ -24,7 +25,7 @@ class ResellerBroadcastTest extends TestCase
     use FakesTelegram;
     use RefreshDatabase;
 
-    /** @test */
+    #[Test]
     public function a_reseller_broadcast_only_reaches_that_resellers_own_customers(): void
     {
         $resellerA = Reseller::factory()->create(['bot_token' => 'token-a']);
@@ -49,8 +50,7 @@ class ResellerBroadcastTest extends TestCase
 
         $telegram->shouldReceive('sendMessage')
             ->once()
-            ->withArgs(fn (array $params) =>
-                $params['chat_id'] === $mine->telegram_id
+            ->withArgs(fn (array $params) => $params['chat_id'] === $mine->telegram_id
                 && $params['text'] === 'سلام'
             )
             ->andReturn($this->fakeMessage());
@@ -68,7 +68,7 @@ class ResellerBroadcastTest extends TestCase
         $this->assertNotSame($mine->telegram_id, $coreCustomer->telegram_id);
     }
 
-    /** @test */
+    #[Test]
     public function a_reseller_broadcast_is_sent_with_that_resellers_own_bot_token(): void
     {
         $reseller = Reseller::factory()->create(['bot_token' => 'token-a']);
@@ -82,8 +82,7 @@ class ResellerBroadcastTest extends TestCase
 
         $telegram->shouldReceive('sendMessage')
             ->once()
-            ->withArgs(fn (array $params) =>
-                $params['chat_id'] === 1001
+            ->withArgs(fn (array $params) => $params['chat_id'] === 1001
                 && $params['text'] === 'سلام'
             )
             ->andReturn($this->fakeMessage());
@@ -92,8 +91,7 @@ class ResellerBroadcastTest extends TestCase
 
         $factory->shouldReceive('make')
             ->once()
-            ->withArgs(fn (Reseller $received) =>
-                $received->is($reseller)
+            ->withArgs(fn (Reseller $received) => $received->is($reseller)
                 && $received->bot_token === 'token-a'
             )
             ->andReturn($telegram);
@@ -102,7 +100,7 @@ class ResellerBroadcastTest extends TestCase
             ->handle($factory);
     }
 
-    /** @test */
+    #[Test]
     public function a_reseller_without_a_bot_token_sends_nothing_instead_of_crashing(): void
     {
         $reseller = Reseller::factory()->create(['bot_token' => null]);
@@ -122,7 +120,7 @@ class ResellerBroadcastTest extends TestCase
         $this->assertTrue(true, 'No Telegram API should be created without a reseller bot token.');
     }
 
-    /** @test */
+    #[Test]
     public function customers_without_a_telegram_id_are_skipped(): void
     {
         $reseller = Reseller::factory()->create(['bot_token' => 'token-a']);

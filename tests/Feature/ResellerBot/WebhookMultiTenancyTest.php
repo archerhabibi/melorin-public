@@ -8,6 +8,7 @@ use App\Models\ResellerConversationState;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
+use PHPUnit\Framework\Attributes\Test;
 use Telegram\Bot\Api;
 use Telegram\Bot\Objects\Message;
 use Tests\TestCase;
@@ -61,7 +62,7 @@ class WebhookMultiTenancyTest extends TestCase
         ];
     }
 
-    /** @test */
+    #[Test]
     public function a_message_to_resellers_webhook_slug_is_scoped_to_that_reseller_only(): void
     {
         $this->fakeApiFactory();
@@ -85,7 +86,7 @@ class WebhookMultiTenancyTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function an_unknown_webhook_slug_returns_404(): void
     {
         $this->fakeApiFactory();
@@ -94,7 +95,7 @@ class WebhookMultiTenancyTest extends TestCase
             ->assertNotFound();
     }
 
-    /** @test */
+    #[Test]
     public function the_same_telegram_user_talking_to_two_different_reseller_bots_gets_independent_conversation_state(): void
     {
         $this->fakeApiFactory();
@@ -118,7 +119,7 @@ class WebhookMultiTenancyTest extends TestCase
         $this->assertDatabaseHas('reseller_conversation_states', ['reseller_id' => $resellerB->id, 'telegram_chat_id' => $telegramId]);
     }
 
-    /** @test */
+    #[Test]
     public function duplicate_telegram_update_id_is_processed_only_once(): void
     {
         $this->fakeApiFactory();
@@ -134,7 +135,7 @@ class WebhookMultiTenancyTest extends TestCase
         $this->assertEquals($countAfterFirst, ResellerConversationState::query()->count());
     }
 
-    /** @test */
+    #[Test]
     public function echoed_bot_messages_are_never_processed_as_a_real_user(): void
     {
         $this->fakeApiFactory();

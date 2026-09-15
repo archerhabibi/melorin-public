@@ -15,6 +15,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Mockery;
+use PHPUnit\Framework\Attributes\Test;
 use Telegram\Bot\Api;
 use Tests\Concerns\FakesTelegram;
 use Tests\TestCase;
@@ -30,7 +31,7 @@ class SupportTicketFlowTest extends TestCase
     use FakesTelegram;
     use RefreshDatabase;
 
-    /** @test */
+    #[Test]
     public function submitting_a_support_message_creates_a_ticket_and_dispatches_ticket_created(): void
     {
         Event::fake([TicketCreated::class]);
@@ -57,7 +58,7 @@ class SupportTicketFlowTest extends TestCase
         Event::assertDispatched(TicketCreated::class, fn ($event) => $event->ticket->user_id === $user->id);
     }
 
-    /** @test */
+    #[Test]
     public function support_state_is_reset_after_submitting_a_ticket(): void
     {
         $this->fakeTelegram();
@@ -73,7 +74,7 @@ class SupportTicketFlowTest extends TestCase
         $this->assertSame(ConversationState::IDLE, $state->find($chatId)->step);
     }
 
-    /** @test */
+    #[Test]
     public function new_ticket_notification_is_sent_to_every_configured_admin_id(): void
     {
         config()->set('telegram.admin_ids', ['111', '222']);
@@ -100,7 +101,7 @@ class SupportTicketFlowTest extends TestCase
         (new NotifyAdminsOfNewTicket($telegram))->handle(new TicketCreated($ticket));
     }
 
-    /** @test */
+    #[Test]
     public function no_notification_is_attempted_when_no_admin_ids_are_configured(): void
     {
         config()->set('telegram.admin_ids', []);
@@ -113,7 +114,7 @@ class SupportTicketFlowTest extends TestCase
         (new NotifyAdminsOfNewTicket($telegram))->handle(new TicketCreated($ticket));
     }
 
-    /** @test */
+    #[Test]
     public function answering_a_ticket_notifies_the_user_who_opened_it(): void
     {
         $user = User::factory()->create(['telegram_id' => 987654321]);
@@ -136,7 +137,7 @@ class SupportTicketFlowTest extends TestCase
         (new NotifyUserOfTicketAnswer($telegram))->handle(new TicketAnswered($message));
     }
 
-    /** @test */
+    #[Test]
     public function ticket_answer_notification_is_silently_skipped_when_user_has_no_telegram_id(): void
     {
         $user = User::factory()->create(['telegram_id' => null]);

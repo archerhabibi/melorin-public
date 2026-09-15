@@ -11,6 +11,7 @@ use App\Services\Core\WalletService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Mockery;
+use PHPUnit\Framework\Attributes\Test;
 use Telegram\Bot\Api;
 use Telegram\Bot\Objects\Message;
 use Tests\TestCase;
@@ -70,7 +71,7 @@ class BuyAccountFlowTest extends TestCase
         return $category;
     }
 
-    /** @test */
+    #[Test]
     public function purchase_with_insufficient_wallet_balance_never_calls_the_panel(): void
     {
         Http::fake();
@@ -99,7 +100,7 @@ class BuyAccountFlowTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function purchase_with_sufficient_balance_creates_account_and_delivers_config(): void
     {
         Http::fake([
@@ -150,7 +151,7 @@ class BuyAccountFlowTest extends TestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function manual_server_selection_category_shows_server_list_instead_of_auto_purchasing(): void
     {
         Http::fake();
@@ -201,7 +202,7 @@ class BuyAccountFlowTest extends TestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function purchasing_with_a_chosen_panel_id_uses_exactly_that_server(): void
     {
         Http::fake([

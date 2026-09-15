@@ -13,6 +13,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Mockery;
+use PHPUnit\Framework\Attributes\Test;
 use Telegram\Bot\Api;
 use Telegram\Bot\Objects\Message;
 use Telegram\Bot\Objects\User as TelegramUser;
@@ -60,7 +61,7 @@ class PurchaseCompletionAndWelcomeTest extends TestCase
         $this->app->instance(Api::class, $telegram);
     }
 
-    /** @test */
+    #[Test]
     public function wallet_balance_is_shown_right_after_a_purchase_completes(): void
     {
         Http::fake([
@@ -85,7 +86,7 @@ class PurchaseCompletionAndWelcomeTest extends TestCase
         $this->assertStringContainsString('50,000 تومان', $balanceMessage['text']);
     }
 
-    /** @test */
+    #[Test]
     public function welcome_message_uses_the_bots_actual_telegram_name(): void
     {
         Cache::forget('telegram_bot_display_name');

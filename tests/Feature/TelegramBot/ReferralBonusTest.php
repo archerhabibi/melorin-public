@@ -9,6 +9,7 @@ use App\Services\Core\WalletService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use PHPUnit\Framework\Attributes\Test;
 use Telegram\Bot\Objects\User as TelegramUser;
 use Tests\Concerns\FakesTelegram;
 use Tests\TestCase;
@@ -46,7 +47,7 @@ class ReferralBonusTest extends TestCase
             ]));
     }
 
-    /** @test */
+    #[Test]
     public function referrer_is_credited_when_a_brand_new_user_joins_via_their_link(): void
     {
         Http::fake();
@@ -74,7 +75,7 @@ class ReferralBonusTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function referrer_is_credited_even_when_the_referred_user_already_existed_without_a_referrer(): void
     {
         Http::fake();
@@ -108,7 +109,7 @@ class ReferralBonusTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function bonus_is_not_paid_twice_if_start_is_sent_again_with_the_same_referral_link(): void
     {
         Http::fake();
@@ -137,7 +138,7 @@ class ReferralBonusTest extends TestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function unconfigured_zero_bonus_does_not_break_registration(): void
     {
         Http::fake();
@@ -156,7 +157,7 @@ class ReferralBonusTest extends TestCase
         $this->assertDatabaseMissing('wallet_transactions', ['type' => 'referral_bonus']);
     }
 
-    /** @test */
+    #[Test]
     public function self_referral_is_ignored(): void
     {
         Http::fake();

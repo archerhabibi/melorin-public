@@ -17,6 +17,7 @@ use App\Services\Core\WalletService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Mockery;
+use PHPUnit\Framework\Attributes\Test;
 use Telegram\Bot\Api;
 use Telegram\Bot\Objects\Message;
 use Telegram\Bot\Objects\Update;
@@ -111,7 +112,7 @@ class ResellerBotFlowsTest extends TestCase
         return $product;
     }
 
-    /** @test */
+    #[Test]
     public function a_customer_can_buy_an_account_end_to_end_through_the_bot_with_double_debit(): void
     {
         Http::fake([
@@ -143,7 +144,7 @@ class ResellerBotFlowsTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function reseller_wallet_topup_menu_item_is_a_no_op_for_a_plain_customer(): void
     {
         $reseller = Reseller::factory()->create();
@@ -159,7 +160,7 @@ class ResellerBotFlowsTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function customer_wallet_topup_is_reviewed_by_the_reseller_and_credits_only_the_customers_wallet(): void
     {
         $ownerUser = User::factory()->create(['telegram_id' => 800001]);

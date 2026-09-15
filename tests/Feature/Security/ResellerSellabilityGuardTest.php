@@ -14,6 +14,7 @@ use App\Services\Core\WalletService;
 use App\Services\Resellers\ResellerPricingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -78,7 +79,7 @@ class ResellerSellabilityGuardTest extends TestCase
      * callback دست‌ساز («rbuy:product:123») همچنان قابل خرید بود، چون
      * AccountService فقط قیمت را چک می‌کرد نه sellability را.
      */
-    /** @test */
+    #[Test]
     public function a_crafted_purchase_from_a_category_the_reseller_disabled_is_rejected_in_core(): void
     {
         $this->fakePanelApi();
@@ -97,7 +98,7 @@ class ResellerSellabilityGuardTest extends TestCase
     }
 
     /** Critical #2 — همان حفره، این بار برای تصمیم سراسریِ Core. */
-    /** @test */
+    #[Test]
     public function a_crafted_purchase_from_a_category_core_closed_to_resellers_is_rejected(): void
     {
         $this->fakePanelApi();
@@ -114,7 +115,7 @@ class ResellerSellabilityGuardTest extends TestCase
     }
 
     /** Critical #3 — نمایندگی غیرفعال نباید بتواند بفروشد، حتی با درخواست مستقیم به Core. */
-    /** @test */
+    #[Test]
     public function an_inactive_reseller_cannot_complete_a_purchase(): void
     {
         $this->fakePanelApi();
@@ -132,7 +133,7 @@ class ResellerSellabilityGuardTest extends TestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function a_disabled_product_cannot_be_purchased_even_with_a_valid_price_row(): void
     {
         $this->fakePanelApi();
@@ -155,7 +156,7 @@ class ResellerSellabilityGuardTest extends TestCase
      * ممکن بود همه‌ی تست‌های بالا صرفاً به این دلیل سبز باشند که خرید
      * اصلاً دیگر کار نمی‌کند.
      */
-    /** @test */
+    #[Test]
     public function a_fully_valid_reseller_purchase_still_succeeds(): void
     {
         $this->fakePanelApi();
@@ -177,7 +178,7 @@ class ResellerSellabilityGuardTest extends TestCase
      * «No orphan debit». چون assertSellable قبل از هر کسری اجرا
      * می‌شود، موجودی‌ها باید عیناً دست‌نخورده بمانند.
      */
-    /** @test */
+    #[Test]
     public function a_rejected_purchase_leaves_both_wallets_untouched(): void
     {
         $this->fakePanelApi();

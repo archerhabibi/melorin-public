@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\Core\PaymentService;
 use App\Services\Core\WalletService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\Concerns\FakesTelegram;
 use Tests\TestCase;
 
@@ -37,7 +38,7 @@ class ResellerPaymentApprovalTest extends TestCase
         $this->wallet = app(WalletService::class);
     }
 
-    /** @test */
+    #[Test]
     public function reseller_can_confirm_their_customers_personal_wallet_charge(): void
     {
         $reseller = Reseller::factory()->create();
@@ -58,7 +59,7 @@ class ResellerPaymentApprovalTest extends TestCase
         $this->assertEquals(0, $this->wallet->balance($reseller));
     }
 
-    /** @test */
+    #[Test]
     public function a_reseller_cannot_confirm_another_resellers_customer_payment(): void
     {
         $resellerA = Reseller::factory()->create();
@@ -74,7 +75,7 @@ class ResellerPaymentApprovalTest extends TestCase
         $this->payments->confirmManualByReseller($payment, $resellerB);
     }
 
-    /** @test */
+    #[Test]
     public function main_admin_cannot_confirm_a_reseller_scoped_customer_payment(): void
     {
         $reseller = Reseller::factory()->create();
@@ -90,7 +91,7 @@ class ResellerPaymentApprovalTest extends TestCase
         $this->payments->confirmManual($payment, $admin);
     }
 
-    /** @test */
+    #[Test]
     public function reseller_cannot_confirm_their_own_reseller_wallet_topup(): void
     {
         $reseller = Reseller::factory()->create();
@@ -104,7 +105,7 @@ class ResellerPaymentApprovalTest extends TestCase
         $this->payments->confirmManualByReseller($payment, $reseller);
     }
 
-    /** @test */
+    #[Test]
     public function main_admin_confirming_a_reseller_topup_credits_the_reseller_wallet_not_the_owners_personal_wallet(): void
     {
         $reseller = Reseller::factory()->create();
@@ -125,7 +126,7 @@ class ResellerPaymentApprovalTest extends TestCase
         $this->assertEquals(0, $this->wallet->balance($reseller->user));
     }
 
-    /** @test */
+    #[Test]
     public function reseller_can_reject_their_customers_payment(): void
     {
         $reseller = Reseller::factory()->create();
@@ -142,7 +143,7 @@ class ResellerPaymentApprovalTest extends TestCase
         $this->assertEquals(0, $this->wallet->balance($customer));
     }
 
-    /** @test */
+    #[Test]
     public function ordinary_main_bot_wallet_charge_is_completely_unaffected(): void
     {
         $user = User::factory()->create();

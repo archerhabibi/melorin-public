@@ -10,6 +10,7 @@ use App\Services\Core\WalletService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Mockery;
+use PHPUnit\Framework\Attributes\Test;
 use Telegram\Bot\Api;
 use Telegram\Bot\Objects\Message;
 use Tests\TestCase;
@@ -52,7 +53,7 @@ class PaymentServiceTest extends TestCase
         config()->set('services.zarinpal.callback_url', 'https://melorin.test/payments/zarinpal/callback');
     }
 
-    /** @test */
+    #[Test]
     public function card_to_card_initiate_returns_bank_instructions_without_charging_wallet(): void
     {
         $user = User::factory()->create();
@@ -67,7 +68,7 @@ class PaymentServiceTest extends TestCase
         $this->assertEquals(0.0, $this->wallet->balance($user));
     }
 
-    /** @test */
+    #[Test]
     public function admin_confirming_a_manual_payment_charges_the_wallet(): void
     {
         $user = User::factory()->create();
@@ -83,7 +84,7 @@ class PaymentServiceTest extends TestCase
         $this->assertEquals(200000, $this->wallet->balance($user));
     }
 
-    /** @test */
+    #[Test]
     public function admin_rejecting_a_manual_payment_never_touches_the_wallet(): void
     {
         $user = User::factory()->create();
@@ -98,7 +99,7 @@ class PaymentServiceTest extends TestCase
         $this->assertEquals(0.0, $this->wallet->balance($user));
     }
 
-    /** @test */
+    #[Test]
     public function zarinpal_initiate_returns_a_redirect_url_and_stores_the_authority(): void
     {
         Http::fake([
@@ -119,7 +120,7 @@ class PaymentServiceTest extends TestCase
         $this->assertEquals('A00000000000000000000000000123456', $payment->fresh()->gateway_reference);
     }
 
-    /** @test */
+    #[Test]
     public function zarinpal_successful_callback_confirms_payment_and_charges_wallet(): void
     {
         Http::fake([
@@ -142,7 +143,7 @@ class PaymentServiceTest extends TestCase
         $this->assertEquals(150000, $this->wallet->balance($user));
     }
 
-    /** @test */
+    #[Test]
     public function zarinpal_cancelled_callback_rejects_payment_without_calling_verify(): void
     {
         Http::fake([
@@ -163,7 +164,7 @@ class PaymentServiceTest extends TestCase
         Http::assertNotSent(fn ($request) => str_contains($request->url(), 'verify.json'));
     }
 
-    /** @test */
+    #[Test]
     public function refunding_a_confirmed_wallet_charge_deducts_the_balance_back(): void
     {
         $user = User::factory()->create();

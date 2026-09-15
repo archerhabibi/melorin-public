@@ -14,6 +14,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Mockery;
+use PHPUnit\Framework\Attributes\Test;
 use Telegram\Bot\Api;
 use Tests\Concerns\FakesTelegram;
 use Tests\TestCase;
@@ -30,7 +31,7 @@ class TicketConversationFlowTest extends TestCase
     use FakesTelegram;
     use RefreshDatabase;
 
-    /** @test */
+    #[Test]
     public function support_start_continues_an_existing_open_ticket_instead_of_creating_a_new_one(): void
     {
         $user = User::factory()->create(['telegram_id' => 123]);
@@ -58,7 +59,7 @@ class TicketConversationFlowTest extends TestCase
         $this->assertSame(1, Ticket::where('user_id', $user->id)->count());
     }
 
-    /** @test */
+    #[Test]
     public function support_start_starts_a_fresh_ticket_when_the_previous_one_is_closed(): void
     {
         $user = User::factory()->create(['telegram_id' => 123]);
@@ -78,7 +79,7 @@ class TicketConversationFlowTest extends TestCase
         $this->assertSame(ConversationState::SUPPORT_AWAITING_MESSAGE, $state->step);
     }
 
-    /** @test */
+    #[Test]
     public function ticket_reply_submit_appends_the_message_reopens_the_ticket_and_dispatches_event(): void
     {
         Event::fake([TicketUserReplied::class]);
@@ -112,7 +113,7 @@ class TicketConversationFlowTest extends TestCase
         Event::assertDispatched(TicketUserReplied::class, fn ($event) => $event->message->ticket_id === $ticket->id);
     }
 
-    /** @test */
+    #[Test]
     public function ticket_reply_submit_refuses_a_ticket_that_does_not_belong_to_the_user(): void
     {
         $owner = User::factory()->create();
@@ -137,7 +138,7 @@ class TicketConversationFlowTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function admin_answer_notification_now_tells_the_user_how_to_reply(): void
     {
         $user = User::factory()->create(['telegram_id' => 987654321]);
@@ -160,7 +161,7 @@ class TicketConversationFlowTest extends TestCase
         (new NotifyUserOfTicketAnswer($telegram))->handle(new TicketAnswered($message));
     }
 
-    /** @test */
+    #[Test]
     public function user_reply_notification_is_sent_to_every_configured_admin_id(): void
     {
         config(['telegram.admin_ids' => ['111', '222']]);
@@ -186,7 +187,7 @@ class TicketConversationFlowTest extends TestCase
         (new NotifyAdminsOfTicketReply($telegram))->handle(new TicketUserReplied($message));
     }
 
-    /** @test */
+    #[Test]
     public function no_reply_notification_is_attempted_when_no_admin_ids_are_configured(): void
     {
         config(['telegram.admin_ids' => []]);

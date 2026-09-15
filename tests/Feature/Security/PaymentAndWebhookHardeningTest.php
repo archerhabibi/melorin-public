@@ -2,16 +2,18 @@
 
 namespace Tests\Feature\Security;
 
+use App\Channels\ResellerBot\ResellerApiFactory;
 use App\Models\Admin;
 use App\Models\Payment;
 use App\Models\PaymentMethod;
 use App\Models\Reseller;
-use App\Models\ResellerAdmin;
 use App\Models\User;
 use App\Services\Core\PaymentService;
 use App\Services\Core\WalletService;
 use App\Services\Resellers\ResellerService;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\Concerns\FakesTelegram;
 use Tests\TestCase;
 
@@ -21,7 +23,7 @@ use Tests\TestCase;
  */
 class PaymentAndWebhookHardeningTest extends TestCase
 {
-    use RefreshDatabase, FakesTelegram;
+    use FakesTelegram, RefreshDatabase;
 
     protected function pendingWalletCharge(User $user, float $amount = 100000): Payment
     {
@@ -42,7 +44,7 @@ class PaymentAndWebhookHardeningTest extends TestCase
      * شود، نه اینکه کیف پول را دو بار شارژ کند. (شبیه‌سازی مستقیمِ
      * حالتی که در عمل با دو کلیک هم‌زمان ادمین رخ می‌دهد.)
      */
-    /** @test */
+    #[Test]
     public function confirming_an_already_confirmed_payment_does_not_double_credit_the_wallet(): void
     {
         $this->fakeTelegram();
@@ -67,7 +69,7 @@ class PaymentAndWebhookHardeningTest extends TestCase
     }
 
     /** Critical #5 — وب‌هوک نماینده بدون secret درست باید ۴۰۳ بدهد. */
-    /** @test */
+    #[Test]
     public function a_reseller_webhook_request_without_the_correct_secret_is_rejected(): void
     {
         $owner = User::factory()->create();
@@ -94,65 +96,65 @@ class PaymentAndWebhookHardeningTest extends TestCase
             ->assertForbidden();
     }
 
-    /** @test */
+    #[Test]
     public function a_reseller_webhook_request_with_the_correct_secret_is_accepted(): void
     {
 
-    $telegram = $this->fakeTelegram();
+        $telegram = $this->fakeTelegram();
 
-    $telegram->shouldReceive('getMe')
-    ->once()
-    ->andReturn(new \Telegram\Bot\Objects\User([
-        'id' => 999999,
-        'is_bot' => true,
-        'first_name' => 'Test Bot',
-        'username' => 'test_bot',
-    ]));
-
-    $this->mock(\App\Channels\ResellerBot\ResellerApiFactory::class, function ($mock) use ($telegram) {
-        $mock->shouldReceive('make')
+        $telegram->shouldReceive('getMe')
             ->once()
-            ->andReturn($telegram);
-    });
+            ->andReturn(new \Telegram\Bot\Objects\User([
+                'id' => 999999,
+                'is_bot' => true,
+                'first_name' => 'Test Bot',
+                'username' => 'test_bot',
+            ]));
 
-    $owner = User::factory()->create();
+        $this->mock(ResellerApiFactory::class, function ($mock) use ($telegram) {
+            $mock->shouldReceive('make')
+                ->once()
+                ->andReturn($telegram);
+        });
 
-    $reseller = app(ResellerService::class)->create($owner, [
-        'bot_token' => 'test-token',
-        'webhook_slug' => 'test-shop-2',
-        'slug' => 'test-shop-2',
-    ]);
+        $owner = User::factory()->create();
 
-    $secret = $reseller->ensureWebhookSecret();
+        $reseller = app(ResellerService::class)->create($owner, [
+            'bot_token' => 'test-token',
+            'webhook_slug' => 'test-shop-2',
+            'slug' => 'test-shop-2',
+        ]);
 
-    $this->withHeader('X-Telegram-Bot-Api-Secret-Token', $secret)
-        ->postJson('/reseller-bot/webhook/test-shop-2', [
-            'update_id' => 2,
-            'message' => [
-                'message_id' => 1,
-                'from' => [
-                    'id' => 556,
-                    'is_bot' => false,
-                    'first_name' => 'X',
+        $secret = $reseller->ensureWebhookSecret();
+
+        $this->withHeader('X-Telegram-Bot-Api-Secret-Token', $secret)
+            ->postJson('/reseller-bot/webhook/test-shop-2', [
+                'update_id' => 2,
+                'message' => [
+                    'message_id' => 1,
+                    'from' => [
+                        'id' => 556,
+                        'is_bot' => false,
+                        'first_name' => 'X',
+                    ],
+                    'chat' => [
+                        'id' => 556,
+                        'type' => 'private',
+                    ],
+                    'text' => '/start',
                 ],
-                'chat' => [
-                    'id' => 556,
-                    'type' => 'private',
-                ],
-                'text' => '/start',
-            ],
-        ])
-        ->assertOk();
+            ])
+            ->assertOk();
     }
 
     /** Critical #4 — نماینده‌ی غیرفعال نباید بتواند وارد پنل شود. */
-    /** @test */
+    #[Test]
     public function an_inactive_reseller_owner_cannot_access_the_reseller_panel(): void
     {
         $owner = User::factory()->create();
         $reseller = app(ResellerService::class)->create($owner, ['slug' => 'shop-x']);
 
-        $panel = \Filament\Facades\Filament::getPanel('reseller');
+        $panel = Filament::getPanel('reseller');
 
         $this->assertTrue($owner->fresh()->canAccessPanel($panel));
 
@@ -164,7 +166,7 @@ class PaymentAndWebhookHardeningTest extends TestCase
     }
 
     /** P1 #13 — ساخت نماینده باید اتمیک باشد. */
-    /** @test */
+    #[Test]
     public function reseller_creation_is_atomic(): void
     {
         $owner = User::factory()->create();

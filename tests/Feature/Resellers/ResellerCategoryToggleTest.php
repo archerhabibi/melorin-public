@@ -13,6 +13,7 @@ use App\Services\Core\WalletService;
 use App\Services\Resellers\ResellerPricingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -54,7 +55,7 @@ class ResellerCategoryToggleTest extends TestCase
         return $product;
     }
 
-    /** @test */
+    #[Test]
     public function a_category_with_no_setting_row_is_enabled_by_default(): void
     {
         $reseller = Reseller::factory()->create();
@@ -67,7 +68,7 @@ class ResellerCategoryToggleTest extends TestCase
         $this->assertTrue($pricing->sellableProducts($reseller)->contains('id', $product->id));
     }
 
-    /** @test */
+    #[Test]
     public function reseller_can_disable_a_category_for_their_own_bot(): void
     {
         $reseller = Reseller::factory()->create();
@@ -81,7 +82,7 @@ class ResellerCategoryToggleTest extends TestCase
         $this->assertFalse($pricing->sellableProducts($reseller)->contains('id', $product->id));
     }
 
-    /** @test */
+    #[Test]
     public function re_enabling_a_category_restores_the_previously_set_prices(): void
     {
         $reseller = Reseller::factory()->create();
@@ -97,7 +98,7 @@ class ResellerCategoryToggleTest extends TestCase
         $this->assertTrue($pricing->isSellable($reseller, $product));
     }
 
-    /** @test */
+    #[Test]
     public function one_resellers_category_choice_does_not_affect_another_reseller(): void
     {
         $resellerA = Reseller::factory()->create();
@@ -123,7 +124,7 @@ class ResellerCategoryToggleTest extends TestCase
      * بزند. اگر این روزی بشکند، یک نماینده می‌تواند سبدی را که مدیر
      * عمداً برای همه بسته، در ربات خودش باز کند.
      */
-    /** @test */
+    #[Test]
     public function reseller_cannot_re_enable_a_category_that_core_has_closed(): void
     {
         $reseller = Reseller::factory()->create();
@@ -141,7 +142,7 @@ class ResellerCategoryToggleTest extends TestCase
      * و واقعیِ عددیِ همان مثالی که در سند معماری آمده، این بار با
      * لایه‌ی جدید سبد فروش هم در مسیر.
      */
-    /** @test */
+    #[Test]
     public function a_full_reseller_purchase_debits_both_wallets_correctly(): void
     {
         Http::fake([
@@ -174,7 +175,7 @@ class ResellerCategoryToggleTest extends TestCase
         $this->assertEquals($reseller->id, $account->order->reseller_id);
     }
 
-    /** @test */
+    #[Test]
     public function purchasing_from_a_category_the_reseller_disabled_is_rejected(): void
     {
         $reseller = Reseller::factory()->create();

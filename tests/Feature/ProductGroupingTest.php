@@ -12,6 +12,7 @@ use App\Models\ResellerAdmin;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -23,7 +24,7 @@ class ProductGroupingTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @test */
+    #[Test]
     public function admin_product_list_renders_successfully_grouped_by_category(): void
     {
         Filament::setCurrentPanel(Filament::getPanel('admin'));
@@ -42,7 +43,7 @@ class ProductGroupingTest extends TestCase
             ->assertCanSeeTableRecords([$productA1, $productA2, $productB1]);
     }
 
-    /** @test */
+    #[Test]
     public function reseller_product_list_renders_successfully_grouped_by_category(): void
     {
         $reseller = Reseller::factory()->create(['slug' => 'grouptest']);
@@ -66,7 +67,7 @@ class ProductGroupingTest extends TestCase
             ->assertCanSeeTableRecords([$productA, $productB]);
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_still_filter_the_product_list_by_a_single_category_alongside_grouping(): void
     {
         Filament::setCurrentPanel(Filament::getPanel('admin'));

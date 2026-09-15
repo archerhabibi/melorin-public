@@ -14,6 +14,7 @@ use App\Services\Resellers\ResellerPricingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use InvalidArgumentException;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -52,7 +53,7 @@ class ResellerPriceFieldTest extends TestCase
         return $product;
     }
 
-    /** @test */
+    #[Test]
     public function purchase_debits_the_reseller_by_the_wholesale_reseller_price_not_the_retail_price(): void
     {
         Http::fake([
@@ -83,7 +84,7 @@ class ResellerPriceFieldTest extends TestCase
         $this->assertEquals(140000, $account->order->sold_price);
     }
 
-    /** @test */
+    #[Test]
     public function without_a_reseller_price_the_retail_price_is_still_used_as_before(): void
     {
         Http::fake([
@@ -110,7 +111,7 @@ class ResellerPriceFieldTest extends TestCase
         $this->assertEquals(100000, $account->order->base_price);
     }
 
-    /** @test */
+    #[Test]
     public function failed_account_creation_refunds_exactly_the_wholesale_price_that_was_debited(): void
     {
         Http::fake([
@@ -144,7 +145,7 @@ class ResellerPriceFieldTest extends TestCase
         $this->assertEquals(200000, $wallet->balance($reseller));
     }
 
-    /** @test */
+    #[Test]
     public function reseller_can_sell_profitably_between_the_wholesale_price_and_the_retail_price(): void
     {
         $reseller = Reseller::factory()->create();
@@ -155,7 +156,7 @@ class ResellerPriceFieldTest extends TestCase
         $this->assertEquals(120000, $setting->custom_price);
     }
 
-    /** @test */
+    #[Test]
     public function selling_price_below_the_wholesale_reseller_price_is_still_rejected(): void
     {
         $reseller = Reseller::factory()->create();

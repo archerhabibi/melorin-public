@@ -14,6 +14,7 @@ use App\Services\Core\AccountService;
 use App\Services\Core\WalletService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -67,7 +68,7 @@ class ResellerPurchaseFinancialTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function purchase_debits_customer_by_sold_price_and_reseller_by_base_price(): void
     {
         $this->fakeSuccessfulPanel();
@@ -100,7 +101,7 @@ class ResellerPurchaseFinancialTest extends TestCase
         $this->assertEquals($customer->id, $account->user_id);
     }
 
-    /** @test */
+    #[Test]
     public function insufficient_customer_balance_blocks_purchase_without_touching_reseller_wallet(): void
     {
         Http::fake();
@@ -123,7 +124,7 @@ class ResellerPurchaseFinancialTest extends TestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function insufficient_reseller_balance_blocks_purchase_without_touching_customer_wallet(): void
     {
         Http::fake();
@@ -146,7 +147,7 @@ class ResellerPurchaseFinancialTest extends TestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function panel_failure_refunds_both_customer_and_reseller(): void
     {
         Http::fake([
@@ -172,7 +173,7 @@ class ResellerPurchaseFinancialTest extends TestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function product_not_enabled_by_reseller_is_not_sellable_even_if_globally_active(): void
     {
         Http::fake();
@@ -196,7 +197,7 @@ class ResellerPurchaseFinancialTest extends TestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function disabling_product_globally_blocks_sale_even_if_reseller_enabled_it(): void
     {
         Http::fake();
@@ -214,7 +215,7 @@ class ResellerPurchaseFinancialTest extends TestCase
         $this->accounts->purchase($customer, $product, salesChannel: 'reseller_bot', reseller: $reseller);
     }
 
-    /** @test */
+    #[Test]
     public function customer_not_belonging_to_this_reseller_cannot_purchase_through_it(): void
     {
         Http::fake();
@@ -232,7 +233,7 @@ class ResellerPurchaseFinancialTest extends TestCase
         $this->accounts->purchase($customer, $product, salesChannel: 'reseller_bot', reseller: $reseller);
     }
 
-    /** @test */
+    #[Test]
     public function a_customer_with_no_reseller_at_all_cannot_purchase_through_a_reseller(): void
     {
         Http::fake();
@@ -248,7 +249,7 @@ class ResellerPurchaseFinancialTest extends TestCase
         $this->accounts->purchase($customer, $product, salesChannel: 'reseller_bot', reseller: $reseller);
     }
 
-    /** @test */
+    #[Test]
     public function main_bot_purchase_is_unaffected_and_still_debits_only_the_customer(): void
     {
         $this->fakeSuccessfulPanel();

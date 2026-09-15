@@ -13,6 +13,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -30,7 +31,7 @@ class ResellerPromotionTest extends TestCase
         Filament::setCurrentPanel(Filament::getPanel('admin'));
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_promote_an_existing_user_to_reseller_with_automatic_webhook_registration(): void
     {
         Http::fake([
@@ -71,7 +72,7 @@ class ResellerPromotionTest extends TestCase
             && str_contains((string) $request['url'], $reseller->webhook_slug));
     }
 
-    /** @test */
+    #[Test]
     public function reserved_slugs_are_rejected(): void
     {
         $admin = Admin::factory()->create();
@@ -90,7 +91,7 @@ class ResellerPromotionTest extends TestCase
             ->assertHasFormErrors(['slug']);
     }
 
-    /** @test */
+    #[Test]
     public function failed_webhook_registration_still_creates_the_reseller_but_warns_the_admin(): void
     {
         Http::fake([
@@ -115,7 +116,7 @@ class ResellerPromotionTest extends TestCase
         $this->assertDatabaseHas('resellers', ['slug' => 'brokenshop']);
     }
 
-    /** @test */
+    #[Test]
     public function reconnect_webhook_action_retries_registration(): void
     {
         Http::fake(['api.telegram.org/*' => Http::response(['ok' => true], 200)]);
@@ -131,7 +132,7 @@ class ResellerPromotionTest extends TestCase
         Http::assertSent(fn ($request) => str_contains($request->url(), 'setWebhook'));
     }
 
-    /** @test */
+    #[Test]
     public function visiting_a_resellers_panel_url_while_logged_out_redirects_to_login_instead_of_a_bare_403(): void
     {
         Reseller::factory()->create(['slug' => 'parismobile']);

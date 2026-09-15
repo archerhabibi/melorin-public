@@ -12,6 +12,7 @@ use App\Services\Core\WalletService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Mockery;
+use PHPUnit\Framework\Attributes\Test;
 use Telegram\Bot\Api;
 use Telegram\Bot\Objects\Message;
 use Tests\TestCase;
@@ -81,7 +82,7 @@ class RenewAccountFlowTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function successful_renewal_deducts_wallet_and_extends_expiry(): void
     {
         Http::fake([
@@ -129,9 +130,8 @@ class RenewAccountFlowTest extends TestCase
      * این تست تضمین می‌کند اگر تمدید روی پنل شکست بخورد،
      * مبلغی که بابت تمدید از کیف پول کسر شده،
      * به طور کامل به کیف پول کاربر برگردد.
-     *
-     * @test
      */
+    #[Test]
     public function failed_panel_renewal_refunds_the_wallet_deduction(): void
     {
         Http::fake([
@@ -175,7 +175,7 @@ class RenewAccountFlowTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function insufficient_balance_never_touches_the_panel(): void
     {
         Http::fake();

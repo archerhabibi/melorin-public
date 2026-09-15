@@ -13,6 +13,4 @@ use RuntimeException;
  * ربات باید بتواند این حالتِ «قابل انتظار» را از یک خطای واقعی سیستم
  * تشخیص دهد و به کاربر پیام مناسب بدهد، نه «خطای ناشناخته».
  */
-class ProductNotSellableException extends RuntimeException
-{
-}
+class ProductNotSellableException extends RuntimeException {}

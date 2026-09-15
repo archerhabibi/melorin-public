@@ -11,6 +11,7 @@ use App\Models\User;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -38,7 +39,7 @@ class ResellerPanelRenderTest extends TestCase
         return $owner;
     }
 
-    /** @test */
+    #[Test]
     public function the_reseller_dashboard_renders_fully_without_error(): void
     {
         $reseller = Reseller::factory()->create(['slug' => 'arial']);
@@ -49,7 +50,7 @@ class ResellerPanelRenderTest extends TestCase
         $response->assertOk();
     }
 
-    /** @test */
+    #[Test]
     public function the_reseller_products_page_renders_fully_without_error(): void
     {
         $reseller = Reseller::factory()->create(['slug' => 'arial']);
@@ -60,7 +61,7 @@ class ResellerPanelRenderTest extends TestCase
         $response->assertOk();
     }
 
-    /** @test */
+    #[Test]
     public function a_user_with_no_full_name_still_renders_the_panel_correctly(): void
     {
         $reseller = Reseller::factory()->create(['slug' => 'noname']);
@@ -74,7 +75,7 @@ class ResellerPanelRenderTest extends TestCase
         $response->assertOk();
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_set_a_resellers_base_price_from_the_main_admin_panel(): void
     {
         Filament::setCurrentPanel(Filament::getPanel('admin'));

@@ -1,4 +1,9 @@
-3.0.7
+3.0.8
+
+## تغییرات نسخه ۳.۰.۸ — PHPUnit Attributes Cleanup
+
+- 🧹 همه‌ی ۱۶۱ تست از `/** @test */` (که در PHPUnit جدید deprecated است) به `#[Test]` (Attribute رسمی PHPUnit) تبدیل شدند. نتیجه: `161 passed, 500 assertions` بدون هیچ Warning ای.
+- 🛡️ `pint.json` به پروژه اضافه شد با قانون `php_unit_attributes` فعال — یعنی از این به بعد، هر تستی که با سینتکس قدیمیِ `/** @test */` نوشته شود، در همان اجرای بعدیِ `php vendor/bin/pint` خودکار به `#[Test]` تبدیل می‌شود (به‌همراه افزودن خودکارِ `use PHPUnit\Framework\Attributes\Test;`). یعنی این مشکل دیگر هرگز به‌صورت دستی نیاز به رفع ندارد.
 
 ## تغییرات نسخه ۳.۰.۷ — Security & Financial Hardening
 

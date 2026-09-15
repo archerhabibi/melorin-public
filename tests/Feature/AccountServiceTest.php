@@ -11,6 +11,7 @@ use App\Services\Core\AccountService;
 use App\Services\Core\WalletService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class AccountServiceTest extends TestCase
@@ -37,7 +38,7 @@ class AccountServiceTest extends TestCase
         return $category;
     }
 
-    /** @test */
+    #[Test]
     public function purchase_fails_with_insufficient_balance_before_touching_the_panel(): void
     {
         Http::fake(); // هیچ درخواستی نباید ارسال شود
@@ -53,7 +54,7 @@ class AccountServiceTest extends TestCase
         Http::assertNothingSent();
     }
 
-    /** @test */
+    #[Test]
     public function successful_purchase_creates_account_and_deducts_wallet(): void
     {
         Http::fake([
@@ -79,7 +80,7 @@ class AccountServiceTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function failed_panel_response_triggers_automatic_refund(): void
     {
         Http::fake([
@@ -103,7 +104,7 @@ class AccountServiceTest extends TestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function auto_selection_picks_the_panel_with_fewer_active_accounts(): void
     {
         Http::fake([
@@ -126,7 +127,7 @@ class AccountServiceTest extends TestCase
         $this->assertEquals($freePanel->id, $account->server_panel_id);
     }
 
-    /** @test */
+    #[Test]
     public function random_naming_mode_uses_4_letter_server_prefix_volume_and_a_sequential_number(): void
     {
         Http::fake([
@@ -155,7 +156,7 @@ class AccountServiceTest extends TestCase
         $this->assertEquals('germ_30_1a', $account2->panel_username);
     }
 
-    /** @test */
+    #[Test]
     public function custom_naming_mode_uses_the_given_name_and_appends_a_number_on_duplicate(): void
     {
         Http::fake([
@@ -183,7 +184,7 @@ class AccountServiceTest extends TestCase
         $this->assertEquals('ali_1', $account2->panel_username);
     }
 
-    /** @test */
+    #[Test]
     public function test_accounts_use_the_forced_username_regardless_of_the_category_naming_mode(): void
     {
         Http::fake([

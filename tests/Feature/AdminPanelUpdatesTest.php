@@ -14,6 +14,7 @@ use App\Models\Reseller;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\Concerns\FakesTelegram;
 use Tests\TestCase;
 
@@ -30,7 +31,7 @@ class AdminPanelUpdatesTest extends TestCase
         return $admin;
     }
 
-    /** @test */
+    #[Test]
     public function user_is_bot_admin_reflects_the_configured_telegram_admin_ids(): void
     {
         config(['telegram.admin_ids' => ['111', '222']]);
@@ -42,7 +43,7 @@ class AdminPanelUpdatesTest extends TestCase
         $this->assertFalse($customer->isBotAdmin());
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_filter_the_user_list_by_bot_admin_role(): void
     {
         config(['telegram.admin_ids' => ['111']]);
@@ -66,7 +67,7 @@ class AdminPanelUpdatesTest extends TestCase
      * هم‌چنان با برچسب «مشتری» نمایش داده می‌شد — هیچ نشانه‌ای نبود که
      * این کاربر دیگر فقط یک مشتری عادی نیست.
      */
-    /** @test */
+    #[Test]
     public function a_promoted_users_role_shows_as_reseller_not_customer(): void
     {
         $this->actingAsAdmin();
@@ -82,7 +83,7 @@ class AdminPanelUpdatesTest extends TestCase
             ->assertCanNotSeeTableRecords([$plainCustomer]);
     }
 
-    /** @test */
+    #[Test]
     public function purchase_rules_default_to_the_previous_hardcoded_text_until_an_admin_saves_something(): void
     {
         $this->fakeTelegram();
@@ -93,7 +94,7 @@ class AdminPanelUpdatesTest extends TestCase
         app(MiscHandler::class); // فقط اطمینان از این‌که resolve بدون خطا انجام می‌شود
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_edit_the_purchase_rules_text_from_the_panel(): void
     {
         $this->actingAsAdmin();
@@ -106,7 +107,7 @@ class AdminPanelUpdatesTest extends TestCase
         $this->assertEquals('متن جدید قوانین خرید — تست.', BotContentSetting::current()->purchaseRulesText());
     }
 
-    /** @test */
+    #[Test]
     public function dashboard_widgets_render_successfully_with_seeded_orders(): void
     {
         $this->actingAsAdmin();

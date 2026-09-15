@@ -231,5 +231,5 @@ class UpdateRouter
 
         return ($text === '/start' || str_starts_with($text, '/start '))
             || in_array($text, ['ادمین', '/admin'], true);
-        }
+    }
 }
