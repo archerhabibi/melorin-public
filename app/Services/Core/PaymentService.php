@@ -208,11 +208,15 @@ class PaymentService
      */
     public function refund(Payment $payment, ?Admin $admin = null): Payment
     {
-        if ($payment->status !== 'confirmed') {
-            throw new \LogicException('فقط پرداخت‌های تایید‌شده قابل بازگشت وجه هستند.');
-        }
-
         return DB::transaction(function () use ($payment, $admin) {
+            $payment = Payment::query()
+                ->lockForUpdate()
+                ->findOrFail($payment->id);
+
+            if ($payment->status !== 'confirmed') {
+                throw new \LogicException('فقط پرداخت‌های تایید‌شده قابل بازگشت وجه هستند.');
+            }
+
             if ($payment->purpose === 'wallet_charge') {
                 $this->walletService->adminAdjust(
                     $payment->walletOwner(),
@@ -235,6 +239,20 @@ class PaymentService
     protected function finalize(Payment $payment, ?Admin $admin = null, ?Reseller $reseller = null): Payment
     {
         return DB::transaction(function () use ($payment, $admin, $reseller) {
+            // قفل ردیف + بازبینیِ وضعیت داخل همان تراکنش (P0 گزارش
+            // امنیتی). بدون این، assertPending() که بیرون از تراکنش
+            // اجرا می‌شود یک check-then-act کلاسیک است: دو درخواست
+            // هم‌زمان (مثلاً دو کلیک ادمین یا دو تبِ باز) هر دو
+            // pending می‌بینند، هر دو تأیید می‌کنند، و کیف پول دو بار
+            // شارژ می‌شود. lockForUpdate درخواست دوم را تا پایان
+            // تراکنش اول نگه می‌دارد و بعد آن را با وضعیت به‌روز
+            // (confirmed) می‌بیند و رد می‌کند.
+            $payment = Payment::query()->lockForUpdate()->findOrFail($payment->id);
+
+            if ($payment->status !== 'pending') {
+                throw new \LogicException("این پرداخت قبلاً پردازش شده است (وضعیت فعلی: {$payment->status}).");
+            }
+
             $payment->update([
                 'status' => 'confirmed',
                 'reviewed_by' => $admin?->id,

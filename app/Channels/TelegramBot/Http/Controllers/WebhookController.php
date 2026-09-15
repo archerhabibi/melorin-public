@@ -46,11 +46,14 @@ class WebhookController
         if ($updateId !== null) {
             $cacheKey = "telegram_update_seen_{$updateId}";
 
-            if (Cache::has($cacheKey)) {
+            // Cache::add اتمیک است (add-if-absent). الگوی قبلی
+            // has()+put() یک check-then-act بود: دو تحویلِ هم‌زمانِ یک
+            // Update توسط تلگرام می‌توانستند هر دو has()=false ببینند و
+            // هر دو پردازش شوند — دقیقاً همان چیزی که این محافظ قرار
+            // بود جلویش را بگیرد (High #10 گزارش امنیتی).
+            if (! Cache::add($cacheKey, true, now()->addHours(6))) {
                 return response('ok');
             }
-
-            Cache::put($cacheKey, true, now()->addHours(6));
         }
 
         // توجه: عمداً از $update->get('message') / $update->get('callback_query')

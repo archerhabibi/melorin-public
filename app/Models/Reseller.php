@@ -15,12 +15,27 @@ class Reseller extends Model implements HasName
 {
     use HasFactory;
 
-    protected $fillable = ['user_id', 'bot_token', 'webhook_slug', 'slug', 'status', 'min_sale_price_rule'];
+    protected $fillable = ['user_id', 'bot_token', 'webhook_slug', 'webhook_secret', 'slug', 'status', 'min_sale_price_rule'];
 
     protected $casts = [
         'bot_token' => 'encrypted',
+        'webhook_secret' => 'encrypted',
         'min_sale_price_rule' => 'array',
     ];
+
+    /**
+     * secret وب‌هوک این نماینده؛ اگر هنوز ساخته نشده (نماینده‌ای که
+     * پیش از افزودن این ستون ایجاد شده) همان لحظه ساخته و ذخیره
+     * می‌شود، تا هیچ مسیری مجبور نشود با secret خالی کار کند.
+     */
+    public function ensureWebhookSecret(): string
+    {
+        if (! $this->webhook_secret) {
+            $this->forceFill(['webhook_secret' => Str::random(48)])->save();
+        }
+
+        return $this->webhook_secret;
+    }
 
     public function wallet(): MorphOne
     {

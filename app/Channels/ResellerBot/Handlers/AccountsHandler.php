@@ -5,11 +5,14 @@ namespace App\Channels\ResellerBot\Handlers;
 use App\Channels\ResellerBot\Support\Keyboards;
 use App\Channels\TelegramBot\Support\QrCodeGenerator;
 use App\Exceptions\InsufficientBalanceException;
+use App\Exceptions\ProductNotSellableException;
 use App\Models\Account;
 use App\Models\Reseller;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use App\Services\Core\AccountService;
 use App\Services\Core\WalletService;
+use App\Services\Resellers\ResellerPricingService;
 use Telegram\Bot\Api;
 use Telegram\Bot\FileUpload\InputFile;
 
@@ -27,6 +30,7 @@ class AccountsHandler
         protected AccountService $accountService,
         protected WalletService $walletService,
         protected QrCodeGenerator $qr,
+        protected ResellerPricingService $pricing,
     ) {}
 
     public function list(Reseller $reseller, int $chatId, User $user): void
@@ -100,15 +104,25 @@ class AccountsHandler
         $account = Account::query()->where('user_id', $user->id)->ofReseller($reseller->id)->with('product')->findOrFail($accountId);
         $product = $account->product;
 
-        $sellingPrice = $product->sellingPriceForReseller($reseller);
-
-        if ($sellingPrice === null) {
+        // دروازه‌ی مرکزی sellability — تمدید هم دقیقاً مثل خرید باید از
+        // آن عبور کند (P0 گزارش امنیتی). بدون این، سبد فروشِ بسته‌شده یا
+        // نمایندگیِ غیرفعال همچنان می‌توانست از مسیر تمدید ادامه دهد.
+        try {
+            $this->pricing->assertSellable($reseller, $product);
+        } catch (ProductNotSellableException $e) {
             $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => 'این محصول دیگر برای تمدید در دسترس نیست.']);
 
             return;
         }
 
-        $basePrice = (float) $product->price;
+        $sellingPrice = $product->sellingPriceForReseller($reseller);
+
+        // رفع باگ مالی (P0): پیش از این $product->price بود — یعنی
+        // نماینده هنگام تمدید، قیمتِ مشتریِ عادی را می‌پرداخت نه قیمتِ
+        // عمده‌ی نمایندگان. از v3.0.2 به بعد هزینه‌ی نماینده همیشه
+        // resellerBasePrice() است؛ خریدِ اولیه درست بود و فقط همین مسیر
+        // تمدید جا افتاده بود.
+        $basePrice = $product->resellerBasePrice();
 
         if ($this->walletService->balance($user) < $sellingPrice) {
             $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => 'برای تمدید، ابتدا کیف پول خود را شارژ کنید. هزینه‌ی تمدید: '.number_format($sellingPrice).' تومان']);
@@ -122,9 +136,15 @@ class AccountsHandler
             return;
         }
 
+        // هر دو کسر در یک تراکنش واحد (P0): پیش از این دو فراخوانی
+        // مستقل بودند، پس اگر کسر از مشتری موفق و کسر از نماینده ناموفق
+        // می‌شد، پول مشتری رفته بود بدون اینکه تمدیدی انجام شود و بدون
+        // اینکه هیچ بازگشتی اجرا شود (چون به بلوک catchِ تمدید نمی‌رسید).
         try {
-            $this->walletService->purchase($user, $sellingPrice, $account, "تمدید اکانت #{$account->id}");
-            $this->walletService->purchase($reseller, $basePrice, $account, "هزینه‌ی پایه‌ی تمدید — اکانت #{$account->id}");
+            DB::transaction(function () use ($user, $reseller, $sellingPrice, $basePrice, $account) {
+                $this->walletService->purchase($user, $sellingPrice, $account, "تمدید اکانت #{$account->id}");
+                $this->walletService->purchase($reseller, $basePrice, $account, "هزینه‌ی پایه‌ی تمدید — اکانت #{$account->id}");
+            });
         } catch (InsufficientBalanceException) {
             $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => 'موجودی کافی نیست.']);
 

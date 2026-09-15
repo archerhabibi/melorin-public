@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\Reseller;
 use App\Models\ResellerCategorySetting;
 use App\Models\ResellerProductPrice;
+use App\Exceptions\ProductNotSellableException;
 use Illuminate\Support\Collection;
 use InvalidArgumentException;
 
@@ -50,17 +51,66 @@ class ResellerPricingService
      * حتی اگر نماینده‌ای خودش محصول را فعال/قیمت‌گذاری کرده باشد،
      * وقتی سبدش سراسری غیرفعال شود، دیگر قابل‌فروش نیست.
      */
+    /**
+     * دروازه‌ی مرکزی «آیا این نماینده حق فروش این محصول را دارد؟»
+     *
+     * دلیل وجود این متد (P0 گزارش امنیتی v3.0.6): تا پیش از این، قوانین
+     * sellable فقط در لایه‌ی UI/Bot اعمال می‌شد — یعنی
+     * sellableProducts() محصول را نشان نمی‌داد، ولی اگر کسی یک callback
+     * دست‌ساز مثل «rbuy:product:123» می‌فرستاد، AccountService فقط
+     * sellingPriceForReseller() را چک می‌کرد که از وضعیت سبد فروش و
+     * فعال‌بودن نماینده بی‌خبر است. نتیجه: سبدِ بسته‌شده (چه توسط Core و
+     * چه توسط خودِ نماینده) و حتی نماینده‌ی غیرفعال، همچنان قابل خرید
+     * بود.
+     *
+     * اصل حاکم: UI هرگز مرز امنیتی نیست. هر مسیری که به خرید/تمدید
+     * منتهی می‌شود باید از همین یک متد عبور کند.
+     *
+     * @throws ProductNotSellableException
+     */
+    public function assertSellable(Reseller $reseller, Product $product): void
+    {
+        if (! $reseller->isActive()) {
+            throw new ProductNotSellableException('این نمایندگی غیرفعال است.');
+        }
+
+        if ($product->status !== 'active') {
+            throw new ProductNotSellableException('این محصول فعال نیست.');
+        }
+
+        $category = $product->category;
+
+        if (! $category || $category->status !== 'active') {
+            throw new ProductNotSellableException('سبد فروش این محصول فعال نیست.');
+        }
+
+        if (! $category->available_to_resellers) {
+            throw new ProductNotSellableException('این سبد فروش برای نمایندگان در دسترس نیست.');
+        }
+
+        if (! $this->isCategoryEnabled($reseller, $category)) {
+            throw new ProductNotSellableException('این سبد فروش در فروشگاه شما غیرفعال است.');
+        }
+
+        if ($product->sellingPriceForReseller($reseller) === null) {
+            throw new ProductNotSellableException('این محصول برای این نماینده قیمت‌گذاری/فعال نشده است.');
+        }
+    }
+
+    /**
+     * نسخه‌ی boolean همان assertSellable — عمداً روی آن سوار شده تا این
+     * دو هیچ‌وقت از هم جدا نیفتند. قبلاً منطقشان جدا نوشته شده بود و
+     * دقیقاً همین باعث شد قوانین UI و Core با هم فرق کنند.
+     */
     public function isSellable(Reseller $reseller, Product $product): bool
     {
-        if (! $product->category?->available_to_resellers) {
+        try {
+            $this->assertSellable($reseller, $product);
+
+            return true;
+        } catch (ProductNotSellableException) {
             return false;
         }
-
-        if (! $this->isCategoryEnabled($reseller, $product->category)) {
-            return false;
-        }
-
-        return $product->sellingPriceForReseller($reseller) !== null;
     }
 
     /**

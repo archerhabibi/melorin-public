@@ -39,6 +39,32 @@ class UpdateRouter
 
     public function handle(Reseller $reseller, Update $update, User $user, int $chatId): void
     {
+        // ── دروازه‌ی سراسریِ «فروشگاه فعال است؟» (P0 گزارش امنیتی) ──
+        //
+        // این چک عمداً در بالاترین نقطه‌ی ورودی است، نه وسط مسیر پیام
+        // متنی. پیش از این دو حفره وجود داشت:
+        //   ۱) callback_query و عکسِ رسید اصلاً به آن چک نمی‌رسیدند —
+        //      یعنی با فروشگاهِ خاموش هم می‌شد از طریق دکمه‌های
+        //      این‌لاینِ پیام‌های قبلی خرید کرد یا رسید فرستاد.
+        //   ۲) فقط bot_enabled دیده می‌شد و reseller.status اصلاً چک
+        //      نمی‌شد — یعنی نمایندگی‌ای که مدیر Core غیرفعالش کرده
+        //      بود، تا وقتی خودش bot_enabled را روشن نگه می‌داشت به
+        //      فروش ادامه می‌داد.
+        //
+        // استثنا: «/start» و منوی ادمین نماینده باید حتی در حالت خاموش
+        // کار کنند تا نماینده بتواند وارد شود و وضعیت را ببیند/اصلاح
+        // کند؛ ولی هیچ عملیات فروش یا مالی‌ای مجاز نیست.
+        if (! $this->isOperational($reseller) && ! $this->isAllowedWhileDisabled($update)) {
+            $this->telegram->sendMessage([
+                'chat_id' => $chatId,
+                'text' => $reseller->isActive()
+                    ? 'این فروشگاه موقتاً غیرفعال است.'
+                    : 'این فروشگاه در حال حاضر فعال نیست. لطفاً با پشتیبانی تماس بگیرید.',
+            ]);
+
+            return;
+        }
+
         $callbackQuery = $update->get('callback_query');
 
         if ($callbackQuery) {
@@ -80,15 +106,6 @@ class UpdateRouter
 
         if (in_array($text, ['ادمین', '/admin'], true)) {
             $this->handleAdminCommand($reseller, $chatId, $user);
-
-            return;
-        }
-
-        // طبق بند ۲۴ سند Spec: «در Disabled: No new sales, No sensitive
-        // operation» — این چک قبل از هر منطق فروش/مالی دیگر انجام
-        // می‌شود، نه فقط پنهان‌کردن دکمه در UI.
-        if (! ResellerBotSetting::forReseller($reseller)->bot_enabled) {
-            $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => 'این فروشگاه موقتاً غیرفعال است.']);
 
             return;
         }
@@ -185,4 +202,34 @@ class UpdateRouter
             'text' => "🔑 پنل مدیریت فروشگاه شما:\n".$reseller->panelUrl()."\n\nبا ایمیل و رمز عبوری که برایتان تنظیم شده وارد شوید.",
         ]);
     }
+
+    /**
+     * فروشگاه فقط وقتی عملیاتی است که هم Core نمایندگی را فعال نگه
+     * داشته باشد و هم خودِ نماینده ربات را روشن گذاشته باشد. این دو
+     * کنترل مستقل‌اند و AND می‌شوند — دقیقاً مثل الگوی دولایه‌ی سبد
+     * فروش.
+     */
+    protected function isOperational(Reseller $reseller): bool
+    {
+        return $reseller->isActive() && ResellerBotSetting::forReseller($reseller)->bot_enabled;
+    }
+
+    /**
+     * تنها چیزهایی که حتی با فروشگاهِ خاموش هم باید کار کنند: /start و
+     * ورود به منوی ادمینِ نماینده. هر چیز دیگری (خرید، تمدید، شارژ،
+     * رسید، callback) مسدود است.
+     */
+    protected function isAllowedWhileDisabled(Update $update): bool
+    {
+        $message = $update->get('message');
+
+        if (! $message) {
+            return false;
+        }
+
+        $text = trim((string) $message->getText());
+
+        return ($text === '/start' || str_starts_with($text, '/start '))
+            || in_array($text, ['ادمین', '/admin'], true);
+        }
 }

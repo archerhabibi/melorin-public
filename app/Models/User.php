@@ -122,7 +122,14 @@ class User extends Authenticatable implements FilamentUser, HasName, HasTenants
             return true;
         }
 
-        return ResellerAdmin::query()->where('user_id', $this->id)->exists();
+        // ...و آن Reseller باید فعال باشد (P0 گزارش امنیتی). پیش از
+        // این فقط وجودِ رکورد ResellerAdmin چک می‌شد، یعنی نمایندگی‌ای
+        // که مدیر Core غیرفعالش کرده بود همچنان می‌توانست وارد پنل شود
+        // و قیمت‌گذاری کند، پیام همگانی بفرستد یا رسید تأیید کند.
+        return ResellerAdmin::query()
+            ->where('user_id', $this->id)
+            ->whereHas('reseller', fn ($q) => $q->where('status', 'active'))
+            ->exists();
     }
 
     /**
@@ -135,7 +142,10 @@ class User extends Authenticatable implements FilamentUser, HasName, HasTenants
      */
     public function getTenants(Panel $panel): Collection
     {
+        // نمایندگی‌های غیرفعال اصلاً به‌عنوان Tenant قابل انتخاب نیستند
+        // (P0) — وگرنه switcher پنل هنوز آن‌ها را نشان می‌داد.
         return Reseller::query()
+            ->where('status', 'active')
             ->whereIn('id', ResellerAdmin::query()->where('user_id', $this->id)->pluck('reseller_id'))
             ->get();
     }
@@ -143,6 +153,10 @@ class User extends Authenticatable implements FilamentUser, HasName, HasTenants
     public function canAccessTenant(Model $tenant): bool
     {
         if (! $tenant instanceof Reseller) {
+            return false;
+        }
+
+        if (! $tenant->isActive()) {
             return false;
         }
 

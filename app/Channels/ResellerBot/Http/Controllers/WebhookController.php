@@ -44,6 +44,30 @@ class WebhookController
             abort(404);
         }
 
+        // احراز هویت واقعیِ تلگرام (P0 گزارش امنیتی). پیش از این، تنها
+        // «محافظ» این مسیر حدس‌نزدنی‌بودن slug بود — که یک راز نیست:
+        // در URL دیده می‌شود و هرکس آن را داشت می‌توانست Update جعلی
+        // بفرستد و خودش را به‌جای یک مشتری جا بزند. ربات اصلی از قبل
+        // همین چک را داشت و فقط این مسیر جا افتاده بود.
+        //
+        // نمایندگانی که وب‌هوکشان هنوز با secret ثبت نشده، secret
+        // ذخیره‌شده دارند ولی تلگرام هدری نمی‌فرستد؛ در آن حالت
+        // درخواست رد می‌شود و باید یک بار «ثبت وب‌هوک» از پنل ادمین
+        // اجرا شود (ر.ک. یادداشت ارتقا در VERSION).
+        $expectedSecret = $reseller->webhook_secret;
+
+        if ($expectedSecret) {
+            $providedSecret = (string) $request->header('X-Telegram-Bot-Api-Secret-Token');
+
+            if (! hash_equals($expectedSecret, $providedSecret)) {
+                Log::warning('درخواست وب‌هوک نماینده با secret نامعتبر رد شد.', [
+                    'reseller_id' => $reseller->id,
+                ]);
+
+                abort(403);
+            }
+        }
+
         $telegram = $this->apiFactory->make($reseller);
         app()->instance(Api::class, $telegram);
 
@@ -54,11 +78,13 @@ class WebhookController
         if ($updateId !== null) {
             $cacheKey = "reseller_bot_update_seen_{$reseller->id}_{$updateId}";
 
-            if (Cache::has($cacheKey)) {
+            // Cache::add اتمیک است (add-if-absent): برخلاف الگوی
+            // has()+put() که بین دو فراخوانی پنجره‌ی رقابت داشت و دو
+            // درخواستِ هم‌زمانِ یک Update می‌توانستند هر دو رد شوند از
+            // شرط و دو بار پردازش شوند.
+            if (! Cache::add($cacheKey, true, now()->addHours(6))) {
                 return response('ok');
             }
-
-            Cache::put($cacheKey, true, now()->addHours(6));
         }
 
         $message = $update->get('message');

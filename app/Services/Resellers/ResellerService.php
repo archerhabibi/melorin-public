@@ -5,6 +5,7 @@ namespace App\Services\Resellers;
 use App\Models\Reseller;
 use App\Models\ResellerAdmin;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 
 /**
@@ -27,20 +28,28 @@ class ResellerService
      * یک نماینده‌ی جدید می‌سازد و همان کاربر را با نقش owner در
      * reseller_admins ثبت می‌کند.
      */
+    /**
+     * ساخت نماینده + رکورد مالکیتش. در یک تراکنش واحد (P1 گزارش
+     * امنیتی): اگر ساخت ResellerAdmin شکست می‌خورد، پیش از این یک
+     * Reseller بی‌مالک در دیتابیس باقی می‌ماند — نمایندگی‌ای که هیچ‌کس
+     * نمی‌تواند واردش شود و فقط دستی در دیتابیس قابل رفع است.
+     */
     public function create(User $ownerUser, array $attributes = []): Reseller
     {
-        $reseller = Reseller::create(array_merge([
-            'user_id' => $ownerUser->id,
-            'status' => 'active',
-        ], $attributes));
+        return DB::transaction(function () use ($ownerUser, $attributes) {
+            $reseller = Reseller::create(array_merge([
+                'user_id' => $ownerUser->id,
+                'status' => 'active',
+            ], $attributes));
 
-        ResellerAdmin::create([
-            'reseller_id' => $reseller->id,
-            'user_id' => $ownerUser->id,
-            'role' => 'owner',
-        ]);
+            ResellerAdmin::create([
+                'reseller_id' => $reseller->id,
+                'user_id' => $ownerUser->id,
+                'role' => 'owner',
+            ]);
 
-        return $reseller;
+            return $reseller;
+        });
     }
 
     public function activate(Reseller $reseller): Reseller
@@ -99,6 +108,18 @@ class ResellerService
                 ->timeout(10)
                 ->post("https://api.telegram.org/bot{$reseller->bot_token}/setWebhook", [
                     'url' => $webhookUrl,
+                    // secret اختصاصی همین نماینده — تلگرام آن را در هدر
+                    // X-Telegram-Bot-Api-Secret-Token برمی‌گرداند و
+                    // WebhookController با hash_equals تطبیقش می‌دهد.
+                    // بدون این، هرکس slug را می‌دانست می‌توانست Update
+                    // جعلی بفرستد (P0 گزارش امنیتی).
+                    'secret_token' => $reseller->ensureWebhookSecret(),
+                    // آرایه‌ی خالی = همه‌ی انواع پیش‌فرض، از جمله
+                    // callback_query. اگر این پارامتر فرستاده نشود،
+                    // تلگرام «آخرین تنظیم قبلی» را نگه می‌دارد — همان
+                    // باگی که یک بار روی ربات اصلی باعث شد هیچ کلیکی
+                    // روی دکمه‌های این‌لاین به سرور نرسد.
+                    'allowed_updates' => '[]',
                 ]);
 
             $body = $response->json();

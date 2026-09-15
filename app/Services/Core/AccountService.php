@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Services\Core\Panels\PanelDriverFactory;
 use App\Services\Core\Panels\SupportsUsernameAvailability;
 use App\Services\Core\ServerSelection\ServerSelectionStrategy;
+use App\Services\Resellers\ResellerPricingService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -28,6 +29,7 @@ class AccountService
     public function __construct(
         protected WalletService $walletService,
         protected ServerSelectionStrategy $serverSelection,
+        protected ResellerPricingService $resellerPricing,
     ) {}
 
     /**
@@ -79,6 +81,14 @@ class AccountService
                 }
 
                 $sellingPrice = $product->sellingPriceForReseller($reseller);
+
+                // دروازه‌ی مرکزی sellability (P0 گزارش امنیتی): تا پیش
+                // از این فقط sellingPriceForReseller چک می‌شد، که از
+                // وضعیت سبد فروش و فعال‌بودن نماینده بی‌خبر است — یعنی
+                // یک callback دست‌ساز می‌توانست از سبدِ بسته‌شده خرید
+                // کند. حالا همان قوانینی که UI اعمال می‌کند، اینجا هم
+                // (به‌عنوان مرز امنیتی واقعی) اجرا می‌شود.
+                $this->resellerPricing->assertSellable($reseller, $product);
 
                 if ($sellingPrice === null) {
                     throw new \RuntimeException('این محصول برای این نماینده قابل‌فروش نیست.');
