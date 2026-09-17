@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class Wallet extends Model
 {
-    protected $fillable = ['owner_type', 'owner_id', 'balance'];
+    protected $fillable = ['owner_type', 'owner_id', 'customer_account_id', 'balance'];
 
     protected $casts = ['balance' => 'decimal:2'];
 

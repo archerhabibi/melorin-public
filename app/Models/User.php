@@ -38,6 +38,19 @@ class User extends Authenticatable implements FilamentUser, HasName, HasTenants
         return $this->morphOne(Wallet::class, 'owner');
     }
 
+    /**
+     * عضویت‌های این Identity در فروشگاه‌های مختلف (بند ۵ بلوپرینت).
+     *
+     * توجه: wallet() بالا هنوز کیف‌پول قدیمیِ متصل به خودِ User را
+     * برمی‌گرداند. در معماری هدف، کیف‌پول به CustomerAccount تعلق دارد؛
+     * تا پایان مهاجرت هر دو در کنار هم زنده‌اند و منبع حقیقتِ هر مسیر
+     * همانی است که خودش استفاده می‌کند.
+     */
+    public function customerAccounts(): HasMany
+    {
+        return $this->hasMany(CustomerAccount::class);
+    }
+
     public function referrer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'referrer_id');

@@ -12,6 +12,9 @@ use App\Models\Reseller;
 use App\Models\ServerPanel;
 use App\Models\User;
 use App\Services\Core\Panels\PanelDriverFactory;
+use App\Services\Core\Purchase\PurchaseService;
+use App\Services\Core\Store\IdentityService;
+use App\Services\Core\Store\StoreContext;
 use App\Services\Core\Panels\SupportsUsernameAvailability;
 use App\Services\Core\ServerSelection\ServerSelectionStrategy;
 use App\Services\Resellers\ResellerPricingService;
@@ -31,6 +34,8 @@ class AccountService
         protected WalletService $walletService,
         protected ServerSelectionStrategy $serverSelection,
         protected ResellerPricingService $resellerPricing,
+        protected IdentityService $identity,
+        protected PurchaseService $purchaseService,
     ) {}
 
     /**
@@ -58,7 +63,62 @@ class AccountService
         bool $isTest = false,
         ?int $testTrafficMb = null,
         ?int $testDurationHours = null,
+        ?string $idempotencyKey = null,
     ): Account {
+        // ── فاز G: پل به هسته‌ی جدید ───────────────────────────────
+        //
+        // بند ۴۱ بلوپرینت: «بازنویسی کامل Bot ممنوع؛ فقط Migration به
+        // Core Service». به‌جای دست‌زدن به ده‌ها هندلر ربات، خودِ این متد
+        // به PurchaseService جدید واگذار می‌کند. نتیجه این است که تمام
+        // مسیرهای موجود (ربات اصلی، ربات نماینده، پنل) بدون یک خط
+        // تغییر، خودبه‌خود از مزایای فازهای B تا F بهره‌مند می‌شوند:
+        // دروازه‌های خرید، اسنپ‌شات قیمت، سقف بدهی، جدایی مالی از
+        // Provisioning، Idempotency، و کمیسیون/پاداش.
+        //
+        // استثنا: مسیر «اکانت تست» همچنان از پیاده‌سازی قدیمی استفاده
+        // می‌کند، چون حجم و مدتش مستقل از خودِ محصول تعیین می‌شود و
+        // PurchaseService (که عمداً فقط خرید واقعی را مدل می‌کند) چنین
+        // مفهومی ندارد. اضافه‌کردن آن به هسته یعنی آلوده‌کردن مسیر مالی
+        // با یک حالت خاصِ بی‌ربط به پول.
+        if (! $isTest) {
+            $store = StoreContext::fromReseller($reseller);
+            $customer = $this->identity->resolveCustomerAccount($user, $store);
+
+            return $this->purchaseService->purchase(
+                customer: $customer,
+                product: $product,
+                store: $store,
+                salesChannel: $salesChannel,
+                manualPanel: $manualPanel,
+                customUsername: $customUsername,
+                idempotencyKey: $idempotencyKey,
+            );
+        }
+
+        return $this->legacyTestAccountPurchase(
+            $user, $product, $manualPanel, $salesChannel, $customUsername, $testTrafficMb, $testDurationHours
+        );
+    }
+
+    /**
+     * مسیر قدیمی، حالا فقط برای اکانت تست.
+     *
+     * عمداً نگه داشته شده و حذف نشده: بند ۷۱ بلوپرینت می‌گوید پیش از
+     * تغییر AccountService باید تمام call-siteها پیدا شوند. تا وقتی
+     * مسیر تست هم به یک سرویس اختصاصی منتقل نشده، این کد زنده می‌ماند.
+     */
+    protected function legacyTestAccountPurchase(
+        User $user,
+        Product $product,
+        ?ServerPanel $manualPanel,
+        string $salesChannel,
+        ?string $customUsername,
+        ?int $testTrafficMb,
+        ?int $testDurationHours,
+    ): Account {
+        $reseller = null;
+        $isTest = true;
+
         return DB::transaction(function () use ($user, $product, $manualPanel, $salesChannel, $reseller, $customUsername, $isTest, $testTrafficMb, $testDurationHours) {
 
             // طبق سند معماری Reseller Platform نسخه‌ی ۱.۱ (بخش ۷،

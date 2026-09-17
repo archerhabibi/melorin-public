@@ -8,10 +8,23 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Commission extends Model
 {
     protected $fillable = [
-        'referrer_id', 'referred_user_id', 'order_id', 'type', 'amount', 'status',
+        'referrer_id',
+        'referred_user_id',
+        'referrer_customer_account_id',
+        'referred_customer_account_id',
+        'order_id',
+        'type',
+        'commission_rate',
+        'base_amount',
+        'amount',
+        'status',
     ];
 
-    protected $casts = ['amount' => 'decimal:2'];
+    protected $casts = [
+        'commission_rate' => 'decimal:2',
+        'base_amount' => 'decimal:2',
+        'amount' => 'decimal:2',
+    ];
 
     public function referrer(): BelongsTo
     {

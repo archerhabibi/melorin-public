@@ -3,6 +3,8 @@
 namespace App\Services\Core;
 
 use App\Exceptions\InsufficientBalanceException;
+use App\Models\CustomerAccount;
+use App\Models\Operation;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use Illuminate\Database\Eloquent\Model;
@@ -104,9 +106,13 @@ class WalletService
         float $signedAmount,
         ?Model $reference,
         ?string $description,
-        ?Wallet $lockedWallet = null
+        ?Wallet $lockedWallet = null,
+        ?Operation $operation = null,
+        ?float $minimumBalance = null
     ): WalletTransaction {
-        return DB::transaction(function () use ($owner, $type, $signedAmount, $reference, $description, $lockedWallet) {
+        $floor = $minimumBalance ?? $this->minimumBalanceFor($owner);
+
+        return DB::transaction(function () use ($owner, $type, $signedAmount, $reference, $description, $lockedWallet, $operation, $floor) {
             $wallet = $lockedWallet ?? Wallet::query()
                 ->where('owner_type', $owner::class)
                 ->where('owner_id', $owner->getKey())
@@ -120,7 +126,12 @@ class WalletService
 
             $newBalance = (float) $wallet->balance + $signedAmount;
 
-            if ($newBalance < 0) {
+            // کف مجاز برای مشتری صفر است و برای نماینده منفیِ سقف بدهی
+            // (بند ۲۰ بلوپرینت). مقایسه با یک epsilon کوچک انجام می‌شود
+            // چون جمع/تفریق اعداد اعشاری می‌تواند -500 را به
+            // -500.0000000001 تبدیل کند و یک خریدِ کاملاً مجاز را به‌
+            // اشتباه مسدود کند.
+            if ($newBalance < $floor - 0.00001) {
                 throw new InsufficientBalanceException;
             }
 
@@ -128,6 +139,7 @@ class WalletService
 
             return WalletTransaction::create([
                 'wallet_id' => $wallet->id,
+                'operation_id' => $operation?->id,
                 'type' => $type,
                 'amount' => $signedAmount,
                 'balance_after' => $newBalance,
@@ -136,6 +148,106 @@ class WalletService
                 'description' => $description,
             ]);
         });
+    }
+
+    /* ------------------------------------------------------------------
+     | API جدید بند ۹ بلوپرینت — credit / debit / canDebit / getBalance
+     |
+     | متدهای قدیمی (charge/purchase/refund/...) عمداً دست‌نخورده باقی
+     | مانده‌اند چون ده‌ها فراخوانی در ربات‌ها و پنل دارند و بلوپرینت
+     | (بند ۷۰) صریحاً می‌گوید مسیرهای موجود نباید یک‌جا شکسته شوند.
+     | این‌ها یک لایه‌ی صریح‌تر روی همان هسته‌اند که علاوه بر آن،
+     | Operation را هم برای Idempotency می‌پذیرند.
+     ------------------------------------------------------------------ */
+
+    /** واریز به کیف‌پول با نوع مشخص و اتصال اختیاری به یک Operation */
+    public function credit(
+        Model $owner,
+        float $amount,
+        string $type = 'charge',
+        ?Model $reference = null,
+        ?string $description = null,
+        ?Operation $operation = null
+    ): WalletTransaction {
+        $this->assertPositive($amount);
+        $this->assertCreditType($type);
+
+        return $this->applyTransaction($owner, $type, $amount, $reference, $description, null, $operation);
+    }
+
+    /**
+     * برداشت از کیف‌پول. اگر موجودی کافی نباشد، InsufficientBalanceException
+     * از دل applyTransaction (زیر قفل ردیف) پرتاب می‌شود — نه با یک چک
+     * جداگانه‌ی قبلی که بین چک و کسر جا برای رقابت باز می‌گذارد.
+     */
+    public function debit(
+        Model $owner,
+        float $amount,
+        string $type = 'purchase',
+        ?Model $reference = null,
+        ?string $description = null,
+        ?Operation $operation = null
+    ): WalletTransaction {
+        $this->assertPositive($amount);
+
+        return $this->applyTransaction($owner, $type, -$amount, $reference, $description, null, $operation);
+    }
+
+    /**
+     * فقط یک بررسی مشورتی برای تصمیم‌های UI («دکمه‌ی خرید را نشان بده یا
+     * پیام موجودی ناکافی؟»).
+     *
+     * هرگز به‌عنوان محافظ قبل از debit استفاده نشود: بین این بررسی و
+     * کسر واقعی، یک خرید هم‌زمان دیگر می‌تواند موجودی را خالی کند.
+     * تنها تضمین واقعی، خودِ debit است که زیر قفل ردیف کار می‌کند.
+     */
+    public function canDebit(Model $owner, float $amount): bool
+    {
+        return $this->balance($owner) >= $amount;
+    }
+
+    public function getBalance(Model $owner): float
+    {
+        return $this->balance($owner);
+    }
+
+    /**
+     * کیف‌پول یک عضویت فروشگاهی (بند ۷ بلوپرینت).
+     *
+     * از این نقطه به بعد، کیف‌پول مشتری به CustomerAccount تعلق دارد نه
+     * به User — چون یک نفر در هر فروشگاه کیف‌پول جدا دارد. کیف‌پول
+     * نماینده (owner = Reseller) کماکان از همان متدهای عمومی بالا
+     * استفاده می‌کند و تغییری نمی‌کند.
+     */
+    public function walletFor(CustomerAccount $customerAccount): Wallet
+    {
+        return $this->getOrCreateWallet($customerAccount);
+    }
+
+    protected function assertCreditType(string $type): void
+    {
+        $allowed = ['charge', 'refund', 'commission', 'referral_bonus', 'admin_adjust'];
+
+        if (! in_array($type, $allowed, true)) {
+            throw new \InvalidArgumentException("نوع تراکنش واریز نامعتبر است: {$type}");
+        }
+    }
+
+    /**
+     * کف مجاز موجودی این مالک.
+     *
+     * مشتری هرگز نمی‌تواند منفی شود. نماینده می‌تواند تا سقف بدهی‌ای که
+     * ادمین برایش تعیین کرده منفی شود — این همان چیزی است که اجازه
+     * می‌دهد فروش نماینده در لحظه‌ی تمام‌شدن اعتبار قطع نشود، بدون
+     * این‌که بدهی بی‌انتها ممکن باشد.
+     */
+    protected function minimumBalanceFor(Model $owner): float
+    {
+        if ($owner instanceof \App\Models\Reseller) {
+            return -1 * (float) ($owner->debt_limit ?? 0);
+        }
+
+        return 0.0;
     }
 
     protected function assertPositive(float $amount): void

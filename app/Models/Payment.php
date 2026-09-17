@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Payment extends Model
 {
     protected $fillable = [
-        'user_id', 'payment_method_id', 'amount', 'purpose',
+        'user_id', 'customer_account_id', 'payment_method_id', 'amount', 'purpose',
         'receipt_image', 'depositor_name', 'status', 'gateway_reference',
         'gateway_response', 'reviewed_by', 'reviewed_at',
         'wallet_owner_type', 'reseller_id', 'reviewed_by_reseller_id',
@@ -19,6 +19,11 @@ class Payment extends Model
         'gateway_response' => 'array',
         'reviewed_at' => 'datetime',
     ];
+
+    public function customerAccount(): BelongsTo
+    {
+        return $this->belongsTo(CustomerAccount::class);
+    }
 
     public function user(): BelongsTo
     {

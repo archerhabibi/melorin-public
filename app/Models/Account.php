@@ -12,7 +12,7 @@ class Account extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'user_id', 'order_id', 'product_id', 'server_panel_id', 'protocol_id',
+        'user_id', 'customer_account_id', 'order_id', 'product_id', 'server_panel_id', 'protocol_id',
         'panel_username', 'panel_client_uuid',
         'subscription_id', 'subscription_url',
         'config_data', 'starts_at', 'expires_at', 'traffic_gb',
@@ -27,6 +27,11 @@ class Account extends Model
         'traffic_used_gb' => 'decimal:2',
         'is_test' => 'boolean',
     ];
+
+    public function customerAccount(): BelongsTo
+    {
+        return $this->belongsTo(CustomerAccount::class);
+    }
 
     public function user(): BelongsTo
     {

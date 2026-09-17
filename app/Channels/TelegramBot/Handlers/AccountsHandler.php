@@ -8,6 +8,7 @@ use App\Exceptions\InsufficientBalanceException;
 use App\Models\Account;
 use App\Models\User;
 use App\Services\Core\AccountService;
+use App\Services\Core\Renewal\RenewalService;
 use App\Services\Core\WalletService;
 use Telegram\Bot\Api;
 use Telegram\Bot\FileUpload\InputFile;
@@ -113,22 +114,33 @@ class AccountsHandler
             return;
         }
 
+        // ── فاز G: انتقال به هسته (بند ۴۱ بلوپرینت) ────────────────
+        //
+        // پیش از این، همین هندلر خودش کسر می‌کرد، بعد تمدید را صدا
+        // می‌زد، و در صورت شکست خودش بازگشت وجه می‌داد — یعنی یک نسخه‌ی
+        // محلی از منطق مالی. دقیقاً به همین دلیل بود که تا نسخه‌ی ۳.۰.۷
+        // مسیر تمدید هنوز قیمت اشتباه را می‌گرفت درحالی‌که خرید اصلاح
+        // شده بود.
+        //
+        // حالا همه‌ی این‌ها داخل RenewalService است: دروازه‌ها، کسر
+        // اتمیک، جدایی مالی از پنل، ثبت Operation و صفر کردن حجم.
         try {
-            $this->walletService->purchase($user, (float) $product->price, $account, "تمدید اکانت #{$account->id}");
+            app(RenewalService::class)->renew($account);
         } catch (InsufficientBalanceException) {
             $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => 'موجودی کیف پول کافی نیست.']);
 
             return;
-        }
-
-        try {
-            $this->accountService->renew($account, $product->duration_days, $product->traffic_gb ? (int) $product->traffic_gb : null);
         } catch (\RuntimeException $e) {
-            // تمدید روی پنل شکست خورد — مبلغی که همین الان کسر شد را برمی‌گردانیم
-            // تا کاربر بدون دریافت خدمت متضرر نشود (همان تضمینی که در خرید اولیه هست).
-            $this->walletService->refund($user, (float) $product->price, $account, 'بازگشت به دلیل خطای تمدید اکانت');
-
-            $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => "تمدید ناموفق بود: {$e->getMessage()}\nمبلغ به کیف پول شما بازگشت داده شد."]);
+            // نکته‌ی مهم: برخلاف قبل، اینجا بازگشت وجه دستی نمی‌دهیم.
+            // RenewalService وضعیت سفارش را روی provision_failed
+            // می‌گذارد که صریحاً یعنی «پول گرفته شده، سرویس تحویل نشده»
+            // و قابل پیگیری/جبران توسط ادمین است. بازگشت خودکار در این
+            // حالت خطرناک است، چون ممکن است تمدید روی پنل واقعاً انجام
+            // شده و فقط پاسخش به ما نرسیده باشد.
+            $this->telegram->sendMessage([
+                'chat_id' => $chatId,
+                'text' => "تمدید ناموفق بود: {$e->getMessage()}\nلطفاً با پشتیبانی تماس بگیرید؛ وضعیت سفارش شما ثبت شده است.",
+            ]);
 
             return;
         }

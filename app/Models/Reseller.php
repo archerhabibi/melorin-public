@@ -17,15 +17,28 @@ class Reseller extends Model implements HasName
 
     protected $fillable = [
         'user_id', 'bot_token', 'webhook_slug', 'webhook_secret', 'slug', 'status', 'min_sale_price_rule',
-        'webhook_status', 'webhook_error', 'webhook_registered_at',
+        'webhook_status', 'webhook_error', 'webhook_registered_at', 'debt_limit',
     ];
 
     protected $casts = [
         'bot_token' => 'encrypted',
         'webhook_secret' => 'encrypted',
         'min_sale_price_rule' => 'array',
+        'debt_limit' => 'decimal:2',
         'webhook_registered_at' => 'datetime',
     ];
+
+    /** سقف بدهی مجاز این نماینده (بند ۲۰ بلوپرینت) — صفر یعنی بدهی ممنوع */
+    public function debtLimit(): float
+    {
+        return (float) ($this->debt_limit ?? 0);
+    }
+
+    /** کف مجاز موجودی: منفیِ سقف بدهی */
+    public function minimumBalance(): float
+    {
+        return -1 * $this->debtLimit();
+    }
 
     /** آیا آخرین تلاش ثبت وب‌هوک موفق بوده؟ (برای نمایش در پنل و تشخیص سریع ربات‌های از کار افتاده) */
     public function hasWorkingWebhook(): bool

@@ -10,6 +10,7 @@ use App\Models\Account;
 use App\Models\Reseller;
 use App\Models\User;
 use App\Services\Core\AccountService;
+use App\Services\Core\Renewal\RenewalService;
 use App\Services\Core\WalletService;
 use App\Services\Resellers\ResellerPricingService;
 use Illuminate\Support\Facades\DB;
@@ -140,25 +141,30 @@ class AccountsHandler
         // مستقل بودند، پس اگر کسر از مشتری موفق و کسر از نماینده ناموفق
         // می‌شد، پول مشتری رفته بود بدون اینکه تمدیدی انجام شود و بدون
         // اینکه هیچ بازگشتی اجرا شود (چون به بلوک catchِ تمدید نمی‌رسید).
+        // ── فاز G: انتقال به هسته (بند ۴۲ بلوپرینت) ────────────────
+        //
+        // کل بلوک قبلی — کسر دوطرفه، تمدید، و بازگشت دستی در صورت شکست —
+        // یک نسخه‌ی محلی از منطق مالی بود که باید با هر تغییر قانون
+        // جداگانه به‌روز می‌شد. حالا RenewalService همان کار را انجام
+        // می‌دهد، با این تفاوت‌ها: سقف بدهی نماینده هم اعمال می‌شود،
+        // قیمت اسنپ‌شات می‌گیرد، حجم صفر می‌شود، و نتیجه روی Operation
+        // ثبت می‌شود.
         try {
-            DB::transaction(function () use ($user, $reseller, $sellingPrice, $basePrice, $account) {
-                $this->walletService->purchase($user, $sellingPrice, $account, "تمدید اکانت #{$account->id}");
-                $this->walletService->purchase($reseller, $basePrice, $account, "هزینه‌ی پایه‌ی تمدید — اکانت #{$account->id}");
-            });
+            app(RenewalService::class)->renew($account);
         } catch (InsufficientBalanceException) {
             $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => 'موجودی کافی نیست.']);
 
             return;
-        }
-
-        try {
-            $this->accountService->renew($account, $product->duration_days, $product->traffic_gb ? (int) $product->traffic_gb : null);
         } catch (\RuntimeException $e) {
-            // هر دو کسر را برمی‌گردانیم — طبق «No orphan debit»
-            $this->walletService->refund($user, $sellingPrice, $account, 'بازگشت به دلیل خطای تمدید اکانت');
-            $this->walletService->refund($reseller, $basePrice, $account, 'بازگشت هزینه‌ی پایه به دلیل خطای تمدید اکانت');
-
-            $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => "تمدید ناموفق بود: {$e->getMessage()}\nمبلغ به کیف پول شما بازگشت داده شد."]);
+            // بازگشت خودکار عمداً حذف شد: سفارش در وضعیت
+            // provision_failed ثبت می‌شود که صریحاً یعنی «پول گرفته شده،
+            // سرویس تحویل نشده». اگر تمدید روی پنل واقعاً انجام شده و
+            // فقط پاسخش نرسیده باشد، بازگشت خودکار یعنی هم سرویس
+            // داده‌ایم هم پول برگردانده‌ایم.
+            $this->telegram->sendMessage([
+                'chat_id' => $chatId,
+                'text' => "تمدید ناموفق بود: {$e->getMessage()}\nلطفاً با پشتیبانی تماس بگیرید؛ وضعیت سفارش ثبت شده است.",
+            ]);
 
             return;
         }

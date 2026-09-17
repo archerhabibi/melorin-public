@@ -13,14 +13,58 @@ class Order extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'user_id', 'product_id', 'reseller_id', 'sales_channel',
-        'base_price', 'sold_price', 'payment_id', 'status',
+        'user_id', 'customer_account_id', 'product_id', 'reseller_id', 'sales_channel',
+        'base_price', 'core_price', 'sold_price', 'payment_id', 'status',
+        'provision_attempts', 'failure_reason',
     ];
+
+    /*
+     * وضعیت‌های سفارش. دو وضعیت جدید (provisioning و provision_failed)
+     * ابهام مهمی را برمی‌دارند که تا امروز وجود داشت: وضعیت failed هم
+     * برای شکست مالی به کار می‌رفت و هم برای شکست ساخت اکانت، یعنی از
+     * روی دیتابیس معلوم نبود پول کسر شده یا نه (بند ۲۹ بلوپرینت).
+     */
+    public const STATUS_PENDING = 'pending';
+
+    public const STATUS_PAID = 'paid';
+
+    public const STATUS_PROVISIONING = 'provisioning';
+
+    public const STATUS_ACCOUNT_CREATED = 'account_created';
+
+    public const STATUS_PROVISION_FAILED = 'provision_failed';
+
+    public const STATUS_FAILED = 'failed';
+
+    public const STATUS_REFUNDED = 'refunded';
+
+    /** مالی انجام شده — چه اکانت ساخته شده باشد چه نه */
+    public function isFinanciallySettled(): bool
+    {
+        return in_array($this->status, [
+            self::STATUS_PAID,
+            self::STATUS_PROVISIONING,
+            self::STATUS_ACCOUNT_CREATED,
+            self::STATUS_PROVISION_FAILED,
+        ], true);
+    }
+
+    /** پول گرفته شده ولی سرویس تحویل نشده — نیازمند رسیدگی ادمین */
+    public function needsAttention(): bool
+    {
+        return $this->status === self::STATUS_PROVISION_FAILED;
+    }
 
     protected $casts = [
         'base_price' => 'decimal:2',
+        'core_price' => 'decimal:2',
         'sold_price' => 'decimal:2',
     ];
+
+    public function customerAccount(): BelongsTo
+    {
+        return $this->belongsTo(CustomerAccount::class);
+    }
 
     public function user(): BelongsTo
     {
