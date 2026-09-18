@@ -16,6 +16,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\Concerns\FakesTelegram;
 use Tests\TestCase;
+use App\Services\Core\Store\IdentityService;
+use App\Services\Core\Store\StoreContext;
 
 /**
  * تست‌های رگرسیونِ P0 — بخش دوم: پرداخت، وب‌هوک، و قفلِ نماینده‌ی
@@ -50,13 +52,20 @@ class PaymentAndWebhookHardeningTest extends TestCase
         $this->fakeTelegram();
         $admin = Admin::factory()->create(['is_super_admin' => true]);
         $user = User::factory()->create();
+
+        $customer = app(IdentityService::class)
+            ->resolveCustomerAccount(
+                $user,
+                StoreContext::main(),
+            );
+
         $payment = $this->pendingWalletCharge($user, 100000);
 
         $service = app(PaymentService::class);
         $wallet = app(WalletService::class);
 
         $service->confirmManual($payment, $admin);
-        $this->assertEquals(100000, $wallet->balance($user->fresh()));
+        $this->assertEquals(100000, $wallet->balance($customer));
 
         try {
             $service->confirmManual($payment->fresh(), $admin);
@@ -64,10 +73,8 @@ class PaymentAndWebhookHardeningTest extends TestCase
             // رد شدن، رفتار درست است
         }
 
-        // مهم‌ترین assert این فایل: موجودی نباید ۲۰۰٬۰۰۰ شده باشد.
-        $this->assertEquals(100000, $wallet->balance($user->fresh()));
+        $this->assertEquals(100000, $wallet->balance($customer));
     }
-
     /** Critical #5 — وب‌هوک نماینده بدون secret درست باید ۴۰۳ بدهد. */
     #[Test]
     public function a_reseller_webhook_request_without_the_correct_secret_is_rejected(): void

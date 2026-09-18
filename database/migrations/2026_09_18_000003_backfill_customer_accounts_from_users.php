@@ -47,6 +47,10 @@ return new class extends Migration
                     'user_id' => $user->id,
                     'store_type' => $isReseller ? 'reseller' : 'main',
                     'reseller_id' => $isReseller ? $user->reseller_id : null,
+                    // insertOrIgnore خام است و از رویداد saving مدل رد
+                    // نمی‌شود، پس scope_key باید همین‌جا صریحاً ساخته شود
+                    // (به توضیح ستون در Migration ۱ مراجعه کنید).
+                    'scope_key' => $isReseller ? 'reseller:'.$user->reseller_id : 'main',
                     'status' => in_array($user->status, ['active', 'disabled', 'blocked'], true)
                         ? $user->status
                         : 'active',

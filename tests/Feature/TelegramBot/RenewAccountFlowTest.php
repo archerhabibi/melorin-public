@@ -5,9 +5,12 @@ namespace Tests\Feature\TelegramBot;
 use App\Channels\TelegramBot\Handlers\AccountsHandler;
 use App\Models\Account;
 use App\Models\Category;
+use App\Models\Order;
 use App\Models\Product;
 use App\Models\ServerPanel;
 use App\Models\User;
+use App\Services\Core\Store\IdentityService;
+use App\Services\Core\Store\StoreContext;
 use App\Services\Core\WalletService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -72,14 +75,28 @@ class RenewAccountFlowTest extends TestCase
             'price' => $price,
         ]);
 
+        $customerAccount = app(IdentityService::class)->resolveCustomerAccount($user, StoreContext::main());
+
         return Account::factory()->create([
             'user_id' => $user->id,
+            'customer_account_id' => $customerAccount->id,
             'product_id' => $product->id,
             'server_panel_id' => $panel->id,
             'panel_username' => 'melorin_existing',
             'status' => 'active',
             'expires_at' => now()->addDays(5),
         ]);
+    }
+
+    /**
+     * از بند ۷ معماری: کیف‌پولی که AccountsHandler::renew() واقعاً از آن
+     * کسر می‌کند (از طریق RenewalService)، کیف‌پولِ CustomerAccountِ
+     * فروشگاه اصلیِ این کاربر است، نه کیف‌پولی که مستقیماً روی خودِ
+     * User باشد.
+     */
+    protected function mainWalletOwner(User $user): \App\Models\CustomerAccount
+    {
+        return app(IdentityService::class)->resolveCustomerAccount($user, StoreContext::main());
     }
 
     #[Test]
@@ -108,7 +125,7 @@ class RenewAccountFlowTest extends TestCase
 
         $account = $this->makeAccount($user, 100000);
 
-        app(WalletService::class)->charge($user, 150000);
+        app(WalletService::class)->charge($this->mainWalletOwner($user), 150000);
 
         app(AccountsHandler::class)->renew(
             555,
@@ -118,7 +135,7 @@ class RenewAccountFlowTest extends TestCase
 
         $this->assertEquals(
             50000,
-            app(WalletService::class)->balance($user->fresh())
+            app(WalletService::class)->balance($this->mainWalletOwner($user))
         );
 
         $this->assertTrue(
@@ -127,12 +144,19 @@ class RenewAccountFlowTest extends TestCase
     }
 
     /**
-     * این تست تضمین می‌کند اگر تمدید روی پنل شکست بخورد،
-     * مبلغی که بابت تمدید از کیف پول کسر شده،
-     * به طور کامل به کیف پول کاربر برگردد.
+     * طبق طراحی صریح RenewalService (مطابق
+     * ProvisioningAndRenewalTest::a_panel_failure_during_renewal_is_recorded_not_silently_swallowed):
+     * اگر تمدید روی پنل شکست بخورد، پول به‌صورت خودکار بازگردانده
+     * نمی‌شود — چون ممکن است تمدید واقعاً روی پنل انجام شده باشد و فقط
+     * پاسخش نرسیده باشد؛ بازگشتِ خودکار در آن حالت یعنی هم سرویس داده‌ایم
+     * هم پول را پس داده‌ایم. به‌جایش سفارش صریحاً در وضعیت
+     * provision_failed («پول گرفته شده، تحویل نشده») می‌ماند تا ادمین
+     * تصمیم بگیرد. نسخه‌ی قبلی این تست انتظار بازگشت خودکار داشت که
+     * دقیقاً همان رفتار قدیمیِ ناامنی بود که RenewalService عمداً حذفش
+     * کرد.
      */
     #[Test]
-    public function failed_panel_renewal_refunds_the_wallet_deduction(): void
+    public function failed_panel_renewal_leaves_the_charge_and_marks_the_order_provision_failed(): void
     {
         Http::fake([
             '*/api/admin/token' => Http::response([
@@ -157,7 +181,7 @@ class RenewAccountFlowTest extends TestCase
 
         $account = $this->makeAccount($user, 100000);
 
-        app(WalletService::class)->charge($user, 150000);
+        app(WalletService::class)->charge($this->mainWalletOwner($user), 150000);
 
         app(AccountsHandler::class)->renew(
             556,
@@ -165,14 +189,24 @@ class RenewAccountFlowTest extends TestCase
             $account->id
         );
 
+        // موجودی همچنان کسرشده باقی می‌ماند — بازگشت خودکار نداریم.
         $this->assertEquals(
-            150000,
-            app(WalletService::class)->balance($user->fresh())
+            50000,
+            app(WalletService::class)->balance($this->mainWalletOwner($user))
         );
 
         $this->assertDatabaseHas('wallet_transactions', [
+            'type' => 'purchase',
+        ]);
+
+        $this->assertDatabaseMissing('wallet_transactions', [
             'type' => 'refund',
         ]);
+
+        $this->assertEquals(
+            Order::STATUS_PROVISION_FAILED,
+            Order::query()->latest('id')->first()->status
+        );
     }
 
     #[Test]
@@ -186,7 +220,7 @@ class RenewAccountFlowTest extends TestCase
 
         $account = $this->makeAccount($user, 100000);
 
-        app(WalletService::class)->charge($user, 50000);
+        app(WalletService::class)->charge($this->mainWalletOwner($user), 50000);
 
         app(AccountsHandler::class)->renew(
             557,
@@ -198,7 +232,7 @@ class RenewAccountFlowTest extends TestCase
 
         $this->assertEquals(
             50000,
-            app(WalletService::class)->balance($user->fresh())
+            app(WalletService::class)->balance($this->mainWalletOwner($user))
         );
     }
 }

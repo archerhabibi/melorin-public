@@ -14,6 +14,8 @@ use App\Models\Reseller;
 use App\Models\User;
 use App\Services\Core\AccountService;
 use App\Services\Core\WalletService;
+use App\Services\Core\Store\IdentityService;
+use App\Services\Core\Store\StoreContext;
 use App\Services\Resellers\ResellerPricingService;
 use Telegram\Bot\Api;
 use Telegram\Bot\FileUpload\InputFile;
@@ -35,6 +37,7 @@ class BuyAccountHandler
         protected WalletService $walletService,
         protected ResellerPricingService $pricing,
         protected QrCodeGenerator $qr,
+        protected IdentityService $identity,
     ) {}
 
     public function start(Reseller $reseller, int $chatId, User $user): void
@@ -81,6 +84,10 @@ class BuyAccountHandler
 
     public function purchase(Reseller $reseller, int $chatId, User $user, int $productId): void
     {
+        $customer = $this->identity->resolveCustomerAccount(
+            $user,
+            StoreContext::fromReseller($reseller),
+        );
         $product = Product::query()->where('status', 'active')->findOrFail($productId);
         $sellingPrice = $product->sellingPriceForReseller($reseller);
 
@@ -90,12 +97,12 @@ class BuyAccountHandler
             return;
         }
 
-        if ($this->walletService->balance($user) < $sellingPrice) {
-            $this->telegram->sendMessage([
+        if ($this->walletService->balance($customer) < $sellingPrice) {
+        $this->telegram->sendMessage([
                 'chat_id' => $chatId,
                 'text' => 'موجودی کیف پول شما کافی نیست.'
                     ."\nقیمت این تعرفه: ".number_format($sellingPrice).' تومان'
-                    ."\nموجودی فعلی: ".number_format($this->walletService->balance($user)).' تومان'
+                    ."\nموجودی فعلی: ".number_format($this->walletService->balance($customer)).' تومان'
                     ."\n\nابتدا از بخش «💰 شارژ حساب» حساب خود را شارژ کنید.",
             ]);
 
@@ -123,8 +130,8 @@ class BuyAccountHandler
 
         $this->telegram->sendMessage([
             'chat_id' => $chatId,
-            'text' => '💰 موجودی کیف پول شما: '.number_format($this->walletService->balance($user)).' تومان',
-        ]);
+            'text' => '💰 موجودی کیف پول شما: '.number_format($this->walletService->balance($customer)).' تومان',
+            ]);
     }
 
     public function deliverConfig(int $chatId, Account $account): void

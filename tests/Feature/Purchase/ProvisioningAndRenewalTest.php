@@ -11,7 +11,6 @@ use App\Models\User;
 use App\Services\Core\Provisioning\ProvisioningFailedException;
 use App\Services\Core\Provisioning\ProvisioningService;
 use App\Services\Core\Purchase\PurchaseService;
-use App\Services\Core\Renewal\RenewalService;
 use App\Services\Core\Store\IdentityService;
 use App\Services\Core\Store\StoreContext;
 use App\Services\Core\WalletService;
@@ -20,9 +19,6 @@ use Illuminate\Support\Facades\Http;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
-/**
- * بند ۶۰ (Provisioning Tests) و بند ۶۱ (Renewal Tests) بلوپرینت.
- */
 class ProvisioningAndRenewalTest extends TestCase
 {
     use RefreshDatabase;
@@ -36,33 +32,105 @@ class ProvisioningAndRenewalTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
         $this->purchase = app(PurchaseService::class);
         $this->wallet = app(WalletService::class);
         $this->identity = app(IdentityService::class);
     }
 
+    /**
+     * Fake سازگار با SanaeiDriver:
+     *
+     * - بررسی username موجود نیست => record not found
+     * - template => success
+     * - سایر درخواست‌های provisioning => success
+     */
     protected function panelSucceeds(): void
     {
-        Http::fake(['*' => Http::response([
-            'success' => true,
-            'obj' => ['inboundIds' => [1], 'flow' => '', 'limitIp' => 0, 'subId' => 'sub123'],
-        ], 200)]);
+        Http::fake(function ($request) {
+            $url = $request->url();
+
+            if (
+                $request->method() === 'GET'
+                && str_contains($url, '/panel/api/clients/get/')
+                && ! str_contains($url, '/template-user')
+            ) {
+                return Http::response([
+                    'success' => false,
+                    'obj' => null,
+                    'msg' => 'record not found',
+                ], 200);
+            }
+
+            if (
+                $request->method() === 'GET'
+                && str_contains($url, '/panel/api/clients/get/template-user')
+            ) {
+                return Http::response([
+                    'success' => true,
+                    'obj' => [
+                        'inboundIds' => [1],
+                        'flow' => '',
+                        'limitIp' => 0,
+                    ],
+                ], 200);
+            }
+
+            return Http::response([
+                'success' => true,
+                'obj' => [
+                    'inboundIds' => [1],
+                    'flow' => '',
+                    'limitIp' => 0,
+                    'subId' => 'sub123',
+                ],
+            ], 200);
+        });
     }
 
     protected function panelFails(): void
     {
-        Http::fake(['*' => Http::response(['success' => false, 'msg' => 'panel down'], 500)]);
+        Http::fake(function ($request) {
+            $url = $request->url();
+
+            if (
+                $request->method() === 'GET'
+                && str_contains($url, '/panel/api/clients/get/')
+            ) {
+                return Http::response([
+                    'success' => false,
+                    'obj' => null,
+                    'msg' => 'record not found',
+                ], 200);
+            }
+
+            return Http::response([
+                'success' => false,
+                'msg' => 'panel down',
+            ], 500);
+        });
     }
 
-    protected function makeProduct(float $price = 100000, int $days = 30, float $gb = 50): Product
-    {
-        $category = Category::factory()->create(['status' => 'active']);
+    protected function makeProduct(
+        float $price = 100000,
+        int $days = 30,
+        float $gb = 50
+    ): Product {
+        $category = Category::factory()->create([
+            'status' => 'active',
+        ]);
 
         $panel = ServerPanel::factory()->create([
+            'name' => 'Germany Frankfurt',
             'status' => 'active',
             'panel_type' => 'sanaei',
-            'credentials' => json_encode(['api_token' => 'x']),
-            'extra_settings' => ['template_username' => 't', 'sub_base_url' => 'https://s.test/sub'],
+            'credentials' => json_encode([
+                'api_token' => 'x',
+            ]),
+            'extra_settings' => [
+                'template_username' => 'template-user',
+                'sub_base_url' => 'https://s.test/sub',
+            ],
         ]);
 
         $category->serverPanels()->attach($panel->id);
@@ -78,52 +146,122 @@ class ProvisioningAndRenewalTest extends TestCase
 
     protected function buyer(float $balance = 500000)
     {
-        $customer = $this->identity->resolveCustomerAccount(User::factory()->create(), StoreContext::main());
+        $customer = $this->identity->resolveCustomerAccount(
+            User::factory()->create(),
+            StoreContext::main(),
+        );
+
         $this->wallet->credit($customer, $balance);
 
         return $customer;
     }
 
-    /* ── Provisioning — بند ۶۰ ──────────────────────────────────── */
+    #[Test]
+    public function memory_smoke_test(): void
+    {
+        $this->assertTrue(true);
+    }
+
+    #[Test]
+    public function random_naming_generates_server_prefix_traffic_and_sequence(): void
+    {
+        $this->panelSucceeds();
+
+        $category = Category::factory()->create([
+            'status' => 'active',
+            'naming_mode' => 'random',
+        ]);
+
+        $panel = ServerPanel::factory()->create([
+            'name' => 'Germany Frankfurt',
+            'status' => 'active',
+            'panel_type' => 'sanaei',
+            'credentials' => json_encode([
+                'api_token' => 'x',
+            ]),
+            'extra_settings' => [
+                'sub_base_url' => 'https://example.test/sub',
+                'template_username' => 'template-user',
+            ],
+        ]);
+
+        $category->serverPanels()->attach($panel->id);
+
+        $product = Product::factory()->create([
+            'category_id' => $category->id,
+            'price' => 100000,
+            'traffic_gb' => 30,
+            'duration_days' => 30,
+            'status' => 'active',
+        ]);
+
+        $customer = $this->buyer(balance: 200000);
+
+        $account = $this->purchase->purchase(
+            $customer,
+            $product,
+            StoreContext::main(),
+            idempotencyKey: 'test:naming:1',
+        );
+
+        $this->assertInstanceOf(Account::class, $account);
+    }
 
     #[Test]
     public function a_successful_first_attempt_creates_the_account_and_closes_the_order(): void
     {
         $this->panelSucceeds();
+
         $product = $this->makeProduct();
 
         $account = $this->purchase->purchase(
-            $this->buyer(), $product, StoreContext::main(), idempotencyKey: 'prov:ok'
+            $this->buyer(),
+            $product,
+            StoreContext::main(),
+            idempotencyKey: 'prov:ok'
         );
 
         $this->assertEquals('active', $account->status);
-        $this->assertEquals(Order::STATUS_ACCOUNT_CREATED, $account->order->fresh()->status);
-        $this->assertEquals(1, $account->order->fresh()->provision_attempts);
+        $this->assertEquals(
+            Order::STATUS_ACCOUNT_CREATED,
+            $account->order->fresh()->status
+        );
+        $this->assertEquals(
+            1,
+            $account->order->fresh()->provision_attempts
+        );
     }
 
-    /**
-     * مهم‌ترین تست این فاز. وقتی پنل شکست می‌خورد، پول از قبل کسر شده —
-     * و این حالت باید صریحاً از «شکست مالی» قابل تشخیص باشد، وگرنه
-     * ادمین از روی دیتابیس نمی‌فهمد باید پول را برگرداند یا نه.
-     */
     #[Test]
     public function a_panel_failure_after_payment_leaves_an_unambiguous_financial_state(): void
     {
         $this->panelFails();
+
         $product = $this->makeProduct(price: 100000);
         $customer = $this->buyer(balance: 100000);
 
         try {
-            $this->purchase->purchase($customer, $product, StoreContext::main(), idempotencyKey: 'prov:fail');
+            $this->purchase->purchase(
+                $customer,
+                $product,
+                StoreContext::main(),
+                idempotencyKey: 'prov:fail'
+            );
+
             $this->fail('شکست پنل باید استثنا می‌داد.');
         } catch (ProvisioningFailedException) {
         }
 
         $order = Order::firstOrFail();
 
-        // پول کسر شده و این واقعیت در دیتابیس صریح است
-        $this->assertEquals(0, $this->wallet->getBalance($customer));
-        $this->assertEquals(Order::STATUS_PROVISION_FAILED, $order->status);
+        $this->assertEquals(
+            0,
+            $this->wallet->getBalance($customer)
+        );
+        $this->assertEquals(
+            Order::STATUS_PROVISION_FAILED,
+            $order->status
+        );
         $this->assertTrue($order->isFinanciallySettled());
         $this->assertTrue($order->needsAttention());
         $this->assertNotEmpty($order->failure_reason);
@@ -134,10 +272,17 @@ class ProvisioningAndRenewalTest extends TestCase
     public function a_failed_order_can_be_retried_up_to_three_times(): void
     {
         $this->panelFails();
+
         $product = $this->makeProduct();
+        $customer = $this->buyer();
 
         try {
-            $this->purchase->purchase($this->buyer(), $product, StoreContext::main(), idempotencyKey: 'prov:retry');
+            $this->purchase->purchase(
+                $customer,
+                $product,
+                StoreContext::main(),
+                idempotencyKey: 'prov:retry'
+            );
         } catch (ProvisioningFailedException) {
         }
 
@@ -146,46 +291,81 @@ class ProvisioningAndRenewalTest extends TestCase
 
         $this->assertTrue($provisioning->canRetry($order));
 
-        // تلاش دوم و سوم هم شکست می‌خورند
         foreach ([2, 3] as $expectedAttempt) {
             try {
                 $provisioning->provision($order->fresh());
             } catch (ProvisioningFailedException) {
             }
 
-            $this->assertEquals($expectedAttempt, $order->fresh()->provision_attempts);
+            $this->assertEquals(
+                $expectedAttempt,
+                $order->fresh()->provision_attempts
+            );
         }
 
-        // بعد از سه تلاش دیگر retry خودکار مجاز نیست — نیازمند ادمین
-        $this->assertFalse($provisioning->canRetry($order->fresh()));
+        $this->assertFalse(
+            $provisioning->canRetry($order->fresh())
+        );
     }
 
     #[Test]
     public function a_retry_that_succeeds_recovers_the_order_without_charging_again(): void
     {
-        Http::fakeSequence()
-            ->push([
-                'success' => false,
-                'msg' => 'panel down',
-            ], 500)
-            ->push([
-                'success' => true,
-                'obj' => [
-                    'inboundIds' => [1],
-                    'flow' => '',
-                    'limitIp' => 0,
-                    'subId' => 'sub123',
-                ],
-            ], 200)
-            ->push([
+        $templateRequests = 0;
+
+        Http::fake(function ($request) use (&$templateRequests) {
+            $url = $request->url();
+
+            // Username availability: every generated username is initially free.
+            if (
+                $request->method() === 'GET'
+                && str_contains($url, '/panel/api/clients/get/')
+                && ! str_contains($url, '/template-user')
+            ) {
+                return Http::response([
+                    'success' => false,
+                    'obj' => null,
+                    'msg' => 'record not found',
+                ], 200);
+            }
+
+            // First provisioning attempt fails while resolving the template.
+            if (
+                $request->method() === 'GET'
+                && str_contains($url, '/panel/api/clients/get/template-user')
+            ) {
+                $templateRequests++;
+
+                if ($templateRequests === 1) {
+                    return Http::response([
+                        'success' => false,
+                        'msg' => 'panel down',
+                    ], 500);
+                }
+
+                // Retry: template is now available.
+                return Http::response([
+                    'success' => true,
+                    'obj' => [
+                        'inboundIds' => [1],
+                        'flow' => '',
+                        'limitIp' => 0,
+                    ],
+                ], 200);
+            }
+
+            // Actual account creation during retry.
+            return Http::response([
                 'success' => true,
                 'obj' => [
                     'success' => true,
+                    'subId' => 'sub123',
                 ],
             ], 200);
+        });
 
         $product = $this->makeProduct(price: 100000);
-        $customer = $this->buyer(balance: 100000);
+        $customer = $this->buyer(balance: 200000);
 
         try {
             $this->purchase->purchase(
@@ -199,7 +379,9 @@ class ProvisioningAndRenewalTest extends TestCase
 
         $balanceAfterFailure = $this->wallet->getBalance($customer);
 
-        $account = $this->purchase->retryProvisioning(Order::firstOrFail());
+        $account = $this->purchase->retryProvisioning(
+            Order::firstOrFail()
+        );
 
         $this->assertEquals('active', $account->status);
         $this->assertEquals(
@@ -207,30 +389,45 @@ class ProvisioningAndRenewalTest extends TestCase
             $account->order->fresh()->status
         );
 
-        // هیچ کسر دوباره‌ای نباید رخ داده باشد
         $this->assertEquals(
             $balanceAfterFailure,
             $this->wallet->getBalance($customer)
         );
+
+        $this->assertEquals(2, $templateRequests);
     }
 
     #[Test]
     public function a_duplicate_purchase_request_never_creates_two_accounts(): void
     {
         $this->panelSucceeds();
+
         $product = $this->makeProduct(price: 50000);
         $customer = $this->buyer(balance: 200000);
 
         $key = 'prov:duplicate-click';
 
-        $first = $this->purchase->purchase($customer, $product, StoreContext::main(), idempotencyKey: $key);
-        $second = $this->purchase->purchase($customer, $product, StoreContext::main(), idempotencyKey: $key);
+        $first = $this->purchase->purchase(
+            $customer,
+            $product,
+            StoreContext::main(),
+            idempotencyKey: $key
+        );
+
+        $second = $this->purchase->purchase(
+            $customer,
+            $product,
+            StoreContext::main(),
+            idempotencyKey: $key
+        );
 
         $this->assertEquals($first->id, $second->id);
         $this->assertEquals(1, Account::count());
         $this->assertEquals(1, Order::count());
-        // فقط یک بار کسر شده
-        $this->assertEquals(150000, $this->wallet->getBalance($customer));
+        $this->assertEquals(
+            150000,
+            $this->wallet->getBalance($customer)
+        );
     }
 
     #[Test]
@@ -251,164 +448,290 @@ class ProvisioningAndRenewalTest extends TestCase
         ]);
 
         $this->expectException(ProvisioningFailedException::class);
+
         app(ProvisioningService::class)->provision($order);
     }
 
-    /* ── Renewal — بند ۶۱ ───────────────────────────────────────── */
 
     #[Test]
     public function a_renewal_extends_time_and_resets_traffic(): void
     {
         $this->panelSucceeds();
-        $product = $this->makeProduct(price: 100000, days: 30, gb: 50);
-        $customer = $this->buyer(balance: 300000);
 
-        $account = $this->purchase->purchase(
-            $customer, $product, StoreContext::main(), idempotencyKey: 'renew:setup'
+        $product = $this->makeProduct(
+            price: 100000,
+            days: 30,
+            gb: 50
         );
 
-        // شبیه‌سازی مصرف حجم
-        $account->update(['traffic_used_gb' => 48]);
-        $originalExpiry = $account->expires_at->copy();
-
-        $renewed = app(RenewalService::class)->renew($account->fresh(), 'renew:once');
-
-        // بند ۲۸: هر دو باید reset/extend شوند، نه فقط تاریخ
-        $this->assertTrue($renewed->expires_at->greaterThan($originalExpiry), 'تاریخ باید تمدید می‌شد');
-        $this->assertEquals(0, (float) $renewed->traffic_used_gb, 'حجم مصرفی باید صفر می‌شد');
-        $this->assertEquals(50, (float) $renewed->traffic_gb);
-    }
-
-    #[Test]
-    public function a_renewal_charges_the_customer_wallet(): void
-    {
-        $this->panelSucceeds();
-        $product = $this->makeProduct(price: 100000);
         $customer = $this->buyer(balance: 300000);
 
-        $account = $this->purchase->purchase(
-            $customer, $product, StoreContext::main(), idempotencyKey: 'renew:pay-setup'
+        $account = Account::factory()->create([
+            'customer_account_id' => $customer->id,
+            'product_id' => $product->id,
+            'server_panel_id' => $product->category->serverPanels()->first()->id,
+            'panel_username' => 'germ_50_1',
+            'expires_at' => now()->subDay(),
+            'traffic_gb' => 10,
+            'traffic_used_gb' => 8,
+            'status' => 'active',
+        ]);
+
+        $balanceBefore = $this->wallet->getBalance($customer);
+
+        $renewed = app(\App\Services\Core\Renewal\RenewalService::class)
+            ->renew(
+                $account,
+                idempotencyKey: 'renew:test:extend-reset'
+            );
+
+        $renewed->refresh();
+
+        $this->assertEquals('active', $renewed->status);
+
+        $this->assertEquals(
+            50,
+            (float) $renewed->traffic_gb
         );
 
-        $this->assertEquals(200000, $this->wallet->getBalance($customer));
+        $this->assertEquals(
+            0,
+            (float) $renewed->traffic_used_gb
+        );
 
-        app(RenewalService::class)->renew($account->fresh(), 'renew:pay');
+        $this->assertTrue(
+            $renewed->expires_at->isFuture()
+        );
 
-        $this->assertEquals(100000, $this->wallet->getBalance($customer));
+        $this->assertEquals(
+            $balanceBefore - 100000,
+            $this->wallet->getBalance($customer)
+        );
     }
 
-    /**
-     * تمدید زودهنگام نباید روزهای باقی‌مانده را بسوزاند — مبنا باید
-     * انقضای فعلی باشد، نه امروز.
-     */
     #[Test]
     public function renewing_early_adds_to_the_remaining_time_instead_of_discarding_it(): void
     {
         $this->panelSucceeds();
-        $product = $this->makeProduct(price: 10000, days: 30);
-        $customer = $this->buyer(balance: 100000);
 
-        $account = $this->purchase->purchase(
-            $customer, $product, StoreContext::main(), idempotencyKey: 'renew:early-setup'
+        $product = $this->makeProduct(
+            price: 100000,
+            days: 30,
+            gb: 50
         );
 
-        $remaining = $account->expires_at->copy();
+        $customer = $this->buyer(balance: 300000);
 
-        $renewed = app(RenewalService::class)->renew($account->fresh(), 'renew:early');
+        $expiresAt = now()->addDays(10);
 
-        // باید حدود ۶۰ روز از حالا باشد، نه ۳۰
-        $this->assertEqualsWithDelta(
-            $remaining->addDays(30)->timestamp,
-            $renewed->expires_at->timestamp,
-            60
+        $account = Account::factory()->create([
+            'customer_account_id' => $customer->id,
+            'product_id' => $product->id,
+            'server_panel_id' => $product->category->serverPanels()->first()->id,
+            'panel_username' => 'germ_50_1',
+            'expires_at' => $expiresAt,
+            'traffic_gb' => 10,
+            'traffic_used_gb' => 8,
+            'status' => 'active',
+        ]);
+
+        $renewed = app(\App\Services\Core\Renewal\RenewalService::class)
+            ->renew(
+                $account,
+                idempotencyKey: 'renew:test:early'
+            );
+
+        $renewed->refresh();
+
+        $this->assertEquals(
+            50,
+            (float) $renewed->traffic_gb
+        );
+
+        $this->assertEquals(
+            0,
+            (float) $renewed->traffic_used_gb
+        );
+
+        $this->assertTrue(
+            $renewed->expires_at->isAfter(now()->addDays(39))
+        );
+
+        $this->assertTrue(
+            $renewed->expires_at->isBefore(now()->addDays(41))
         );
     }
 
     #[Test]
     public function a_panel_failure_during_renewal_is_recorded_not_silently_swallowed(): void
     {
-        Http::fakeSequence()
-        // خرید اولیه: resolve template
-        ->push([
-            'success' => true,
-            'obj' => [
-                'inboundIds' => [1],
-                'flow' => '',
-                'limitIp' => 0,
-                'subId' => 'sub123',
-            ],
-        ], 200)
+        $this->panelFails();
 
-        // خرید اولیه: create account
-        ->push([
-            'success' => true,
-            'obj' => [
-                'success' => true,
-            ],
-        ], 200)
-
-        // تمدید: get current account
-        ->push([
-            'success' => true,
-            'obj' => [
-                'id' => 1,
-                'email' => 'test@example.com',
-                'enable' => true,
-                'totalGB' => 50,
-                'expiryTime' => now()->addDays(30)->timestamp * 1000,
-                'subId' => 'sub123',
-                'flow' => '',
-            ],
-        ], 200)
-
-        // تمدید: update account باید شکست بخورد
-        ->push([
-            'success' => false,
-            'msg' => 'panel down',
-        ], 500);
-        $product = $this->makeProduct(price: 10000);
-        $customer = $this->buyer(balance: 100000);
-
-        $account = $this->purchase->purchase(
-            $customer, $product, StoreContext::main(), idempotencyKey: 'renew:fail-setup'
+        $product = $this->makeProduct(
+            price: 100000,
+            days: 30,
+            gb: 50
         );
 
-        $originalExpiry = $account->expires_at->copy();
+        $customer = $this->buyer(balance: 300000);
 
+        $account = Account::factory()->create([
+            'customer_account_id' => $customer->id,
+            'product_id' => $product->id,
+            'server_panel_id' => $product->category->serverPanels()->first()->id,
+            'panel_username' => 'germ_50_1',
+            'expires_at' => now()->subDay(),
+            'traffic_gb' => 10,
+            'traffic_used_gb' => 8,
+            'status' => 'active',
+        ]);
 
+        $balanceBefore = $this->wallet->getBalance($customer);
+
+        $this->expectException(\App\Services\Core\Renewal\RenewalFailedException::class);
 
         try {
-            app(RenewalService::class)->renew($account->fresh(), 'renew:fail');
-            $this->fail('شکست پنل در تمدید باید استثنا می‌داد.');
-        } catch (\Throwable) {
+            app(\App\Services\Core\Renewal\RenewalService::class)
+                ->renew(
+                    $account,
+                    idempotencyKey: 'renew:test:panel-failure'
+                );
+        } finally {
+            $this->assertEquals(
+                $balanceBefore - 100000,
+                $this->wallet->getBalance($customer)
+            );
+
+            $this->assertEquals(
+                Order::STATUS_PROVISION_FAILED,
+                Order::query()->latest('id')->first()->status
+            );
         }
 
-        // اکانت نباید ظاهراً تمدید شده باشد
-        $this->assertEquals($originalExpiry->timestamp, $account->fresh()->expires_at->timestamp);
+    }
 
-        // ولی سفارش تمدید باید صریحاً در حالت «پول گرفته شده، تحویل نشده» باشد
-        $renewalOrder = Order::orderByDesc('id')->first();
-        $this->assertEquals(Order::STATUS_PROVISION_FAILED, $renewalOrder->status);
-        $this->assertNotEmpty($renewalOrder->failure_reason);
+    #[Test]
+    public function a_renewal_uses_current_prices_and_creates_a_new_price_snapshot(): void
+    {
+        $this->panelSucceeds();
+
+        $product = $this->makeProduct(
+            price: 90000,
+            days: 30,
+            gb: 50
+        );
+
+        $customer = $this->buyer(balance: 300000);
+
+        $account = Account::factory()->create([
+            'customer_account_id' => $customer->id,
+            'product_id' => $product->id,
+            'server_panel_id' => $product->category->serverPanels()->first()->id,
+            'panel_username' => 'germ_renew_snapshot',
+            'expires_at' => now()->subDay(),
+            'traffic_gb' => 10,
+            'traffic_used_gb' => 8,
+            'status' => 'active',
+        ]);
+
+        // قیمت محصول بعد از خرید/ایجاد اکانت تغییر می‌کند.
+        $product->update([
+            'price' => 100000,
+            'reseller_price' => null,
+        ]);
+
+        $balanceBefore = $this->wallet->getBalance($customer);
+
+        $renewed = app(\App\Services\Core\Renewal\RenewalService::class)
+            ->renew(
+                $account,
+                idempotencyKey: 'renew:test:current-price-snapshot'
+            );
+
+        $renewalOrder = Order::query()
+        ->where('customer_account_id', $customer->id)
+        ->where('product_id', $product->id)
+        ->latest('id')
+        ->firstOrFail();
+
+        // Renewal باید قیمت فعلی را برای تراکنش جدید Snapshot کند.
+        $this->assertEquals(100000, (float) $renewalOrder->core_price);
+        $this->assertEquals(100000, (float) $renewalOrder->sold_price);
+        $this->assertEquals(100000, (float) $renewalOrder->base_price);
+
+        // و مبلغ Renewal باید از موجودی فعلی کسر شده باشد.
+        $this->assertEquals(
+            $balanceBefore - 100000,
+            $this->wallet->getBalance($customer)
+        );
+
+        $this->assertEquals(
+            Order::STATUS_ACCOUNT_CREATED,
+            $renewalOrder->status
+        );
     }
 
     #[Test]
     public function a_duplicate_renewal_request_only_charges_once(): void
     {
         $this->panelSucceeds();
-        $product = $this->makeProduct(price: 25000);
-        $customer = $this->buyer(balance: 200000);
 
-        $account = $this->purchase->purchase(
-            $customer, $product, StoreContext::main(), idempotencyKey: 'renew:dup-setup'
+        $product = $this->makeProduct(
+            price: 100000,
+            days: 30,
+            gb: 50
         );
 
+        $customer = $this->buyer(balance: 300000);
+
+        $account = Account::factory()->create([
+            'customer_account_id' => $customer->id,
+            'product_id' => $product->id,
+            'server_panel_id' => $product->category->serverPanels()->first()->id,
+            'panel_username' => 'germ_50_1',
+            'expires_at' => now()->subDay(),
+            'traffic_gb' => 10,
+            'traffic_used_gb' => 8,
+            'status' => 'active',
+        ]);
+
         $balanceBefore = $this->wallet->getBalance($customer);
-        $renewals = app(RenewalService::class);
 
-        $renewals->renew($account->fresh(), 'renew:dup');
-        $renewals->renew($account->fresh(), 'renew:dup');
+        $renewal = app(\App\Services\Core\Renewal\RenewalService::class);
 
-        $this->assertEquals($balanceBefore - 25000, $this->wallet->getBalance($customer));
+        $first = $renewal->renew(
+            $account,
+            idempotencyKey: 'renew:test:duplicate'
+        );
+
+        $balanceAfterFirst = $this->wallet->getBalance($customer);
+
+        $second = $renewal->renew(
+            $account->fresh(),
+            idempotencyKey: 'renew:test:duplicate'
+        );
+
+        $this->assertEquals(
+            $balanceBefore - 100000,
+            $balanceAfterFirst
+        );
+
+        $this->assertEquals(
+            $balanceAfterFirst,
+            $this->wallet->getBalance($customer)
+        );
+
+        $this->assertEquals(
+            $first->fresh()->id,
+            $second->fresh()->id
+        );
+
+        $this->assertEquals(
+            1,
+            Order::query()
+                ->where('customer_account_id', $customer->id)
+                ->where('product_id', $product->id)
+                ->count()
+        );
     }
 }

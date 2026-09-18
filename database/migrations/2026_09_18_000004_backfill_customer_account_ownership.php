@@ -185,6 +185,10 @@ return new class extends Migration
             'user_id' => $userId,
             'store_type' => $storeType,
             'reseller_id' => $resellerId,
+            // insertOrIgnore خام است، رویداد saving مدل اجرا نمی‌شود؛
+            // scope_key باید دستی هم‌گام با store_type/reseller_id بالا
+            // ساخته شود.
+            'scope_key' => $resellerId ? 'reseller:'.$resellerId : 'main',
             'status' => 'active',
             'created_at' => now(),
             'updated_at' => now(),

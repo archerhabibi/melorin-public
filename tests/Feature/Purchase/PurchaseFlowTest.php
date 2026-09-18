@@ -49,13 +49,41 @@ class PurchaseFlowTest extends TestCase
 
     protected function fakeSuccessfulPanel(): void
     {
-        Http::fake([
-            '*' => Http::response([
+        Http::fake(function ($request) {
+            $url = $request->url();
+
+            if (
+                $request->method() === 'GET'
+                && str_contains($url, '/panel/api/clients/get/')
+            ) {
+                $username = rawurldecode(
+                    substr($url, strrpos($url, '/') + 1)
+                );
+
+                if ($username === 't') {
+                    return Http::response([
+                        'success' => true,
+                        'obj' => [
+                            'inboundIds' => [1],
+                            'flow' => '',
+                            'limitIp' => 0,
+                        ],
+                    ], 200);
+                }
+
+                return Http::response([
+                    'success' => false,
+                    'obj' => null,
+                    'msg' => 'record not found',
+                ], 200);
+            }
+
+            return Http::response([
                 'success' => true,
                 'obj' => ['inboundIds' => [1], 'flow' => '', 'limitIp' => 0],
                 'subscription_url' => 'https://sub.example.test/abc',
-            ], 200),
-        ]);
+            ], 200);
+        });
     }
 
     protected function makeProduct(float $price = 120000, ?float $resellerPrice = null): Product
@@ -308,6 +336,53 @@ class PurchaseFlowTest extends TestCase
         $this->assertEquals(130, $this->wallet->getBalance($customer));
         $this->assertEquals(100, $this->wallet->getBalance($store->reseller));
         $this->assertEquals(Order::STATUS_REFUNDED, $account->order->fresh()->status);
+    }
+
+    #[Test]
+    public function refund_uses_the_order_price_snapshot_after_product_prices_change(): void
+    {
+        [$customer, $store, $product] = $this->resellerSetup(
+            debtLimit: 0,
+            corePrice: 90000,
+            sellingPrice: 140000
+        );
+
+        $this->wallet->credit($customer, 140000);
+        $this->wallet->credit($store->reseller, 90000);
+
+        $account = $this->purchase->purchase(
+            $customer,
+            $product,
+            $store,
+            'reseller_bot',
+            idempotencyKey: 'test:refund-snapshot'
+        );
+
+        $order = $account->order->fresh();
+
+        $this->assertEquals(90000, (float) $order->core_price);
+        $this->assertEquals(140000, (float) $order->sold_price);
+
+        // قیمت‌های Product بعد از خرید تغییر می‌کنند.
+        $product->update([
+            'price' => 300000,
+            'reseller_price' => 250000,
+        ]);
+
+        $product->resellerPrices()->update([
+            'custom_price' => 280000,
+        ]);
+
+        app(RefundService::class)->refundOrder($order, 'تست بازگشت بر اساس Snapshot');
+
+        // Refund باید از Snapshot سفارش استفاده کند، نه قیمت‌های جدید Product.
+        $this->assertEquals(140000, $this->wallet->getBalance($customer));
+        $this->assertEquals(90000, $this->wallet->getBalance($store->reseller));
+
+        $this->assertEquals(
+            Order::STATUS_REFUNDED,
+            $order->fresh()->status
+        );
     }
 
     #[Test]

@@ -40,10 +40,44 @@ class CommissionAndBridgeTest extends TestCase
         $this->wallet = app(WalletService::class);
         $this->identity = app(IdentityService::class);
 
-        Http::fake(['*' => Http::response([
-            'success' => true,
-            'obj' => ['inboundIds' => [1], 'flow' => '', 'limitIp' => 0],
-        ], 200)]);
+        Http::fake(function ($request) {
+            $url = $request->url();
+
+            if (
+                $request->method() === 'GET'
+                && str_contains($url, '/panel/api/clients/get/')
+            ) {
+                $username = rawurldecode(
+                    substr($url, strrpos($url, '/') + 1)
+                );
+
+                if ($username === 't') {
+                    return Http::response([
+                        'success' => true,
+                        'obj' => [
+                            'inboundIds' => [1],
+                            'flow' => '',
+                            'limitIp' => 0,
+                        ],
+                    ], 200);
+                }
+
+                return Http::response([
+                    'success' => false,
+                    'obj' => null,
+                    'msg' => 'record not found',
+                ], 200);
+            }
+
+            return Http::response([
+                'success' => true,
+                'obj' => [
+                    'inboundIds' => [1],
+                    'flow' => '',
+                    'limitIp' => 0,
+                ],
+            ], 200);
+        });
     }
 
     protected function makeProduct(float $price = 100000): Product

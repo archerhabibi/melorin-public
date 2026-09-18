@@ -4,10 +4,14 @@ namespace Tests\Feature;
 
 use App\Exceptions\InsufficientBalanceException;
 use App\Models\Category;
+use App\Models\CustomerAccount;
+use App\Models\Order;
 use App\Models\Product;
 use App\Models\ServerPanel;
 use App\Models\User;
 use App\Services\Core\AccountService;
+use App\Services\Core\Store\IdentityService;
+use App\Services\Core\Store\StoreContext;
 use App\Services\Core\WalletService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -38,6 +42,16 @@ class AccountServiceTest extends TestCase
         return $category;
     }
 
+    /**
+     * از بند ۷ معماری: AccountService::purchase() برای خرید واقعی به
+     * PurchaseService/PurchaseGuard جدید واگذار می‌کند که کیف‌پول را
+     * روی CustomerAccountِ فروشگاه اصلی می‌بیند، نه روی خودِ User.
+     */
+    protected function mainWalletOwner(User $user): CustomerAccount
+    {
+        return app(IdentityService::class)->resolveCustomerAccount($user, StoreContext::main());
+    }
+
     #[Test]
     public function purchase_fails_with_insufficient_balance_before_touching_the_panel(): void
     {
@@ -66,12 +80,12 @@ class AccountServiceTest extends TestCase
         $category = $this->makeCategoryWithPanel();
         $product = Product::factory()->create(['category_id' => $category->id, 'price' => 100000]);
 
-        $this->wallet->charge($user, 150000);
+        $this->wallet->charge($this->mainWalletOwner($user), 150000);
 
         $account = $this->accounts->purchase($user, $product);
 
         $this->assertEquals('active', $account->status);
-        $this->assertEquals(50000, $this->wallet->balance($user));
+        $this->assertEquals(50000, $this->wallet->balance($this->mainWalletOwner($user)));
         $this->assertNotEmpty($account->panel_username);
         $this->assertNotEmpty($account->panel_client_uuid);
         $this->assertDatabaseHas('orders', [
@@ -80,8 +94,18 @@ class AccountServiceTest extends TestCase
         ]);
     }
 
+    /**
+     * طبق طراحی صریح PurchaseService/ProvisioningService جدید (مطابق
+     * ProvisioningAndRenewalTest::a_panel_failure_after_payment_leaves_an_unambiguous_financial_state):
+     * وقتی ساخت اکانت روی پنل شکست بخورد، پول به‌صورت خودکار بازگردانده
+     * نمی‌شود — مالی از Provisioning جدا شده و سفارش صریحاً در وضعیت
+     * provision_failed («پول گرفته شده، تحویل نشده») می‌ماند تا با
+     * retryProvisioning() یا رسیدگی دستی ادمین جبران شود. نسخه‌ی قبلی
+     * این تست انتظار بازگشت خودکار داشت که دقیقاً همان رفتار قدیمیِ
+     * ناامنی بود که این معماری عمداً حذفش کرد.
+     */
     #[Test]
-    public function failed_panel_response_triggers_automatic_refund(): void
+    public function failed_panel_response_leaves_the_charge_and_marks_the_order_provision_failed(): void
     {
         Http::fake([
             '*/api/admin/token' => Http::response(['access_token' => 'fake-token'], 200),
@@ -92,15 +116,19 @@ class AccountServiceTest extends TestCase
         $category = $this->makeCategoryWithPanel();
         $product = Product::factory()->create(['category_id' => $category->id, 'price' => 100000]);
 
-        $this->wallet->charge($user, 150000);
+        $this->wallet->charge($this->mainWalletOwner($user), 150000);
 
         $this->expectException(\RuntimeException::class);
 
         try {
             $this->accounts->purchase($user, $product);
         } finally {
-            // موجودی باید کامل بازگشت داده شده باشد
-            $this->assertEquals(150000, $this->wallet->balance($user));
+            // موجودی همچنان کسرشده باقی می‌ماند — بازگشت خودکار نداریم.
+            $this->assertEquals(50000, $this->wallet->balance($this->mainWalletOwner($user)));
+            $this->assertEquals(
+                Order::STATUS_PROVISION_FAILED,
+                Order::query()->latest('id')->first()->status
+            );
         }
     }
 
@@ -120,7 +148,7 @@ class AccountServiceTest extends TestCase
 
         $product = Product::factory()->create(['category_id' => $category->id, 'price' => 50000]);
         $user = User::factory()->create();
-        $this->wallet->charge($user, 50000);
+        $this->wallet->charge($this->mainWalletOwner($user), 50000);
 
         $account = $this->accounts->purchase($user, $product);
 
@@ -144,11 +172,11 @@ class AccountServiceTest extends TestCase
         $product = Product::factory()->create(['category_id' => $category->id, 'price' => 10000, 'traffic_gb' => 30]);
 
         $user1 = User::factory()->create();
-        $this->wallet->charge($user1, 10000);
+        $this->wallet->charge($this->mainWalletOwner($user1), 10000);
         $account1 = $this->accounts->purchase($user1, $product);
 
         $user2 = User::factory()->create();
-        $this->wallet->charge($user2, 10000);
+        $this->wallet->charge($this->mainWalletOwner($user2), 10000);
         $account2 = $this->accounts->purchase($user2, $product);
 
         // ۴ حرف اول نام سرور (بدون فاصله): Germany Frankfurt → germ
@@ -171,14 +199,14 @@ class AccountServiceTest extends TestCase
         $product = Product::factory()->create(['category_id' => $category->id, 'price' => 10000]);
 
         $user1 = User::factory()->create();
-        $this->wallet->charge($user1, 10000);
+        $this->wallet->charge($this->mainWalletOwner($user1), 10000);
         $account1 = $this->accounts->purchase($user1, $product, customUsername: 'ali');
 
         $this->assertEquals('ali', $account1->panel_username);
 
         // همان نام دوباره — چون تکراری است باید عدد ترتیبی بگیرد
         $user2 = User::factory()->create();
-        $this->wallet->charge($user2, 10000);
+        $this->wallet->charge($this->mainWalletOwner($user2), 10000);
         $account2 = $this->accounts->purchase($user2, $product, customUsername: 'ali');
 
         $this->assertEquals('ali_1', $account2->panel_username);

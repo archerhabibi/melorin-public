@@ -8,6 +8,8 @@ use App\Models\Payment;
 use App\Models\PaymentMethod;
 use App\Models\User;
 use App\Services\Core\PaymentService;
+use App\Services\Core\Store\IdentityService;
+use App\Services\Core\Store\StoreContext;
 use App\Services\Core\WalletService;
 use Telegram\Bot\Api;
 
@@ -23,11 +25,20 @@ class WalletHandler
         protected ConversationState $state,
         protected WalletService $walletService,
         protected PaymentService $paymentService,
+        protected IdentityService $identity,
     ) {}
 
     public function showBalance(int $chatId, User $user): void
     {
-        $balance = $this->walletService->balance($user);
+        // بریج backward-compatible (همان توضیح PaymentService::resolveWalletOwner):
+        // موجودیِ واقعیِ این ربات، کیف‌پولِ CustomerAccountِ فروشگاه اصلی
+        // این کاربر است، نه کیف‌پولی که مستقیماً روی خودِ User باشد —
+        // چون خرید/تمدید هم دقیقاً از همان‌جا کسر می‌کنند. قبلاً اینجا
+        // $this->walletService->balance($user) صدا زده می‌شد که یک
+        // کیف‌پول کاملاً جدا (و همیشه صفر) نشان می‌داد.
+        $balance = $this->walletService->balance(
+            $this->identity->resolveCustomerAccount($user, StoreContext::main())
+        );
 
         $this->telegram->sendMessage([
             'chat_id' => $chatId,

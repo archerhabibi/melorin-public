@@ -36,6 +36,21 @@ class CustomerAccount extends Model
         'metadata' => 'array',
     ];
 
+    protected static function booted(): void
+    {
+        // scope_key عمداً یک ستون معمولی است، نه Generated Column
+        // (دلیل فنی‌اش در migration مربوطه توضیح داده شده). پس هر مسیری
+        // که از طریق مدل رکورد می‌سازد یا store_type/reseller_id را
+        // عوض می‌کند، اینجا مقدارش خودکار هم‌گام نگه داشته می‌شود. هر
+        // insert خامِ DB::table('customer_accounts') از این رویداد رد
+        // نمی‌شود و باید scope_key را خودش صریحاً بسازد.
+        static::saving(function (self $account): void {
+            $account->scope_key = $account->store_type === 'reseller'
+                ? 'reseller:'.$account->reseller_id
+                : 'main';
+        });
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

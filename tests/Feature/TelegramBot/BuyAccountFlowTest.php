@@ -7,6 +7,8 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\ServerPanel;
 use App\Models\User;
+use App\Services\Core\Store\IdentityService;
+use App\Services\Core\Store\StoreContext;
 use App\Services\Core\WalletService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -54,6 +56,19 @@ class BuyAccountFlowTest extends TestCase
             });
 
         $this->app->instance(Api::class, $telegram);
+    }
+
+    /**
+     * از بند ۷ معماری Reseller: کیف‌پولِ واقعیِ خرید در ربات اصلی، متعلق
+     * به CustomerAccountِ فروشگاه اصلیِ همین User است، نه خودِ User —
+     * دقیقاً همان چیزی که BuyAccountHandler/AccountService/PurchaseGuard
+     * موقع کسر و بررسیِ موجودی می‌بینند. شارژ مستقیمِ کیف‌پولِ User
+     * (نسخه‌ی قبلیِ این تست) یک ردیف کاملاً جدا و بی‌ربط می‌ساخت که هیچ‌کدام
+     * از آن‌ها هرگز نگاهش نمی‌کردند.
+     */
+    protected function mainWalletOwner(User $user): \App\Models\CustomerAccount
+    {
+        return app(IdentityService::class)->resolveCustomerAccount($user, StoreContext::main());
     }
 
     protected function makeCategoryWithPanel(): Category
@@ -132,7 +147,7 @@ class BuyAccountFlowTest extends TestCase
             'price' => 150000,
         ]);
 
-        app(WalletService::class)->charge($user, 200000);
+        app(WalletService::class)->charge($this->mainWalletOwner($user), 200000);
 
         app(BuyAccountHandler::class)->purchase(
             111222333,
@@ -147,7 +162,7 @@ class BuyAccountFlowTest extends TestCase
 
         $this->assertEquals(
             50000,
-            app(WalletService::class)->balance($user->fresh())
+            app(WalletService::class)->balance($this->mainWalletOwner($user))
         );
     }
 
@@ -184,7 +199,7 @@ class BuyAccountFlowTest extends TestCase
             'price' => 150000,
         ]);
 
-        app(WalletService::class)->charge($user, 200000);
+        app(WalletService::class)->charge($this->mainWalletOwner($user), 200000);
 
         app(BuyAccountHandler::class)->chooseServerOrPurchase(
             111222333,
@@ -198,7 +213,7 @@ class BuyAccountFlowTest extends TestCase
 
         $this->assertEquals(
             200000,
-            app(WalletService::class)->balance($user->fresh())
+            app(WalletService::class)->balance($this->mainWalletOwner($user))
         );
     }
 
@@ -251,7 +266,7 @@ class BuyAccountFlowTest extends TestCase
             'price' => 150000,
         ]);
 
-        app(WalletService::class)->charge($user, 200000);
+        app(WalletService::class)->charge($this->mainWalletOwner($user), 200000);
 
         app(BuyAccountHandler::class)->purchase(
             111222333,

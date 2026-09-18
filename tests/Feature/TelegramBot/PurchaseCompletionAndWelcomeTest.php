@@ -8,6 +8,8 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\ServerPanel;
 use App\Models\User;
+use App\Services\Core\Store\IdentityService;
+use App\Services\Core\Store\StoreContext;
 use App\Services\Core\WalletService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -76,7 +78,13 @@ class PurchaseCompletionAndWelcomeTest extends TestCase
         $product = Product::factory()->create(['category_id' => $category->id, 'price' => 150000]);
 
         $user = User::factory()->create(['telegram_id' => 111222333]);
-        app(WalletService::class)->charge($user, 200000);
+        // مثل BuyAccountFlowTest: کیف‌پولی که خرید از آن کسر می‌کند
+        // متعلق به CustomerAccountِ فروشگاه اصلیِ همین کاربر است، نه
+        // خودِ User.
+        app(WalletService::class)->charge(
+            app(IdentityService::class)->resolveCustomerAccount($user, StoreContext::main()),
+            200000
+        );
 
         app(BuyAccountHandler::class)->purchase(111222333, $user, $product->id);
 

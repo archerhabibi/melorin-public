@@ -12,6 +12,8 @@ use App\Models\Product;
 use App\Models\ServerPanel;
 use App\Models\User;
 use App\Services\Core\AccountService;
+use App\Services\Core\Store\IdentityService;
+use App\Services\Core\Store\StoreContext;
 use App\Services\Core\WalletService;
 use Telegram\Bot\Api;
 use Telegram\Bot\FileUpload\InputFile;
@@ -34,7 +36,23 @@ class BuyAccountHandler
         protected AccountService $accountService,
         protected WalletService $walletService,
         protected QrCodeGenerator $qr,
+        protected IdentityService $identity,
     ) {}
+
+    /**
+     * بریج backward-compatible: موجودیِ واقعی‌ای که خرید/تمدید از آن کسر
+     * می‌کنند، کیف‌پولِ CustomerAccountِ فروشگاه اصلی است، نه کیف‌پولی
+     * که مستقیماً روی User باشد (همان دلیلِ PaymentService::resolveWalletOwner
+     * و WalletHandler::showBalance). این هندلر چند جا فقط برای *نمایش*
+     * یا یک چکِ مشورتیِ اولیه به موجودی نیاز دارد؛ آن‌ها را از این متد
+     * می‌خوانیم تا با چیزی که AccountService واقعاً کسر می‌کند یکی باشد.
+     */
+    protected function mainWalletBalance(User $user): float
+    {
+        return $this->walletService->balance(
+            $this->identity->resolveCustomerAccount($user, StoreContext::main())
+        );
+    }
 
     public function start(int $chatId, User $user): void
     {
@@ -54,7 +72,7 @@ class BuyAccountHandler
         // تشخیص سریع‌تر مشکلات مشابه (کسر از حساب اشتباه) در آینده.
         $accountInfo = "👤 {$user->full_name}\n"
             ."شناسه‌ی عددی تلگرام: {$user->telegram_id}\n"
-            .'💰 موجودی کیف پول: '.number_format($this->walletService->balance($user))." تومان\n";
+            .'💰 موجودی کیف پول: '.number_format($this->mainWalletBalance($user))." تومان\n";
 
         $this->telegram->sendMessage([
             'chat_id' => $chatId,
@@ -199,10 +217,10 @@ class BuyAccountHandler
             return;
         }
 
-        if ($this->walletService->balance($user) < (float) $product->price) {
+        if ($this->mainWalletBalance($user) < (float) $product->price) {
             $this->telegram->sendMessage([
                 'chat_id' => $chatId,
-                'text' => "موجودی کیف پول شما کافی نیست.\nقیمت این تعرفه: ".number_format((float) $product->price)." تومان\nموجودی فعلی: ".number_format($this->walletService->balance($user))." تومان\n\nابتدا از بخش «💰 کیف پول و شارژ حساب» حساب خود را شارژ کنید.",
+                'text' => "موجودی کیف پول شما کافی نیست.\nقیمت این تعرفه: ".number_format((float) $product->price)." تومان\nموجودی فعلی: ".number_format($this->mainWalletBalance($user))." تومان\n\nابتدا از بخش «💰 کیف پول و شارژ حساب» حساب خود را شارژ کنید.",
             ]);
 
             return;
@@ -230,7 +248,7 @@ class BuyAccountHandler
         // که آنجا نمایش موجودی معنا ندارد (رایگان است) و نباید تغییر کند.
         $this->telegram->sendMessage([
             'chat_id' => $chatId,
-            'text' => '💰 موجودی کیف پول شما: '.number_format($this->walletService->balance($user)).' تومان',
+            'text' => '💰 موجودی کیف پول شما: '.number_format($this->mainWalletBalance($user)).' تومان',
         ]);
     }
 

@@ -9,10 +9,13 @@ use App\Models\Reseller;
 use App\Models\User;
 use App\Services\Core\PaymentService;
 use App\Services\Core\WalletService;
+use App\Services\Core\Store\IdentityService;
+use App\Services\Core\Store\StoreContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\Concerns\FakesTelegram;
 use Tests\TestCase;
+
 
 /**
  * طبق تصمیم صریح: «شارژ حساب» (کیف‌پول شخصی مشتری در ربات نماینده) را
@@ -42,11 +45,22 @@ class ResellerPaymentApprovalTest extends TestCase
     public function reseller_can_confirm_their_customers_personal_wallet_charge(): void
     {
         $reseller = Reseller::factory()->create();
-        $customer = User::factory()->create(['reseller_id' => $reseller->id]);
+        $customerUser = User::factory()->create();
+
+        $customer = app(IdentityService::class)
+            ->resolveCustomerAccount(
+                $customerUser,
+                StoreContext::fromReseller($reseller),
+            );
         $method = PaymentMethod::factory()->create();
 
         ['payment' => $payment] = $this->payments->initiate(
-            $customer, $method, 500000, 'wallet_charge', reseller: $reseller, walletOwnerType: 'user'
+            $customerUser,
+            $method,
+            500000,
+            'wallet_charge',
+            reseller: $reseller,
+            walletOwnerType: 'user'
         );
 
         $confirmed = $this->payments->confirmManualByReseller($payment, $reseller);
@@ -67,8 +81,13 @@ class ResellerPaymentApprovalTest extends TestCase
         $customerOfA = User::factory()->create(['reseller_id' => $resellerA->id]);
         $method = PaymentMethod::factory()->create();
 
-        ['payment' => $payment] = $this->payments->initiate(
-            $customerOfA, $method, 500000, 'wallet_charge', reseller: $resellerA, walletOwnerType: 'user'
+       ['payment' => $payment] = $this->payments->initiate(
+            $customerOfA,
+            $method,
+            500000,
+            'wallet_charge',
+            reseller: $resellerA,
+            walletOwnerType: 'user'
         );
 
         $this->expectException(ResellerScopeViolationException::class);
@@ -79,12 +98,23 @@ class ResellerPaymentApprovalTest extends TestCase
     public function main_admin_cannot_confirm_a_reseller_scoped_customer_payment(): void
     {
         $reseller = Reseller::factory()->create();
-        $customer = User::factory()->create(['reseller_id' => $reseller->id]);
+        $customerUser = User::factory()->create();
+
+        $customer = app(IdentityService::class)
+            ->resolveCustomerAccount(
+                $customerUser,
+                StoreContext::fromReseller($reseller),
+            );
         $method = PaymentMethod::factory()->create();
         $admin = Admin::factory()->create();
 
         ['payment' => $payment] = $this->payments->initiate(
-            $customer, $method, 500000, 'wallet_charge', reseller: $reseller, walletOwnerType: 'user'
+            $customerUser,
+            $method,
+            500000,
+            'wallet_charge',
+            reseller: $reseller,
+            walletOwnerType: 'user'
         );
 
         $this->expectException(ResellerScopeViolationException::class);
@@ -122,19 +152,36 @@ class ResellerPaymentApprovalTest extends TestCase
         $this->assertEquals($admin->id, $confirmed->reviewed_by);
         $this->assertNull($confirmed->reviewed_by_reseller_id);
         $this->assertEquals(1000000, $this->wallet->balance($reseller));
-        // کیف‌پول شخصیِ owner (به‌عنوان یک مشتری عادی) دست‌نخورده مانده
-        $this->assertEquals(0, $this->wallet->balance($reseller->user));
+                // کیف‌پول شخصیِ owner (به‌عنوان یک مشتری عادی) دست‌نخورده مانده
+        $ownerCustomer = app(IdentityService::class)
+            ->resolveCustomerAccount(
+                $reseller->user,
+                StoreContext::main(),
+            );
+
+        $this->assertEquals(0, $this->wallet->balance($ownerCustomer));
     }
 
     #[Test]
     public function reseller_can_reject_their_customers_payment(): void
     {
         $reseller = Reseller::factory()->create();
-        $customer = User::factory()->create(['reseller_id' => $reseller->id]);
+        $customerUser = User::factory()->create();
+
+        $customer = app(IdentityService::class)
+            ->resolveCustomerAccount(
+                $customerUser,
+                StoreContext::fromReseller($reseller),
+            );
         $method = PaymentMethod::factory()->create();
 
         ['payment' => $payment] = $this->payments->initiate(
-            $customer, $method, 500000, 'wallet_charge', reseller: $reseller, walletOwnerType: 'user'
+            $customerUser,
+            $method,
+            500000,
+            'wallet_charge',
+            reseller: $reseller,
+            walletOwnerType: 'user'
         );
 
         $rejected = $this->payments->rejectByReseller($payment, $reseller);
@@ -146,7 +193,14 @@ class ResellerPaymentApprovalTest extends TestCase
     #[Test]
     public function ordinary_main_bot_wallet_charge_is_completely_unaffected(): void
     {
-        $user = User::factory()->create();
+       $user = User::factory()->create();
+
+        $customer = app(IdentityService::class)
+            ->resolveCustomerAccount(
+                $user,
+                StoreContext::main(),
+            );
+
         $method = PaymentMethod::factory()->create();
         $admin = Admin::factory()->create();
 
@@ -157,7 +211,7 @@ class ResellerPaymentApprovalTest extends TestCase
 
         $confirmed = $this->payments->confirmManual($payment, $admin);
 
-        $this->assertEquals(200000, $this->wallet->balance($user));
+        $this->assertEquals(200000, $this->wallet->balance($customer));
         $this->assertEquals($admin->id, $confirmed->reviewed_by);
     }
 }

@@ -9,6 +9,8 @@ use App\Models\Account;
 use App\Models\User;
 use App\Services\Core\AccountService;
 use App\Services\Core\Renewal\RenewalService;
+use App\Services\Core\Store\IdentityService;
+use App\Services\Core\Store\StoreContext;
 use App\Services\Core\WalletService;
 use Telegram\Bot\Api;
 use Telegram\Bot\FileUpload\InputFile;
@@ -24,6 +26,7 @@ class AccountsHandler
         protected AccountService $accountService,
         protected WalletService $walletService,
         protected QrCodeGenerator $qr,
+        protected IdentityService $identity,
     ) {}
 
     public function list(int $chatId, User $user): void
@@ -103,7 +106,14 @@ class AccountsHandler
         $account = $user->accounts()->with('product')->findOrFail($accountId);
         $product = $account->product;
 
-        $balanceBeforeRenewal = $this->walletService->balance($user);
+        // بریج backward-compatible (همان دلیل BuyAccountHandler و
+        // WalletHandler): RenewalService از کیف‌پول CustomerAccount
+        // فروشگاه اصلی کسر می‌کند، پس نمایش «قبل/بعد» هم باید از همان
+        // کیف‌پول خوانده شود، نه از یک کیف‌پول جدای روی خودِ User که
+        // اصلاً تغییر نمی‌کند.
+        $customer = $this->identity->resolveCustomerAccount($user, StoreContext::main());
+
+        $balanceBeforeRenewal = $this->walletService->balance($customer);
 
         if ($balanceBeforeRenewal < (float) $product->price) {
             $this->telegram->sendMessage([
@@ -149,7 +159,7 @@ class AccountsHandler
         // شود — balanceBeforeRenewal همان مبلغی است که هنوز کسر نشده بود
         // (نه یک پیام جدا قبل از انجام عملیات)، و موجودی فعلی را دوباره
         // می‌خوانیم چون purchase() همین الان آن را تغییر داده است.
-        $balanceAfterRenewal = $this->walletService->balance($user);
+        $balanceAfterRenewal = $this->walletService->balance($customer);
 
         $this->telegram->sendMessage([
             'chat_id' => $chatId,

@@ -8,6 +8,7 @@ use App\Models\Operation;
 use App\Models\Order;
 use App\Models\ServerPanel;
 use App\Services\Core\Panels\PanelDriverFactory;
+use App\Services\Core\Panels\SupportsUsernameAvailability;
 use App\Services\Core\ServerSelection\ServerSelectionStrategy;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -81,7 +82,11 @@ class ProvisioningService
             'provision_attempts' => $order->provision_attempts + 1,
         ]);
 
-        $username = $customUsername ?: $this->generateUsername($order, $panel);
+        $username = $this->generateUsername(
+            order: $order,
+            panel: $panel,
+            customUsername: $customUsername,
+        );
         $clientUuid = (string) Str::uuid();
         $subId = Str::random(16);
 
@@ -223,12 +228,214 @@ class ProvisioningService
         }
     }
 
-    protected function generateUsername(Order $order, ServerPanel $panel): string
-    {
-        $prefix = $order->product->category?->naming_mode === 'order'
-            ? "melorin{$order->id}"
-            : 'melorin';
+        /**
+     * تولید نام کاربری اکانت بر اساس naming_mode محصول.
+     *
+     * random:
+     *   germ_30_1
+     *   germ_30_1a
+     *   germ_30_1b
+     *   ...
+     *   germ_30_1z
+     *   germ_30_2
+     *
+     * custom:
+     *   ali
+     *   ali_1
+     *   ali_2
+     *
+     * order:
+     *   Vip2_40A152
+     *
+     * در حالت order:
+     *   4 کاراکتر اول نام سرور + ترافیک + حرف اول نماینده + order_id
+     */
+    protected function generateUsername(
+        Order $order,
+        ServerPanel $panel,
+        ?string $customUsername = null,
+    ): string {
+        $mode = $order->product->category?->naming_mode ?? 'random';
 
-        return $prefix.'_'.Str::lower(Str::random(8));
+        $driver = PanelDriverFactory::make($panel->panel_type);
+
+        return match ($mode) {
+            'custom' => $this->uniqueUsername(
+                base: Str::lower(trim((string) $customUsername)),
+                panel: $panel,
+                driver: $driver,
+                startBare: true,
+            ),
+
+            'order' => $this->uniqueUsername(
+                base: $this->orderUsernameBase($order, $panel),
+                panel: $panel,
+                driver: $driver,
+                startBare: true,
+            ),
+
+            default => $this->uniqueUsername(
+                base: $this->randomUsernameBase($order, $panel),
+                panel: $panel,
+                driver: $driver,
+                startBare: false,
+            ),
+        };
+    }
+
+    /**
+     * random:
+     * 4 کاراکتر اول alphanumeric نام سرور + traffic.
+     *
+     * مثال:
+     * germ + 30 => germ_30
+     */
+    protected function randomUsernameBase(
+        Order $order,
+        ServerPanel $panel,
+    ): string {
+        $serverName = Str::lower(
+            preg_replace('/[^A-Za-z0-9]/', '', $panel->name) ?? ''
+        );
+
+        $prefix = Str::substr($serverName, 0, 4) ?: 'srv';
+
+        $traffic = $order->product->traffic_gb
+            ? (string) (int) round((float) $order->product->traffic_gb)
+            : 'unl';
+
+        return "{$prefix}_{$traffic}";
+    }
+
+    /**
+     * order:
+     * [4 chars server]_[traffic][reseller initial][order_id]
+     *
+     * مثال:
+     * Vip2 + 40GB + Ali + 152
+     * => Vip2_40A152
+     */
+    protected function orderUsernameBase(
+        Order $order,
+        ServerPanel $panel,
+    ): string {
+        $serverName = preg_replace(
+            '/[^A-Za-z0-9]/',
+            '',
+            $panel->name
+        ) ?? '';
+
+        $serverPrefix = Str::substr($serverName, 0, 4) ?: 'srv';
+
+        $traffic = $order->product->traffic_gb
+            ? (string) (int) round((float) $order->product->traffic_gb)
+            : 'unl';
+
+        $reseller = $order->reseller;
+
+        if (! $reseller) {
+            throw new \RuntimeException(
+                'حالت نام‌گذاری order فقط برای سفارش نماینده قابل استفاده است.'
+            );
+        }
+
+        $resellerName = trim((string) ($reseller->user?->full_name ?? ''));
+
+        $initial = Str::upper(
+            Str::substr($resellerName, 0, 1)
+        );
+
+        if (! preg_match('/^[A-Z]$/', $initial)) {
+            throw new \RuntimeException(
+                'برای نام‌گذاری order، نام نماینده باید با یک حرف انگلیسی شروع شود.'
+            );
+        }
+
+        return "{$serverPrefix}_{$traffic}{$initial}{$order->id}";
+    }
+
+    /**
+     * بررسی یکتا بودن username در دیتابیس و در صورت پشتیبانی، روی پنل.
+     */
+    protected function uniqueUsername(
+        string $base,
+        ServerPanel $panel,
+        object $driver,
+        bool $startBare,
+    ): string {
+        $base = trim($base);
+
+        if ($base === '') {
+            throw new \RuntimeException(
+                'نام کاربری تولیدشده خالی است.'
+            );
+        }
+
+        if ($startBare && ! $this->usernameExists($base, $panel, $driver)) {
+            return $base;
+        }
+
+        if (! $startBare) {
+            $candidate = "{$base}_1";
+
+            if (! $this->usernameExists($candidate, $panel, $driver)) {
+                return $candidate;
+            }
+
+            for ($letter = 'a'; $letter <= 'z'; $letter++) {
+                $candidate = "{$base}_1{$letter}";
+
+                if (! $this->usernameExists($candidate, $panel, $driver)) {
+                    return $candidate;
+                }
+            }
+
+            $number = 2;
+
+            while (true) {
+                $candidate = "{$base}_{$number}";
+
+                if (! $this->usernameExists($candidate, $panel, $driver)) {
+                    return $candidate;
+                }
+
+                $number++;
+            }
+        }
+
+        $number = 1;
+
+        while (true) {
+            $candidate = "{$base}_{$number}";
+
+            if (! $this->usernameExists($candidate, $panel, $driver)) {
+                return $candidate;
+            }
+
+            $number++;
+        }
+    }
+
+    /**
+     * بررسی وجود username در دیتابیس و پنل.
+     */
+    protected function usernameExists(
+        string $username,
+        ServerPanel $panel,
+        object $driver,
+    ): bool {
+        $existsInDatabase = Account::query()
+        ->where('panel_username', $username)
+        ->exists();
+
+        if ($existsInDatabase) {
+            return true;
+        }
+
+        if ($driver instanceof SupportsUsernameAvailability) {
+            return $driver->usernameExists($panel, $username);
+        }
+
+        return false;
     }
 }

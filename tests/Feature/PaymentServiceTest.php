@@ -14,6 +14,9 @@ use PHPUnit\Framework\Attributes\Test;
 use Telegram\Bot\Api;
 use Telegram\Bot\Objects\Message;
 use Tests\TestCase;
+use App\Models\CustomerAccount;
+use App\Services\Core\Store\IdentityService;
+use App\Services\Core\Store\StoreContext;
 
 class PaymentServiceTest extends TestCase
 {
@@ -53,6 +56,12 @@ class PaymentServiceTest extends TestCase
         config()->set('services.zarinpal.callback_url', 'https://melorin.test/payments/zarinpal/callback');
     }
 
+    protected function mainWalletOwner(User $user): CustomerAccount
+    {
+        return app(IdentityService::class)
+            ->resolveCustomerAccount($user, StoreContext::main());
+    }
+
     #[Test]
     public function card_to_card_initiate_returns_bank_instructions_without_charging_wallet(): void
     {
@@ -65,7 +74,7 @@ class PaymentServiceTest extends TestCase
 
         $this->assertEquals('pending', $payment->status);
         $this->assertNotEmpty($result->instructions['card_number']);
-        $this->assertEquals(0.0, $this->wallet->balance($user));
+        $this->assertEquals(0.0, $this->wallet->balance($this->mainWalletOwner($user)));
     }
 
     #[Test]
@@ -81,7 +90,7 @@ class PaymentServiceTest extends TestCase
 
         $this->assertEquals('confirmed', $confirmed->status);
         $this->assertEquals($admin->id, $confirmed->reviewed_by);
-        $this->assertEquals(200000, $this->wallet->balance($user));
+        $this->assertEquals(200000, $this->wallet->balance($this->mainWalletOwner($user)));
     }
 
     #[Test]
@@ -96,7 +105,7 @@ class PaymentServiceTest extends TestCase
         $rejected = $this->payments->reject($payment, $admin, 'رسید جعلی بود');
 
         $this->assertEquals('rejected', $rejected->status);
-        $this->assertEquals(0.0, $this->wallet->balance($user));
+        $this->assertEquals(0.0, $this->wallet->balance($this->mainWalletOwner($user)));
     }
 
     #[Test]
@@ -140,7 +149,7 @@ class PaymentServiceTest extends TestCase
         $confirmed = $this->payments->handleCallback($payment, ['Authority' => 'AUTH123', 'Status' => 'OK']);
 
         $this->assertEquals('confirmed', $confirmed->status);
-        $this->assertEquals(150000, $this->wallet->balance($user));
+        $this->assertEquals(150000, $this->wallet->balance($this->mainWalletOwner($user)));
     }
 
     #[Test]
@@ -168,7 +177,7 @@ class PaymentServiceTest extends TestCase
             'amount' => '1',
         ]);
 
-        $this->assertEquals(150000, $this->wallet->balance($user));
+        $this->assertEquals(150000, $this->wallet->balance($this->mainWalletOwner($user)));
         Http::assertSent(function ($request) {
             return str_contains($request->url(), 'verify.json')
                 && ($request->data()['amount'] ?? null) === 1500000;
@@ -192,7 +201,7 @@ class PaymentServiceTest extends TestCase
         $result = $this->payments->handleCallback($payment, ['Authority' => 'AUTH123', 'Status' => 'NOK']);
 
         $this->assertEquals('rejected', $result->status);
-        $this->assertEquals(0.0, $this->wallet->balance($user));
+        $this->assertEquals(0.0, $this->wallet->balance($this->mainWalletOwner($user)));
         Http::assertNotSent(fn ($request) => str_contains($request->url(), 'verify.json'));
     }
 
@@ -209,6 +218,6 @@ class PaymentServiceTest extends TestCase
         $refunded = $this->payments->refund($payment, $admin);
 
         $this->assertEquals('refunded', $refunded->status);
-        $this->assertEquals(0.0, $this->wallet->balance($user));
+        $this->assertEquals(0.0, $this->wallet->balance($this->mainWalletOwner($user)));
     }
 }

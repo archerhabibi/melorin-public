@@ -16,6 +16,9 @@ use Illuminate\Support\Facades\Http;
 use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
+use App\Models\CustomerAccount;
+use App\Services\Core\Store\IdentityService;
+use App\Services\Core\Store\StoreContext;
 
 /**
  * طبق درخواست صریح: «قیمت نمایندگان» قیمتی است که پلتفرم به نماینده
@@ -30,6 +33,14 @@ use Tests\TestCase;
 class ResellerPriceFieldTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function resellerCustomerAccount(User $customer, Reseller $reseller): CustomerAccount
+    {
+        return app(IdentityService::class)->resolveCustomerAccount(
+            $customer,
+            StoreContext::fromReseller($reseller),
+        );
+    }
 
     protected function sellableProduct(Reseller $reseller, float $price, ?float $resellerPrice, float $sellingPrice): Product
     {
@@ -67,7 +78,9 @@ class ResellerPriceFieldTest extends TestCase
         $product = $this->sellableProduct($reseller, price: 150000, resellerPrice: 90000, sellingPrice: 140000);
 
         $wallet = app(WalletService::class);
-        $wallet->charge($customer, 200000);
+        $customerAccount = $this->resellerCustomerAccount($customer, $reseller);
+
+        $wallet->charge($customerAccount, 200000);
         $wallet->charge($reseller, 200000);
 
         $account = app(AccountService::class)->purchase(
@@ -77,7 +90,7 @@ class ResellerPriceFieldTest extends TestCase
             reseller: $reseller,
         );
 
-        $this->assertEquals(60000, $wallet->balance($customer));
+        $this->assertEquals(60000, $wallet->balance($customerAccount));
         $this->assertEquals(110000, $wallet->balance($reseller));
 
         $this->assertEquals(90000, $account->order->base_price);
@@ -97,7 +110,9 @@ class ResellerPriceFieldTest extends TestCase
         $product = $this->sellableProduct($reseller, price: 100000, resellerPrice: null, sellingPrice: 130000);
 
         $wallet = app(WalletService::class);
-        $wallet->charge($customer, 200000);
+        $customerAccount = $this->resellerCustomerAccount($customer, $reseller);
+
+        $wallet->charge($customerAccount, 200000);
         $wallet->charge($reseller, 200000);
 
         $account = app(AccountService::class)->purchase(
@@ -124,7 +139,9 @@ class ResellerPriceFieldTest extends TestCase
         $product = $this->sellableProduct($reseller, price: 150000, resellerPrice: 90000, sellingPrice: 140000);
 
         $wallet = app(WalletService::class);
-        $wallet->charge($customer, 200000);
+        $customerAccount = $this->resellerCustomerAccount($customer, $reseller);
+
+        $wallet->charge($customerAccount, 200000);
         $wallet->charge($reseller, 200000);
 
         try {
@@ -141,7 +158,7 @@ class ResellerPriceFieldTest extends TestCase
         // اگر بازگشت وجه به‌جای resellerBasePrice() از products.price
         // (150,000) استفاده می‌کرد، اینجا موجودی نماینده ۲۱۰,۰۰۰
         // می‌شد — یعنی ۱۰,۰۰۰ بیشتر از چیزی که واقعاً کسر شده بود.
-        $this->assertEquals(200000, $wallet->balance($customer));
+        $this->assertEquals(200000, $wallet->balance($customerAccount));
         $this->assertEquals(200000, $wallet->balance($reseller));
     }
 

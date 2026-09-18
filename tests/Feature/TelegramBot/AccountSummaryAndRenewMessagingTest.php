@@ -10,6 +10,8 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\ServerPanel;
 use App\Models\User;
+use App\Services\Core\Store\IdentityService;
+use App\Services\Core\Store\StoreContext;
 use App\Services\Core\WalletService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -89,8 +91,14 @@ class AccountSummaryAndRenewMessagingTest extends TestCase
 
         $product = Product::factory()->create(['category_id' => $category->id, 'price' => $price]);
 
+        $customerAccount = app(IdentityService::class)->resolveCustomerAccount(
+            $user,
+            StoreContext::main()
+        );
+
         return Account::factory()->create([
             'user_id' => $user->id,
+            'customer_account_id' => $customerAccount->id,
             'product_id' => $product->id,
             'server_panel_id' => $panel->id,
             'panel_username' => 'melorin_summary_test',
@@ -130,7 +138,10 @@ class AccountSummaryAndRenewMessagingTest extends TestCase
         $user = User::factory()->create(['telegram_id' => 701]);
         $account = $this->makeAccountWithTraffic($user, 100000, trafficGb: 50, trafficUsedGb: 0);
 
-        app(WalletService::class)->charge($user, 250000);
+        app(WalletService::class)->charge(
+            app(IdentityService::class)->resolveCustomerAccount($user, StoreContext::main()),
+            250000
+        );
 
         app(AccountsHandler::class)->renew(701, $user, $account->id);
 

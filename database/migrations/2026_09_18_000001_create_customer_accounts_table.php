@@ -34,6 +34,9 @@ return new class extends Migration
 
             // nullable چون مهمان (Guest Checkout، بند ۳۵) هنوز Identity
             // ثبت‌شده ندارد؛ بعد از ثبت‌نام/شناسایی به یک User وصل می‌شود.
+            // چون دیگر هیچ Generated Columnی پایه‌اش user_id نیست (به
+            // پایین مراجعه کنید)، cascadeOnDelete دوباره مجاز و منطقی
+            // است: اگر ردیف کاربر واقعاً حذف شود، عضویت‌هایش هم حذف شوند.
             $table->foreignId('user_id')->nullable()->constrained()->cascadeOnDelete();
 
             $table->enum('store_type', ['main', 'reseller'])->default('main');
@@ -52,23 +55,36 @@ return new class extends Migration
 
             // قلب یکپارچگی این جدول: هر Identity در هر فروشگاه فقط یک
             // عضویت دارد. بدون این، دو بار /start زدن هم‌زمان می‌توانست
-            // دو CustomerAccount و در نتیجه دو کیف‌پول موازی بسازد —
-            // همان دسته باگی که پیدا کردنش بعد از وقوع تقریباً غیرممکن
-            // است. MySQL چند ردیف با NULL را نقض unique نمی‌داند، پس
-            // مهمان‌ها (user_id = null) آزادانه ساخته می‌شوند.
-            $table->unsignedBigInteger('main_user_id')
-                ->nullable()
-                ->storedAs("CASE WHEN store_type = 'main' THEN user_id ELSE NULL END");
-
-            $table->unsignedBigInteger('reseller_user_id')
-                ->nullable()
-                ->storedAs("CASE WHEN store_type = 'reseller' THEN user_id ELSE NULL END");
-
-            $table->unique('main_user_id', 'customer_accounts_main_user_unique');
+            // دو CustomerAccount و در نتیجه دو کیف‌پول موازی بسازد.
+            //
+            // به‌جای دو Stored Generated Column (نسخه‌ی قبلی)، یک ستون
+            // معمولی scope_key داریم که مقدارش را اپلیکیشن (مدل
+            // CustomerAccount + migrationهای backfill) موقع ساخت رکورد
+            // پر می‌کند:
+            //   store_type = main       → scope_key = "main"
+            //   store_type = reseller   → scope_key = "reseller:{id}"
+            //
+            // چرا generated column نه: اگر scope_key را storedAs() بر
+            // پایه‌ی reseller_id تعریف کنیم، همان محدودیت MySQL که در
+            // Migration قبلی روی user_id خطا داد این‌بار روی reseller_id
+            // می‌افتد — چون reseller_id هم یک FK با nullOnDelete (SET
+            // NULL) دارد، و SET NULL روی پایه‌ی یک generated column مجاز
+            // نیست. عمداً scope_key را یک ستون ساده نگه داشتیم تا FK بالا
+            // دست‌نخورده بماند.
+            //
+            // نکته‌ی مهم برای توسعه‌دهنده‌های بعدی: چون scope_key دیگر
+            // خودکار (DB-level) پر نمی‌شود، هر مسیری که مستقیماً با
+            // DB::table('customer_accounts')->insert(...) رکورد می‌سازد
+            // (نه از طریق مدل Eloquent) باید scope_key را صریحاً پاس
+            // بدهد — وگرنه NULL می‌ماند و آن ردیف از محافظت unique خارج
+            // می‌شود (بدون خطا، به‌صورت خاموش). این کار در Migration ۳ و
+            // ۴ (backfill) انجام شده؛ مدل CustomerAccount هم آن را در
+            // رویداد creating/saving خودکار می‌سازد.
+            $table->string('scope_key');
 
             $table->unique(
-                ['reseller_id', 'reseller_user_id'],
-                'customer_accounts_reseller_user_unique'
+                ['user_id', 'scope_key'],
+                'customer_accounts_user_scope_unique'
             );
             $table->index(['store_type', 'reseller_id']);
         });

@@ -15,7 +15,9 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
-
+use App\Models\CustomerAccount;
+use App\Services\Core\Store\IdentityService;
+use App\Services\Core\Store\StoreContext;
 /**
  * v3.0.6 — «نماینده باید بتواند سبد فروش ربات خودش را فعال و یا غیرفعال
  * کند» و «دکمه‌ای برای فعال کردن محصول برای ربات خودِ نماینده».
@@ -28,6 +30,14 @@ use Tests\TestCase;
 class ResellerCategoryToggleTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function resellerCustomerAccount(User $customer, Reseller $reseller): CustomerAccount
+    {
+        return app(IdentityService::class)->resolveCustomerAccount(
+            $customer,
+            StoreContext::fromReseller($reseller),
+        );
+    }
 
     protected function sellableProduct(Reseller $reseller, array $categoryAttributes = []): Product
     {
@@ -165,7 +175,10 @@ class ResellerCategoryToggleTest extends TestCase
         $product = $this->sellableProduct($reseller);
 
         $wallet = app(WalletService::class);
-        $wallet->charge($customer, 200000);
+
+        $customerAccount = $this->resellerCustomerAccount($customer, $reseller);
+
+        $wallet->charge($customerAccount, 200000);
         $wallet->charge($reseller, 200000);
 
         $account = app(AccountService::class)->purchase(
@@ -176,7 +189,7 @@ class ResellerCategoryToggleTest extends TestCase
         );
 
         // مشتری قیمت فروشِ نماینده را می‌پردازد: 200,000 - 120,000
-        $this->assertEquals(80000, $wallet->balance($customer));
+        $this->assertEquals(80000, $wallet->balance($customerAccount));
         // نماینده قیمت نمایندگان را می‌پردازد: 200,000 - 90,000
         $this->assertEquals(110000, $wallet->balance($reseller));
         // سود نماینده = 120,000 - 90,000 = 30,000
@@ -195,7 +208,10 @@ class ResellerCategoryToggleTest extends TestCase
         app(ResellerPricingService::class)->setCategoryEnabled($reseller, $product->category, false);
 
         $wallet = app(WalletService::class);
-        $wallet->charge($customer, 200000);
+
+        $customerAccount = $this->resellerCustomerAccount($customer, $reseller);
+
+        $wallet->charge($customerAccount, 200000);
         $wallet->charge($reseller, 200000);
 
         // محصول هنوز sellingPriceForReseller دارد، پس اگر AccountService

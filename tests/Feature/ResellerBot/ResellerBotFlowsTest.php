@@ -14,6 +14,8 @@ use App\Models\ResellerProductPrice;
 use App\Models\ServerPanel;
 use App\Models\User;
 use App\Services\Core\WalletService;
+use App\Services\Core\Store\IdentityService;
+use App\Services\Core\Store\StoreContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Mockery;
@@ -121,20 +123,28 @@ class ResellerBotFlowsTest extends TestCase
         ]);
 
         $reseller = Reseller::factory()->create();
-        $customer = User::factory()->create(['reseller_id' => $reseller->id, 'telegram_id' => 900001]);
+        $customerUser = User::factory()->create([
+            'telegram_id' => 900001,
+        ]);
+
+        $customerAccount = app(\App\Services\Core\Store\IdentityService::class)
+            ->resolveCustomerAccount(
+                $customerUser,
+                \App\Services\Core\Store\StoreContext::fromReseller($reseller),
+            );
         $product = $this->sellableProduct($reseller, basePrice: 10, sellingPrice: 14);
 
         $wallet = app(WalletService::class);
-        $wallet->charge($customer, 20);
+        $wallet->charge($customerAccount, 20);
         $wallet->charge($reseller, 30);
 
         $chatId = 900001;
 
-        $this->router()->handle($reseller, $this->textUpdate($chatId, '🛒 خرید اکانت'), $customer, $chatId);
-        $this->router()->handle($reseller, $this->callbackUpdate($chatId, "rbuy:category:{$product->category_id}"), $customer, $chatId);
-        $this->router()->handle($reseller, $this->callbackUpdate($chatId, "rbuy:product:{$product->id}"), $customer, $chatId);
+        $this->router()->handle($reseller, $this->textUpdate($chatId, '🛒 خرید اکانت'), $customerUser, $chatId);
+        $this->router()->handle($reseller, $this->callbackUpdate($chatId, "rbuy:category:{$product->category_id}"), $customerUser, $chatId);
+        $this->router()->handle($reseller, $this->callbackUpdate($chatId, "rbuy:product:{$product->id}"), $customerUser, $chatId);
 
-        $this->assertEquals(6, $wallet->balance($customer));
+        $this->assertEquals(6, $wallet->balance($customerAccount));
         $this->assertEquals(20, $wallet->balance($reseller));
         $this->assertDatabaseHas('orders', [
             'reseller_id' => $reseller->id,
@@ -171,15 +181,24 @@ class ResellerBotFlowsTest extends TestCase
             'role' => 'owner',
         ]);
 
-        $customer = User::factory()->create(['reseller_id' => $reseller->id, 'telegram_id' => 800002]);
+        $customerUser = User::factory()->create([
+            'telegram_id' => 800002,
+        ]);
+
+        $customerAccount = app(IdentityService::class)
+            ->resolveCustomerAccount(
+                $customerUser,
+                StoreContext::fromReseller($reseller),
+            );
+
         PaymentMethod::factory()->create(['status' => 'active']);
         $method = PaymentMethod::query()->first();
 
         $chatId = 800002;
 
-        $this->router()->handle($reseller, $this->textUpdate($chatId, '💰 شارژ حساب'), $customer, $chatId);
-        $this->router()->handle($reseller, $this->callbackUpdate($chatId, 'rwallet:amount:200000'), $customer, $chatId);
-        $this->router()->handle($reseller, $this->callbackUpdate($chatId, "rwallet:method:{$method->id}"), $customer, $chatId);
+        $this->router()->handle($reseller, $this->textUpdate($chatId, '💰 شارژ حساب'), $customerUser, $chatId);
+        $this->router()->handle($reseller, $this->callbackUpdate($chatId, 'rwallet:amount:200000'), $customerUser, $chatId);
+        $this->router()->handle($reseller, $this->callbackUpdate($chatId, "rwallet:method:{$method->id}"), $customerUser, $chatId);
 
         $photoUpdate = new Update([
             'update_id' => random_int(1, PHP_INT_MAX),
@@ -189,8 +208,8 @@ class ResellerBotFlowsTest extends TestCase
                 'photo' => [['file_id' => 'FILE123', 'width' => 100, 'height' => 100]],
             ],
         ]);
-        $this->router()->handle($reseller, $photoUpdate, $customer, $chatId);
-        $this->router()->handle($reseller, $this->textUpdate($chatId, 'علی رضایی'), $customer, $chatId);
+        $this->router()->handle($reseller, $photoUpdate, $customerUser, $chatId);
+        $this->router()->handle($reseller, $this->textUpdate($chatId, 'علی رضایی'), $customerUser, $chatId);
 
         $payment = Payment::query()->latest('id')->first();
         $this->assertNotNull($payment);
@@ -202,7 +221,7 @@ class ResellerBotFlowsTest extends TestCase
         $this->router()->handle($reseller, $this->callbackUpdate(800001, "rpay:approve:{$payment->id}"), $ownerUser, 800001);
 
         $wallet = app(WalletService::class);
-        $this->assertEquals(200000, $wallet->balance($customer));
+        $this->assertEquals(200000, $wallet->balance($customerAccount));
         $this->assertEquals(0, $wallet->balance($reseller));
     }
 }
