@@ -59,17 +59,21 @@ class RefundService
         return DB::transaction(function () use ($order, $customer, $reason, $operation) {
             $refunded = [];
 
-            if ((float) $order->sold_price > 0) {
+            // طرف مشتری: دقیقاً همان چیزی که پرداخته — main_price در
+            // فروشگاه اصلی، Customers_price در فروشگاه نماینده.
+            $customerPaid = (float) ($order->customers_price ?? $order->main_price ?? 0);
+
+            if ($customerPaid > 0) {
                 $this->wallet->credit(
                     $customer,
-                    (float) $order->sold_price,
+                    $customerPaid,
                     'refund',
                     $order,
                     "{$reason} — سفارش #{$order->id}",
                     $operation,
                 );
 
-                $refunded['customer'] = (float) $order->sold_price;
+                $refunded['customer'] = $customerPaid;
             }
 
             // طرف نماینده: از روی خودِ سفارش خوانده می‌شود، نه از روی
@@ -77,19 +81,19 @@ class RefundService
             // باشد و برگرداندن عدد امروز یعنی برگرداندن مبلغ اشتباه.
             // این دقیقاً همان دلیلی است که اسنپ‌شات قیمت (بند ۱۲) وجود دارد.
             $store = StoreContext::fromReseller($customer->reseller);
-            $corePrice = (float) ($order->core_price ?? $order->base_price);
+            $resellerPaid = (float) ($order->reseller_price ?? 0);
 
-            if ($store->isReseller() && $corePrice > 0) {
+            if ($store->isReseller() && $resellerPaid > 0) {
                 $this->wallet->credit(
                     $store->reseller,
-                    $corePrice,
+                    $resellerPaid,
                     'refund',
                     $order,
-                    "بازگشت هزینه‌ی پایه — سفارش #{$order->id}",
+                    "بازگشت reseller_price — سفارش #{$order->id}",
                     $operation,
                 );
 
-                $refunded['reseller'] = $corePrice;
+                $refunded['reseller'] = $resellerPaid;
             }
 
             $order->update([

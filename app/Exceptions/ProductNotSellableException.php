@@ -2,7 +2,7 @@
 
 namespace App\Exceptions;
 
-use RuntimeException;
+use App\Services\Core\Purchase\PurchaseNotAllowedException;
 
 /**
  * وقتی پرتاب می‌شود که یک نماینده تلاش کند محصولی را بفروشد که حق فروشش
@@ -12,5 +12,11 @@ use RuntimeException;
  * وجود یک استثنای اختصاصی (به‌جای RuntimeException خام) عمدی است: مسیر
  * ربات باید بتواند این حالتِ «قابل انتظار» را از یک خطای واقعی سیستم
  * تشخیص دهد و به کاربر پیام مناسب بدهد، نه «خطای ناشناخته».
+ *
+ * زیرکلاس PurchaseNotAllowedException است چون از نظر معنایی یکی از
+ * دلایل ردِ خرید در PurchaseGuard (بند ۱۵) است. این ارث‌بری اجازه
+ * می‌دهد کدی که فقط «خرید ممکن نیست» را مدیریت می‌کند خودبه‌خود این را
+ * هم بگیرد، بدون اینکه مسیرهایی که می‌خواهند دقیقاً «قابل‌فروش نبودن»
+ * را تشخیص دهند چیزی از دست بدهند.
  */
-class ProductNotSellableException extends RuntimeException {}
+class ProductNotSellableException extends PurchaseNotAllowedException {}

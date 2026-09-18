@@ -33,15 +33,43 @@ class Product extends Model
         return $this->belongsTo(Protocol::class);
     }
 
+    /* ------------------------------------------------------------------
+     | سه قیمت سیستم (سند معماری Reseller، بندهای ۳ تا ۷).
+     |
+     |     main_price      → فروش مستقیم Main به مشتری Main
+     |     reseller_price  → قیمت تأمین محصول از Main برای نماینده
+     |     Customers_price → قیمت فروش نماینده به مشتریان خودش
+     |
+     | هیچ نام دیگری برای قیمت در کد استفاده نمی‌شود. مقادیر عددی ممکن
+     | است برابر شوند (بند ۲۰، Rule 5) ولی معنایشان هرگز یکی نیست، پس
+     | هرکدام متد مستقل خودشان را دارند.
+     |
+     | نگاشت به ستون‌های دیتابیس (عمداً تغییر نکرده‌اند تا نصب‌های موجود
+     | نشکنند):
+     |     main_price      = products.price
+     |     reseller_price  = products.reseller_price ?? products.price
+     |     Customers_price = reseller_product_prices.custom_price
+     ------------------------------------------------------------------ */
+
     /**
-     * قیمتی که پلتفرم از اعتبار نماینده کسر می‌کند (Double-Debit
-     * base_price) — نه قیمت فروش نماینده (که sellingPriceForReseller
-     * برمی‌گرداند و کاملاً در اختیار خودِ نماینده است). اگر ادمین برای
-     * این محصول reseller_price ست نکرده باشد، به قیمت خرده‌فروشی/مشتری
-     * سقوط می‌کند — یعنی محصولات قدیمی بدون اقدام صریح رفتارشان عوض
-     * نمی‌شود.
+     * `main_price` — قیمتی که مشتریِ مستقیمِ فروشگاه اصلی می‌پردازد
+     * (بند ۴). فقط و فقط در فروش مستقیم Main استفاده می‌شود.
      */
-    public function resellerBasePrice(): float
+    public function mainPrice(): float
+    {
+        return (float) $this->price;
+    }
+
+    /**
+     * `reseller_price` — قیمتی که Main بابت تأمین این محصول از کیف‌پول
+     * نماینده در Main کسر می‌کند (بند ۵). این قیمتِ فروشِ نماینده به
+     * مشتری نیست (بند ۲۰، Rule 8).
+     *
+     * اگر ادمین برای محصول reseller_price تعیین نکرده باشد، به
+     * main_price سقوط می‌کند تا محصولات قدیمی بدون اقدام صریح رفتارشان
+     * عوض نشود.
+     */
+    public function resellerPrice(): float
     {
         return (float) ($this->reseller_price ?? $this->price);
     }
@@ -51,30 +79,18 @@ class Product extends Model
         return $this->hasMany(ResellerProductPrice::class);
     }
 
-    /** قیمت نهایی برای یک نماینده‌ی مشخص؛ اگر تعریف نشده بود، قیمت پایه برگردانده می‌شود */
-    public function priceForReseller(?Reseller $reseller): float
-    {
-        if (! $reseller) {
-            return (float) $this->price;
-        }
-
-        $custom = $this->resellerPrices()->where('reseller_id', $reseller->id)->first();
-
-        return $custom ? (float) $custom->custom_price : (float) $this->price;
-    }
-
     /**
-     * قیمت فروشِ واقعاً قابل‌استفاده برای این نماینده، یا null اگر این
-     * محصول برای این نماینده اصلاً قابل‌فروش نیست. برخلاف
-     * priceForReseller() (که برای سازگاری با کد قدیمی نگه داشته شده و
-     * در نبود تنظیمات به قیمت پایه سقوط می‌کند)، این متد طبق بند ۵ سند
-     * نیازمندی Reseller Platform یک مدل opt-in واقعی است: محصول فقط
-     * وقتی قابل‌فروش است که هم در سیستم اصلی فعال باشد و هم خودِ نماینده
-     * صراحتاً آن را فعال و قیمت‌گذاری کرده باشد. این دقیقاً همان قانونی
-     * است که در سند تصریح شده: «اگر Admin اصلی Product را غیرفعال کند،
-     * فعال‌سازی محلی نماینده نباید آن را قابل‌فروش کند.»
+     * `Customers_price` — قیمتی که مشتریِ یک نماینده در Context همان
+     * نماینده می‌پردازد (بند ۶). این عدد کاملاً در اختیار خودِ نماینده
+     * است و برای هر نماینده می‌تواند متفاوت باشد.
+     *
+     * null یعنی «این محصول برای این نماینده قابل‌فروش نیست» — مدل
+     * opt-in واقعی طبق بند ۵ سند نیازمندی: محصول فقط وقتی قابل‌فروش است
+     * که هم در سیستم اصلی فعال باشد و هم خودِ نماینده صراحتاً آن را فعال
+     * و قیمت‌گذاری کرده باشد. یعنی غیرفعال‌کردن محصول توسط ادمین اصلی
+     * همیشه بالادستِ فعال‌سازی محلی نماینده است.
      */
-    public function sellingPriceForReseller(Reseller $reseller): ?float
+    public function customersPrice(Reseller $reseller): ?float
     {
         if ($this->status !== 'active') {
             return null;

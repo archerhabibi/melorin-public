@@ -5,8 +5,11 @@ namespace App\Services\Core;
 use App\Exceptions\InsufficientBalanceException;
 use App\Models\CustomerAccount;
 use App\Models\Operation;
+use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
+use App\Services\Core\Store\IdentityService;
+use App\Services\Core\Store\StoreContext;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
@@ -24,6 +27,8 @@ class WalletService
     /** کیف پول یک مالک (User یا Reseller) را برمی‌گرداند؛ اگر وجود نداشت می‌سازد */
     public function getOrCreateWallet(Model $owner): Wallet
     {
+        $owner = $this->normalizeOwner($owner);
+
         return Wallet::firstOrCreate([
             'owner_type' => $owner::class,
             'owner_id' => $owner->getKey(),
@@ -110,6 +115,7 @@ class WalletService
         ?Operation $operation = null,
         ?float $minimumBalance = null
     ): WalletTransaction {
+        $owner = $this->normalizeOwner($owner);
         $floor = $minimumBalance ?? $this->minimumBalanceFor($owner);
 
         return DB::transaction(function () use ($owner, $type, $signedAmount, $reference, $description, $lockedWallet, $operation, $floor) {
@@ -222,6 +228,36 @@ class WalletService
     public function walletFor(CustomerAccount $customerAccount): Wallet
     {
         return $this->getOrCreateWallet($customerAccount);
+    }
+
+    /**
+     * سازگاری با مسیرهای قدیمی که هنوز User را به WalletService می‌دهند
+     * (هندلرهای ربات، ویجت‌های پنل، تست‌های قدیمی‌تر).
+     *
+     * از زمان انتقال مالکیت کیف‌پول مشتری به CustomerAccount (بند ۱۷
+     * سند: Wallet باید Context را مشخص کند)، walletِ User نباید یک
+     * موجودیِ موازی باشد. یک User می‌تواند هم‌زمان مشتری Main و مشتری
+     * چند نماینده باشد (بند ۱۶ و Rule 9) و هر کدام کیف‌پول جدا دارند؛
+     * پس «کیف‌پول یک User» بدون Context اصلاً معنا ندارد.
+     *
+     * اینجا User به CustomerAccountِ فروشگاه خودش resolve می‌شود. بدون
+     * این نگاشت، `balance($user)` همیشه صفر برمی‌گرداند در حالی که پول
+     * واقعاً در کیف‌پول CustomerAccount نشسته — دقیقاً همان باگی که در
+     * ربات نمایندگی («موجودی کیف پول شما: ۰») دیده می‌شد.
+     *
+     * کیف‌پول Reseller (اعتبار نماینده نزد Main) عمداً از این نگاشت
+     * مستثناست: آن یک Context مستقل است، نه عضویت فروشگاهی.
+     */
+    protected function normalizeOwner(Model $owner): Model
+    {
+        if (! $owner instanceof User) {
+            return $owner;
+        }
+
+        return app(IdentityService::class)->resolveCustomerAccount(
+            $owner,
+            StoreContext::fromReseller($owner->reseller),
+        );
     }
 
     protected function assertCreditType(string $type): void

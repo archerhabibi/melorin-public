@@ -4,7 +4,6 @@ namespace App\Services\Core;
 
 use App\DataTransferObjects\PanelAccountRequest;
 use App\Exceptions\InsufficientBalanceException;
-use App\Exceptions\ResellerScopeViolationException;
 use App\Models\Account;
 use App\Models\Order;
 use App\Models\Product;
@@ -116,59 +115,13 @@ class AccountService
         ?int $testTrafficMb,
         ?int $testDurationHours,
     ): Account {
-        $reseller = null;
-        $isTest = true;
+        return DB::transaction(function () use ($user, $product, $manualPanel, $salesChannel, $customUsername, $testTrafficMb, $testDurationHours) {
 
-        return DB::transaction(function () use ($user, $product, $manualPanel, $salesChannel, $reseller, $customUsername, $isTest, $testTrafficMb, $testDurationHours) {
-
-            // طبق سند معماری Reseller Platform نسخه‌ی ۱.۱ (بخش ۷،
-            // «Double-Debit Purchase») — نه یک پرداخت ساده، بلکه دو
-            // کسر مستقل هم‌زمان: مشتری قیمتِ فروشِ نماینده را از کیف‌پول
-            // خودش می‌پردازد، و نماینده هم‌زمان هزینه‌ی پایه/عمده‌فروشی
-            // را از اعتبار خودش نزد پلتفرم می‌پردازد. سودِ نماینده هرگز
-            // به‌صورت جداگانه پرداخت نمی‌شود — همان تفاوتِ این دو عدد
-            // است که نماینده در دنیای واقعی (نقدی/کارت‌به‌کارت مستقیم
-            // با مشتری‌اش) از قبل دریافت کرده. طبق بند ۵ سند نیازمندی:
-            // محصول باید صراحتاً توسط همین نماینده فعال و قیمت‌گذاری
-            // شده باشد (مدل opt-in)، وگرنه غیرقابل‌فروش است.
-            $sellingPrice = null;
-
-            if ($reseller && ! $isTest) {
-                // «Customer belongs to reseller scope» — طبق بخش ۷ سند
-                // Melorin-Reseller-Platform-Spec. تغییر id در callback/
-                // request نباید بتواند این چک را دور بزند.
-                if ($user->reseller_id !== $reseller->id) {
-                    throw new ResellerScopeViolationException('این کاربر مشتری این نماینده نیست.');
-                }
-
-                $sellingPrice = $product->sellingPriceForReseller($reseller);
-
-                // دروازه‌ی مرکزی sellability (P0 گزارش امنیتی): تا پیش
-                // از این فقط sellingPriceForReseller چک می‌شد، که از
-                // وضعیت سبد فروش و فعال‌بودن نماینده بی‌خبر است — یعنی
-                // یک callback دست‌ساز می‌توانست از سبدِ بسته‌شده خرید
-                // کند. حالا همان قوانینی که UI اعمال می‌کند، اینجا هم
-                // (به‌عنوان مرز امنیتی واقعی) اجرا می‌شود.
-                $this->resellerPricing->assertSellable($reseller, $product);
-
-                if ($sellingPrice === null) {
-                    throw new \RuntimeException('این محصول برای این نماینده قابل‌فروش نیست.');
-                }
-
-                // هر دو موجودی پیش از هر کسری بررسی می‌شوند (طبق سند:
-                // «customer_balance >= sold_price، reseller_balance >=
-                // base_price») تا در حالت معمولِ «موجودی ناکافی» اصلاً
-                // نیازی به کسر-و-بازگشتِ یکی از دو طرف نباشد.
-                if ($this->walletService->balance($user) < $sellingPrice) {
-                    throw new InsufficientBalanceException('موجودی کیف پول مشتری کافی نیست.');
-                }
-
-                if ($this->walletService->balance($reseller) < $product->resellerBasePrice()) {
-                    throw new InsufficientBalanceException('موجودی اعتبار نماینده کافی نیست.');
-                }
-            }
-
-            $soldPrice = $isTest ? 0.0 : ($sellingPrice ?? $product->priceForReseller($reseller));
+            // این مسیر فقط برای اکانت تست است: هیچ Context نمایندگی،
+            // هیچ قیمتی و هیچ کسری در کار نیست. تمام منطق مالی — هر سه
+            // قیمت سند و Double-Debit — منحصراً در PurchaseService
+            // زندگی می‌کند (بند ۱۲ و ۱۳).
+            $isTest = true;
 
             // ۱. انتخاب سرور — دستی یا خودکار بسته به تنظیمات دسته‌بندی (بند ۶)
             $panel = $manualPanel ?? $this->serverSelection->select($product->category);
@@ -181,40 +134,15 @@ class AccountService
             $order = Order::create([
                 'user_id' => $user->id,
                 'product_id' => $product->id,
-                'reseller_id' => $reseller?->id,
+                'reseller_id' => null,
                 'sales_channel' => $salesChannel,
-                'base_price' => $reseller ? $product->resellerBasePrice() : $product->price,
-                'sold_price' => $soldPrice,
+                'base_price' => 0,
+                'core_price' => 0,
+                'sold_price' => 0,
                 'status' => 'pending',
             ]);
 
-            // ۳. کسر مبلغ.
-            // فروش مستقیم ربات اصلی: فقط کیف‌پول کاربر، به‌اندازه‌ی
-            // قیمت فروش، کسر می‌شود (بدون تغییر نسبت به قبل).
-            // فروش نمایندگی: طبق بخش ۷ سند معماری Reseller Platform
-            // (Double-Debit)، دو کسرِ مستقل: کیف‌پول مشتری به‌اندازه‌ی
-            // sold_price، و اعتبار نماینده به‌اندازه‌ی base_price —
-            // هر دو در همین Transaction دیتابیسی، تا هرگز حالتی مثل
-            // «مشتری کسر شد ولی نماینده نه» یا برعکس باقی نماند.
-            // برای اکانت تست، مبلغ همیشه صفر است پس اصلاً کیف‌پولی کسر نمی‌شود.
-            if (! $isTest) {
-                $this->walletService->purchase(
-                    $user,
-                    (float) $soldPrice,
-                    $order,
-                    "خرید محصول «{$product->name}» — سفارش #{$order->id}"
-                );
-
-                if ($reseller) {
-                    $this->walletService->purchase(
-                        $reseller,
-                        $product->resellerBasePrice(),
-                        $order,
-                        "هزینه‌ی پایه‌ی فروش نمایندگی — سفارش #{$order->id}"
-                    );
-                }
-            }
-
+            // ۳. هیچ کسری: اکانت تست همیشه رایگان است.
             $order->update(['status' => 'paid']);
 
             // برای اکانت تست، حجم/مدت را (اگر ادمین در تنظیمات اکانت تست
@@ -262,18 +190,7 @@ class AccountService
             $result = $driver->createAccount($panel, $panelRequest);
 
             if (! $result->success) {
-                // بازگشت وجه در صورت شکست ساخت اکانت، تا کسی متضرر نشود —
-                // برای فروش نمایندگی هر دو طرف (مشتری و نماینده) که کسر
-                // شده بودند، هر دو برمی‌گردند (طبق سند: «No orphan
-                // debit»). برای اکانت تست چیزی کسر نشده بود، پس چیزی هم
-                // برنمی‌گردد.
-                if (! $isTest) {
-                    $this->walletService->refund($user, (float) $soldPrice, $order, 'بازگشت به دلیل خطای ساخت اکانت');
-
-                    if ($reseller) {
-                        $this->walletService->refund($reseller, $product->resellerBasePrice(), $order, 'بازگشت هزینه‌ی پایه به دلیل خطای ساخت اکانت');
-                    }
-                }
+                // اکانت تست رایگان است، پس چیزی برای بازگشت وجود ندارد.
                 $order->update(['status' => 'failed']);
 
                 throw new \RuntimeException("ساخت اکانت روی پنل ناموفق بود: {$result->errorMessage}");
@@ -344,19 +261,32 @@ class AccountService
         });
     }
 
-    /** تمدید اکانت موجود (بند ۱۰) */
-    public function renew(Account $account, int $additionalDays, ?int $additionalTrafficGb = null): Account
+    /**
+     * تمدید اکانت موجود (بند ۱۰ سند نیازمندی، بند ۲۸ بلوپرینت).
+     *
+     * مسیر مالیِ تمدید در RenewalService است؛ این متد فقط بخش پنل را
+     * انجام می‌دهد و برای ابزارهای مدیریتی/اسکریپت‌ها نگه داشته شده.
+     *
+     * قانون تمدید: **هم زمان و هم ترافیک** ریست/تمدید می‌شوند.
+     * تمدیدی که فقط تاریخ را جلو ببرد از دید کاربر اصلاً تمدید نیست —
+     * اکانتی که حجمش تمام شده با تاریخ جدید هم کار نمی‌کند.
+     */
+    public function renew(Account $account, int $additionalDays, ?int $newTrafficGb = null): Account
     {
         $panel = $account->serverPanel;
         $driver = PanelDriverFactory::make($panel->panel_type);
 
+        // تمدید زودهنگام روزهای باقی‌مانده را نمی‌سوزاند.
         $newExpiry = $account->expires_at->isPast()
             ? now()->addDays($additionalDays)
-            : $account->expires_at->addDays($additionalDays);
+            : $account->expires_at->copy()->addDays($additionalDays);
 
-        $newTraffic = $additionalTrafficGb
-            ? (float) $account->traffic_gb + $additionalTrafficGb
-            : $account->traffic_gb;
+        // سقف ترافیک ریست می‌شود (نه جمع‌زده): مقدار داده‌شده، یا اگر
+        // داده نشده همان سقف فعلیِ اکانت — که پس از resetUsage دوباره
+        // کامل در اختیار کاربر است.
+        $newTraffic = $newTrafficGb !== null
+            ? (float) $newTrafficGb
+            : (float) $account->traffic_gb;
 
         // از همان شناسه‌ای که موقع ساخت اکانت روی پنل ذخیره شده استفاده می‌کنیم
         // (نه telegram_id یا id داخلی ما که هیچ‌ربطی به شناسه‌ی پنل ندارند).
@@ -374,9 +304,21 @@ class AccountService
             throw new \RuntimeException("تمدید اکانت ناموفق بود: {$result->errorMessage}");
         }
 
+        // ریست مصرف روی پنل — بدون این، سقف جدید بی‌اثر است.
+        try {
+            $driver->resetUsage($panel, $account->panel_username);
+        } catch (\Throwable $e) {
+            Log::warning('renewal_traffic_reset_failed', [
+                'account_id' => $account->id,
+                'panel_id' => $panel->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
         $account->update([
             'expires_at' => $newExpiry,
             'traffic_gb' => $newTraffic,
+            'traffic_used_gb' => 0,
             'status' => 'active',
             // اگر قبلاً (اکانت‌های قدیمی‌تر) لینک سابسکریپشن ذخیره نشده
             // بود، همین‌جا از روی نتیجه‌ی تمدید دوباره پر می‌شود.

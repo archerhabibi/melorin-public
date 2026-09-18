@@ -71,7 +71,7 @@ class BuyAccountHandler
             return;
         }
 
-        $rows = $sellable->map(fn (Product $p) => [$p, $p->sellingPriceForReseller($reseller)])->values();
+        $rows = $sellable->map(fn (Product $p) => [$p, $p->customersPrice($reseller)])->values();
 
         $this->state->set($reseller, $chatId, ConversationState::BUY_CHOOSE_PRODUCT, ['category_id' => $categoryId], $user);
 
@@ -89,19 +89,21 @@ class BuyAccountHandler
             StoreContext::fromReseller($reseller),
         );
         $product = Product::query()->where('status', 'active')->findOrFail($productId);
-        $sellingPrice = $product->sellingPriceForReseller($reseller);
+        // Customers_price — قیمتی که همین نماینده برای همین محصول
+        // تعیین کرده (بند ۶). null یعنی اصلاً قابل‌فروش نیست.
+        $customersPrice = $product->customersPrice($reseller);
 
-        if ($sellingPrice === null) {
+        if ($customersPrice === null) {
             $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => 'این محصول دیگر در دسترس نیست.']);
 
             return;
         }
 
-        if ($this->walletService->balance($customer) < $sellingPrice) {
+        if ($this->walletService->balance($customer) < $customersPrice) {
         $this->telegram->sendMessage([
                 'chat_id' => $chatId,
                 'text' => 'موجودی کیف پول شما کافی نیست.'
-                    ."\nقیمت این تعرفه: ".number_format($sellingPrice).' تومان'
+                    ."\nقیمت این تعرفه: ".number_format($customersPrice).' تومان'
                     ."\nموجودی فعلی: ".number_format($this->walletService->balance($customer)).' تومان'
                     ."\n\nابتدا از بخش «💰 شارژ حساب» حساب خود را شارژ کنید.",
             ]);
@@ -120,7 +122,9 @@ class BuyAccountHandler
 
             return;
         } catch (\RuntimeException $e) {
-            $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => "خرید ناموفق بود: {$e->getMessage()}\nمبلغ به کیف پول شما بازگشت داده شد."]);
+            // بدون وعده‌ی بازگشت خودکار: اگر کسر انجام شده باشد، سفارش
+            // در وضعیت provision_failed ثبت شده و رسیدگی می‌شود.
+            $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => "خرید ناموفق بود: {$e->getMessage()}\nدر صورت کسر وجه، سفارش ثبت شده و پشتیبانی پیگیری می‌کند."]);
 
             return;
         }

@@ -72,11 +72,16 @@ class RenewalService
 
         $store = StoreContext::fromReseller($customer->reseller);
 
-        $sellingPrice = $store->isReseller()
-            ? $product->sellingPriceForReseller($store->reseller)
+        // تمدید از نظر مالی یک خرید کامل است، پس همان ترتیب خرید:
+        // اول Context و sellability، بعد قیمت (بند ۱۵).
+        $this->guard->assertContextAllowed($customer, $store);
+        $this->guard->assertProductAvailable($product, $store);
+
+        $customersPrice = $store->isReseller()
+            ? $product->customersPrice($store->reseller)
             : null;
 
-        $price = PriceSnapshot::for($store, $product, $sellingPrice);
+        $price = PriceSnapshot::for($store, $product, $customersPrice);
 
         // همان دروازه‌های خرید — شامل سقف بدهی نماینده. تمدید از نظر
         // مالی یک خرید کامل است و هیچ دلیلی ندارد قوانین سست‌تری داشته
@@ -97,22 +102,24 @@ class RenewalService
             ]));
 
             if (! $price->isFree()) {
+                // Debit اول: main_price یا Customers_price، بسته به Context
                 $this->wallet->debit(
                     $customer,
-                    $price->soldPrice,
+                    $price->customerDebit(),
                     'purchase',
                     $order,
                     "تمدید اکانت {$account->panel_username} — سفارش #{$order->id}",
                     $operation,
                 );
 
+                // Debit دوم: همیشه reseller_price (Rule 4 و Rule 6)
                 if ($store->isReseller()) {
                     $this->wallet->debit(
                         $store->reseller,
-                        $price->corePrice,
+                        $price->resellerDebit(),
                         'purchase',
                         $order,
-                        "هزینه‌ی پایه‌ی تمدید نمایندگی — سفارش #{$order->id}",
+                        "هزینه‌ی تأمین تمدید از Main (reseller_price) — سفارش #{$order->id}",
                         $operation,
                     );
                 }
@@ -161,10 +168,13 @@ class RenewalService
                 throw new RenewalFailedException("تمدید روی پنل ناموفق بود: {$result->errorMessage}");
             }
 
-            // بند ۲۸: حجم هم باید صفر شود، نه فقط تاریخ. اگر پنل این
-            // قابلیت را ندارد، تمدید را شکست‌خورده اعلام نمی‌کنیم —
-            // تاریخ تمدید شده و بخش اصلی کار انجام است — ولی صریحاً لاگ
-            // می‌شود تا در گزارش‌ها قابل پیگیری باشد.
+            // بند ۲۸: تمدید یعنی **هم زمان و هم ترافیک**. فراخوانی
+            // updateAccount بالا سقف ترافیک و تاریخ انقضا را ست می‌کند،
+            // ولی مصرفِ انباشته‌ی کاربر را صفر نمی‌کند — بدون
+            // resetUsage، اکانتی که حجمش تمام شده با تاریخ جدید هم کار
+            // نمی‌کند. اگر پنل این قابلیت را ندارد، تمدید را
+            // شکست‌خورده اعلام نمی‌کنیم (تاریخ و سقف حجم تمدید شده‌اند)
+            // ولی صریحاً لاگ می‌شود تا قابل پیگیری باشد.
             try {
                 $driver->resetUsage($panel, $account->panel_username);
             } catch (\Throwable $e) {
@@ -195,6 +205,8 @@ class RenewalService
                 : new RenewalFailedException("خطا در تمدید روی پنل: {$e->getMessage()}", previous: $e);
         }
 
+        // ریست کامل در رکورد محلی: سقف ترافیک به حجم محصول برمی‌گردد،
+        // مصرف صفر می‌شود و تاریخ انقضا تمدید می‌شود.
         $account->update([
             'expires_at' => $newExpiry,
             'traffic_gb' => $product->traffic_gb,

@@ -49,7 +49,12 @@ class CustomerResource extends Resource
                     ->content(fn (User $record) => $record->telegram_id),
                 Placeholder::make('balance')
                     ->label('موجودی کیف پول')
-                    ->content(fn (User $record) => number_format($record->wallet?->balance ?? 0).' تومان'),
+                    // کیف‌پول مشتری به CustomerAccountِ همین نماینده تعلق
+                    // دارد، نه به خودِ User (بند ۱۷). خواندن مستقیم
+                    // $record->wallet همیشه صفر نشان می‌داد.
+                    ->content(fn (User $record) => number_format(
+                        app(\App\Services\Core\WalletService::class)->balance($record)
+                    ).' تومان'),
             ]),
         ]);
     }

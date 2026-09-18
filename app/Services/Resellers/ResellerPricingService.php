@@ -27,9 +27,9 @@ class ResellerPricingService
      *
      * @throws InvalidArgumentException اگر قیمت یا سودِ حاصل خارج از محدوده‌ی مجاز مرکزی باشد
      */
-    public function setSellingPrice(Reseller $reseller, Product $product, float $sellingPrice): ResellerProductPrice
+    public function setSellingPrice(Reseller $reseller, Product $product, float $customersPrice): ResellerProductPrice
     {
-        $this->assertPriceAllowed($reseller, $product, $sellingPrice);
+        $this->assertPriceAllowed($reseller, $product, $customersPrice);
 
         $previous = ResellerProductPrice::query()
             ->where('reseller_id', $reseller->id)
@@ -38,14 +38,14 @@ class ResellerPricingService
 
         $setting = ResellerProductPrice::query()->updateOrCreate(
             ['reseller_id' => $reseller->id, 'product_id' => $product->id],
-            ['custom_price' => $sellingPrice, 'is_enabled' => true],
+            ['customers_price' => $customersPrice, 'is_enabled' => true],
         );
 
         app(AuditService::class)->record(
             'product.price_changed',
             $product,
-            before: ['custom_price' => $previous?->custom_price, 'is_enabled' => $previous?->is_enabled],
-            after: ['custom_price' => $sellingPrice, 'is_enabled' => true, 'reseller_id' => $reseller->id],
+            before: ['customers_price' => $previous?->customers_price, 'is_enabled' => $previous?->is_enabled],
+            after: ['customers_price' => $customersPrice, 'is_enabled' => true, 'reseller_id' => $reseller->id],
             actor: $reseller,
         );
 
@@ -81,7 +81,7 @@ class ResellerPricingService
      * sellable فقط در لایه‌ی UI/Bot اعمال می‌شد — یعنی
      * sellableProducts() محصول را نشان نمی‌داد، ولی اگر کسی یک callback
      * دست‌ساز مثل «rbuy:product:123» می‌فرستاد، AccountService فقط
-     * sellingPriceForReseller() را چک می‌کرد که از وضعیت سبد فروش و
+     * Customers_price را چک می‌کرد که از وضعیت سبد فروش و
      * فعال‌بودن نماینده بی‌خبر است. نتیجه: سبدِ بسته‌شده (چه توسط Core و
      * چه توسط خودِ نماینده) و حتی نماینده‌ی غیرفعال، همچنان قابل خرید
      * بود.
@@ -115,7 +115,7 @@ class ResellerPricingService
             throw new ProductNotSellableException('این سبد فروش در فروشگاه شما غیرفعال است.');
         }
 
-        if ($product->sellingPriceForReseller($reseller) === null) {
+        if ($product->customersPrice($reseller) === null) {
             throw new ProductNotSellableException('این محصول برای این نماینده قیمت‌گذاری/فعال نشده است.');
         }
     }
@@ -214,22 +214,21 @@ class ResellerPricingService
      * 'min_profit'=>?, 'max_profit'=>?] — هر کلید اختیاری است؛ کلید
      * غایب یعنی محدودیتی روی آن بعد وجود ندارد.
      */
-    protected function assertPriceAllowed(Reseller $reseller, Product $product, float $sellingPrice): void
+    protected function assertPriceAllowed(Reseller $reseller, Product $product, float $customersPrice): void
     {
         $rule = $reseller->min_sale_price_rule ?? [];
-        // طبق درخواست صریح: قیمت نمایندگان (اگر ست شده) هزینه‌ی واقعیِ
-        // نماینده است، نه products.price خرده‌فروشی — سود و «حداقل
-        // قیمت مجاز» باید نسبت به همین عدد محاسبه شوند، وگرنه نماینده
-        // هیچ‌وقت نمی‌تواند بین reseller_price و price قیمت‌گذاری کند،
-        // در حالی که دقیقاً همان بازه‌ای است که باید سودآور باشد.
-        $basePrice = $product->resellerBasePrice();
-        $profit = $sellingPrice - $basePrice;
+        // مبنای سود همیشه reseller_price است (بند ۱۴): حاشیه یعنی
+        // Customers_price − reseller_price. محاسبه‌ی آن با main_price
+        // باعث می‌شد نماینده هیچ‌وقت نتواند در بازه‌ی سودآورِ واقعی
+        // قیمت‌گذاری کند.
+        $resellerPrice = $product->resellerPrice();
+        $profit = $customersPrice - $resellerPrice;
 
-        if (isset($rule['min_price']) && $sellingPrice < (float) $rule['min_price']) {
+        if (isset($rule['min_price']) && $customersPrice < (float) $rule['min_price']) {
             throw new InvalidArgumentException('قیمت فروش کمتر از حداقل مجاز است.');
         }
 
-        if (isset($rule['max_price']) && $sellingPrice > (float) $rule['max_price']) {
+        if (isset($rule['max_price']) && $customersPrice > (float) $rule['max_price']) {
             throw new InvalidArgumentException('قیمت فروش بیشتر از حداکثر مجاز است.');
         }
 
@@ -241,8 +240,10 @@ class ResellerPricingService
             throw new InvalidArgumentException('سود این قیمت بیشتر از سقف مجاز است.');
         }
 
-        if ($sellingPrice < $basePrice) {
-            throw new InvalidArgumentException('قیمت فروش نمی‌تواند کمتر از قیمت پایه باشد.');
+        // Rule 8: reseller_price کف مطلق Customers_price است — فروش
+        // زیر قیمت تأمین یعنی نماینده با هر فروش ضرر کند.
+        if ($customersPrice < $resellerPrice) {
+            throw new InvalidArgumentException('قیمت فروش نمی‌تواند کمتر از قیمت نمایندگان (reseller_price) باشد.');
         }
     }
 }

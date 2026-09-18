@@ -101,9 +101,61 @@ class Order extends Model
         return $query->where('reseller_id', $resellerId);
     }
 
-    /** سود نماینده از این سفارش (بند ۲۱ سند نیازمندی) */
+    /* ------------------------------------------------------------------
+     | سه قیمت سند معماری، روی همین سفارش (بند ۱۵ و ۲۱).
+     |
+     | ستون‌های فیزیکی (base_price / core_price / sold_price) عمداً
+     | دست‌نخورده مانده‌اند تا نصب‌های فعال و گزارش‌های موجود نشکنند، ولی
+     | کدِ جدید فقط این سه نام را می‌خواند:
+     |
+     |     context = main      → main_price        (= sold_price)
+     |     context = reseller  → reseller_price    (= core_price)
+     |                           Customers_price   (= sold_price)
+     |
+     | مقدار null یعنی «این قیمت در Context این سفارش اصلاً نقشی ندارد»
+     | — دقیقاً همان چیزی که بند ۸ و ۱۱ سند می‌گویند.
+     ------------------------------------------------------------------ */
+
+    public function isResellerContext(): bool
+    {
+        return $this->reseller_id !== null;
+    }
+
+    /** `main_price` — فقط در سفارش‌های مستقیم فروشگاه اصلی معنا دارد. */
+    public function getMainPriceAttribute(): ?float
+    {
+        return $this->isResellerContext() ? null : (float) $this->sold_price;
+    }
+
+    /** `reseller_price` — آنچه از کیف‌پول نماینده در Main کسر شده است. */
+    public function getResellerPriceAttribute(): ?float
+    {
+        if (! $this->isResellerContext()) {
+            return null;
+        }
+
+        return (float) ($this->core_price ?? $this->base_price);
+    }
+
+    /** `Customers_price` — آنچه مشتریِ نماینده در Context نماینده پرداخته. */
+    public function getCustomersPriceAttribute(): ?float
+    {
+        return $this->isResellerContext() ? (float) $this->sold_price : null;
+    }
+
+    /**
+     * حاشیه‌ی فروش نماینده (بند ۱۴): Customers_price − reseller_price.
+     *
+     * صرفاً یک عدد گزارشی است. طبق بند ۱۴ و Rule 6، محاسبه‌ی حاشیه هرگز
+     * نباید باعث شود Customers_price به‌جای reseller_price از کیف‌پول
+     * نماینده کسر شود.
+     */
     public function resellerProfit(): float
     {
-        return (float) $this->sold_price - (float) $this->base_price;
+        if (! $this->isResellerContext()) {
+            return 0.0;
+        }
+
+        return (float) $this->customers_price - (float) $this->reseller_price;
     }
 }

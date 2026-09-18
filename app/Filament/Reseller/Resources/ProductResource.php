@@ -63,13 +63,11 @@ class ProductResource extends Resource
             )
             ->columns([
                 Tables\Columns\TextColumn::make('name')->label('نام محصول')->searchable(),
-                // طبق درخواست صریح: این عددی که واقعاً از اعتبار نماینده
-                // کسر می‌شود (resellerBasePrice — قیمت نمایندگان، نه
-                // قیمت خرده‌فروشی/مشتری) باید اینجا دیده شود، نه
-                // products.price.
+                // عددی که واقعاً از کیف‌پول نماینده در Main کسر می‌شود:
+                // reseller_price (بند ۵) — نه main_price.
                 Tables\Columns\TextColumn::make('reseller_price')
                     ->label('قیمت نمایندگان')
-                    ->getStateUsing(fn (Product $record) => number_format($record->resellerBasePrice()).' تومان'),
+                    ->getStateUsing(fn (Product $record) => number_format($record->resellerPrice()).' تومان'),
                 Tables\Columns\TextColumn::make('duration_days')->label('مدت (روز)'),
                 Tables\Columns\IconColumn::make('is_enabled')
                     ->label('فعال برای من')
@@ -78,7 +76,7 @@ class ProductResource extends Resource
                 Tables\Columns\TextColumn::make('selling_price')
                     ->label('قیمت فروش من')
                     ->getStateUsing(function (Product $record) use ($reseller) {
-                        $price = $record->sellingPriceForReseller($reseller);
+                        $price = $record->customersPrice($reseller);
 
                         return $price !== null ? number_format($price).' تومان' : '—';
                     }),
@@ -107,7 +105,7 @@ class ProductResource extends Resource
                             ->minValue(0),
                     ])
                     ->fillForm(fn (Product $record) => [
-                        'selling_price' => $record->sellingPriceForReseller($reseller) ?? $record->resellerBasePrice(),
+                        'selling_price' => $record->customersPrice($reseller) ?? $record->resellerPrice(),
                     ])
                     ->action(function (Product $record, array $data) use ($reseller, $pricingService) {
                         try {
@@ -137,7 +135,7 @@ class ProductResource extends Resource
                     ->action(function (Product $record) use ($reseller, $pricingService) {
                         $price = $record->resellerPrices()
                             ->where('reseller_id', $reseller->id)
-                            ->value('custom_price');
+                            ->first()?->customers_price;
 
                         try {
                             $pricingService->setSellingPrice($reseller, $record, (float) $price);

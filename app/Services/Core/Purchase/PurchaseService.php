@@ -7,6 +7,7 @@ use App\Models\CustomerAccount;
 use App\Models\Operation;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\ProvisioningSetting;
 use App\Models\ServerPanel;
 use App\Services\Core\Affiliate\CommissionService;
 use App\Services\Core\Affiliate\ReferralService;
@@ -48,6 +49,7 @@ class PurchaseService
         protected OperationService $operations,
         protected CommissionService $commissions,
         protected ReferralService $referrals,
+        protected RefundService $refunds,
     ) {}
 
     /**
@@ -106,18 +108,32 @@ class PurchaseService
         ?string $customUsername,
         Operation $operation,
     ): Account {
+        // ترتیب این سه گام عمدی است و نباید جابه‌جا شود:
+        //
+        //   ۱. Context  — آیا این فروشگاه فعال است و این مشتری عضو
+        //                 همین فروشگاه است؟ (بند ۱۵ و ۱۶)
+        //   ۲. Sellability — آیا این محصول اصلاً از این فروشگاه
+        //                 قابل‌فروش است؟ این یک مرز امنیتی است و باید
+        //                 پیش از هر محاسبه‌ی قیمتی اجرا شود، وگرنه
+        //                 محصولِ غیرفعال/قیمت‌گذاری‌نشده به‌جای
+        //                 ProductNotSellableException یک
+        //                 InvalidArgumentException از دلِ PriceSnapshot
+        //                 بیرون می‌دهد — یعنی همان خطا، با پیامی که نه
+        //                 برای کاربر معنا دارد نه برای مانیتورینگ.
+        //   ۳. قیمت و موجودی — تازه حالا.
         $this->guard->assertContextAllowed($customer, $store);
+        $this->guard->assertProductAvailable($product, $store);
 
-        $sellingPrice = $store->isReseller()
-            ? $product->sellingPriceForReseller($store->reseller)
+        // Customers_price فقط در Context نمایندگی معنا دارد (بند ۶ و
+        // Rule 7). در فروشگاه اصلی عمداً null می‌ماند تا PriceSnapshot
+        // خودش main_price را بردارد.
+        $customersPrice = $store->isReseller()
+            ? $product->customersPrice($store->reseller)
             : null;
 
-        $price = PriceSnapshot::for($store, $product, $sellingPrice);
+        $price = PriceSnapshot::for($store, $product, $customersPrice);
 
-        // تمام دروازه‌ها پیش از هر تغییر مالی (بند ۱۵ و ۲۰)
-
-
-
+        // بقیه‌ی دروازه‌ها پیش از هر تغییر مالی (بند ۱۵ و ۲۰)
         $this->guard->assertCanPurchase($customer, $product, $store, $price);
 
         // ── مرحله‌ی ۱: تسویه‌ی مالی، اتمیک ──────────────────────────
@@ -132,24 +148,28 @@ class PurchaseService
             ]));
 
             if (! $price->isFree()) {
-                // کسر از مشتری: در فروشگاه خودش، نه از کیف‌پول دیگرش
+                // Debit اول (بند ۱۳): از کیف‌پول مشتری در Context خودش.
+                // Main → main_price · Reseller → Customers_price
                 $this->wallet->debit(
                     $customer,
-                    $price->soldPrice,
+                    $price->customerDebit(),
                     'purchase',
                     $order,
                     "خرید «{$product->name}» — سفارش #{$order->id}",
                     $operation,
                 );
 
-                // کسر از نماینده: قیمت عمده، در همین تراکنش (بند ۲۱)
+                // Debit دوم (بند ۱۳): از کیف‌پول نماینده در Main، دقیقاً
+                // به‌اندازه‌ی reseller_price — نه Customers_price
+                // (Rule 6). هر دو در همین یک تراکنش، پس حالت «یکی کسر
+                // شد و دیگری نه» ممکن نیست (بند ۲۲).
                 if ($store->isReseller()) {
                     $this->wallet->debit(
                         $store->reseller,
-                        $price->corePrice,
+                        $price->resellerDebit(),
                         'purchase',
                         $order,
-                        "هزینه‌ی پایه‌ی فروش نمایندگی — سفارش #{$order->id}",
+                        "هزینه‌ی تأمین محصول از Main (reseller_price) — سفارش #{$order->id}",
                         $operation,
                     );
                 }
@@ -174,8 +194,26 @@ class PurchaseService
                 operation: $operation,
             );
         } catch (ProvisioningFailedException $e) {
-            // خطا را بالا می‌دهیم تا کانال بتواند پیام مناسب نشان دهد،
-            // ولی وضعیت مالی روی سفارش دست‌نخورده و صریح باقی می‌ماند.
+            // بند ۲۲: سیاست شکست عمداً یک تنظیم است، نه یک تصمیم قطعیِ
+            // کد — پنل ادمین (صفحه‌ی «شکست ساخت اکانت») بین این دو
+            // انتخاب می‌کند:
+            //
+            //   retry  (پیش‌فرض) — چیزی تغییر نمی‌کند: سفارش در
+            //           provision_failed می‌ماند، وضعیت مالی روی سفارش
+            //           صریح و دست‌نخورده باقی می‌ماند، جبران با
+            //           retryProvisioning() یا رسیدگی دستی است.
+            //   refund — بازگشت خودکار و دوطرفه از همین‌جا، با همان
+            //           RefundService که برای بازگشت دستی هم استفاده
+            //           می‌شود (پس idempotent است و طبق بند ۱۳ سند
+            //           قیمت‌گذاری دقیقاً همان دو عددی که کسر شده بود
+            //           را برمی‌گرداند، نه قیمت امروز).
+            if (ProvisioningSetting::refundsAutomatically()) {
+                $this->refunds->refundOrder(
+                    $order,
+                    "بازگشت خودکار وجه به‌دلیل شکست ساخت اکانت — سفارش #{$order->id}",
+                );
+            }
+
             throw $e;
         }
 

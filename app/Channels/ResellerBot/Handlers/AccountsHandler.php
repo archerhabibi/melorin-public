@@ -116,22 +116,18 @@ class AccountsHandler
             return;
         }
 
-        $sellingPrice = $product->sellingPriceForReseller($reseller);
+        // این‌ها فقط برای پیام‌دادن زودهنگام به کاربرند؛ مرجع واقعی
+        // همچنان RenewalService/PurchaseGuard است.
+        $customersPrice = $product->customersPrice($reseller);
+        $resellerPrice = $product->resellerPrice();
 
-        // رفع باگ مالی (P0): پیش از این $product->price بود — یعنی
-        // نماینده هنگام تمدید، قیمتِ مشتریِ عادی را می‌پرداخت نه قیمتِ
-        // عمده‌ی نمایندگان. از v3.0.2 به بعد هزینه‌ی نماینده همیشه
-        // resellerBasePrice() است؛ خریدِ اولیه درست بود و فقط همین مسیر
-        // تمدید جا افتاده بود.
-        $basePrice = $product->resellerBasePrice();
-
-        if ($this->walletService->balance($user) < $sellingPrice) {
-            $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => 'برای تمدید، ابتدا کیف پول خود را شارژ کنید. هزینه‌ی تمدید: '.number_format($sellingPrice).' تومان']);
+        if ($this->walletService->balance($user) < $customersPrice) {
+            $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => 'برای تمدید، ابتدا کیف پول خود را شارژ کنید. هزینه‌ی تمدید: '.number_format($customersPrice).' تومان']);
 
             return;
         }
 
-        if ($this->walletService->balance($reseller) < $basePrice) {
+        if ($this->walletService->balance($reseller) < $resellerPrice) {
             $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => 'تمدید در حال حاضر ممکن نیست. لطفاً با پشتیبانی تماس بگیرید.']);
 
             return;

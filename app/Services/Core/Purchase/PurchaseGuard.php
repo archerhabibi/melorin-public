@@ -3,6 +3,8 @@
 namespace App\Services\Core\Purchase;
 
 use App\Exceptions\InsufficientBalanceException;
+use App\Exceptions\ProductNotSellableException;
+use App\Exceptions\ResellerScopeViolationException;
 use App\Models\CustomerAccount;
 use App\Models\Order;
 use App\Models\Product;
@@ -68,7 +70,11 @@ class PurchaseGuard
     protected function assertStoreOperational(StoreContext $store): void
     {
         if (! $store->isOperational()) {
-            throw new PurchaseNotAllowedException('این فروشگاه در حال حاضر فعال نیست.');
+            // نمایندگی غیرفعال = هیچ محصولی از این فروشگاه قابل‌فروش
+            // نیست. همان استثنایی پرتاب می‌شود که بقیه‌ی دلایل
+            // «قابل‌فروش نبودن» می‌دهند، تا ربات/پنل یک مسیر واحد برای
+            // پیام دادن داشته باشد.
+            throw new ProductNotSellableException('این نمایندگی غیرفعال است.');
         }
     }
 
@@ -88,11 +94,20 @@ class PurchaseGuard
         $customerStore = StoreContext::fromReseller($customer->reseller);
 
         if (! $customerStore->equals($store)) {
-            throw new PurchaseNotAllowedException('این حساب مشتری متعلق به این فروشگاه نیست.');
+            // بند ۱۵ و ۱۶ سند: هر عملیات مالی باید در Context خودش
+            // بماند. عبور از این مرز یک نقض Scope است، نه یک خطای
+            // معمولیِ خرید.
+            throw new ResellerScopeViolationException('این حساب مشتری متعلق به این فروشگاه نیست.');
         }
     }
 
-    protected function assertProductAvailable(Product $product, StoreContext $store): void
+    /**
+     * عمداً public است: PurchaseService باید بتواند sellability را
+     * *پیش از* ساختن PriceSnapshot صدا بزند. اگر محصول اصلاً قابل‌فروش
+     * نباشد، کاربر باید «این محصول قابل‌فروش نیست» بشنود، نه یک
+     * InvalidArgumentException از دلِ محاسبه‌ی قیمت.
+     */
+    public function assertProductAvailable(Product $product, StoreContext $store): void
     {
         if ($store->isReseller()) {
             // assertSellable خودش همه‌ی لایه‌ها را می‌سنجد: فعال‌بودن
@@ -149,7 +164,7 @@ class PurchaseGuard
 
     protected function assertCustomerCanPay(CustomerAccount $customer, PriceSnapshot $price): void
     {
-        if ($this->wallet->getBalance($customer) < $price->soldPrice) {
+        if ($this->wallet->getBalance($customer) < $price->customerDebit()) {
             throw new InsufficientBalanceException('موجودی کیف پول شما کافی نیست.');
         }
     }
@@ -172,7 +187,9 @@ class PurchaseGuard
         }
 
         $reseller = $store->reseller;
-        $newBalance = $this->wallet->getBalance($reseller) - $price->corePrice;
+        // Rule 4 و Rule 6: مبنای کسر از نماینده همیشه reseller_price
+        // است، هرگز Customers_price.
+        $newBalance = $this->wallet->getBalance($reseller) - $price->resellerDebit();
 
         if ($newBalance < $reseller->minimumBalance() - 0.00001) {
             throw new ResellerDebtLimitException(
