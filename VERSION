@@ -1,90 +1,81 @@
-Phase 7 & 8 — Order/Payment Snapshot + Purchase Flow (طبق ترتیب ۱۵مرحله‌ای سند معماری v2.0)
+Phase 9 & 10 — Renewal + Refund (طبق ترتیب ۱۵مرحله‌ای سند معماری v2.0)
 
 بخشی از یک مسیر چندمرحله‌ای است، نه یک نسخه‌ی مستقل.
 
 === نتیجه‌ی Audit (طبق بند ۵۷ سند: جست‌وجوی کامل قبل از هر اقدام) ===
 
-بر خلاف انتظار اولیه، فاز ۷ (Order/Payment Snapshot) و فاز ۸ (Purchase
-Flow) عملاً قبل از فاز ۵ — زیر کار «v3.1.1: store-aware purchase
-architecture A تا G» — به‌طور کامل و تست‌شده پیاده شده بودند. فاز ۵
-فقط ستون‌های زیرِ همین منطقِ از‌قبل‌موجود را Rename کرد. این پچ کد
-تازه‌ای برای این دو فاز اضافه نمی‌کند؛ فقط شکاف‌های مستندسازیِ باقی‌مانده
-را می‌بندد و شواهد Audit را ثبت می‌کند تا فازهای بعدی روی مبنای درست
-ادامه پیدا کنند.
+مثل فاز ۷ و ۸، هر دوی این فازها از قبل — زیر همان کار «v3.1.1:
+store-aware purchase architecture A تا G» — به‌طور کامل پیاده شده
+بودند. شواهد:
 
-شواهد تطبیق با سند:
+فاز ۹ — Renewal (بند ۴۱ سند):
+  - main_price برای Renewal در Context اصلی، customers_price +
+    reseller_price (Double Debit) برای Renewal در Context نماینده
+    → RenewalService::execute()، دقیقاً همان ترتیب و همان
+    PriceSnapshot/PurchaseGuard که در فاز ۸ برای خرید استفاده می‌شود
+  - بند ۲۸ («Renewal یعنی هم Time هم Traffic») → applyOnPanel():
+    resetUsage صریح بعد از updateAccount، با لاگ در صورت عدم پشتیبانی
+    پنل
+  - بند ۲۹ (مالی موفق/پنل ناموفق نباید مبهم بماند) →
+    Order::STATUS_PROVISION_FAILED + Operation::markFailed()
+  - بند ۱۲/۵۳ (Snapshot در لحظه‌ی Renewal، نه قیمت قدیمی) → تست
+    a_renewal_uses_current_prices_and_creates_a_new_price_snapshot
 
-  بند ۳۰-۳۱ (Order Snapshot)         → Order.php: سه ستون مستقل و
-                                        nullable main_price/reseller_price/
-                                        customers_price
-  بند ۱۲، ۵۳ (Price Snapshot)        → PriceSnapshot::toOrderColumns()
-  بند ۳۷-۳۸ (Refund از Snapshot)     → RefundService::execute() از
-                                        $order->customers_price/reseller_price
-                                        می‌خواند، نه از قیمت روزِ محصول
-  بند ۳۴ (۱۷مرحله Atomic Purchase)   → PurchaseService::execute()
-  بند ۱۹ (Double Debit مستقل)        → همان‌جا: دو debit مستقل، در یک
-                                        DB::transaction
-  بند ۴۰ (Idempotency)               → OperationService::runOnce()
-  بند ۴۵-۴۶ (PurchaseGuard،          → PurchaseGuard.php (۷ چک) +
-              Debt Limit مستقل)        ResellerDebtLimitException جدا از
-                                        InsufficientBalanceException
-  بند ۳۶-۳۷ (Provisioning Policy)    → PurchaseService (catch
-                                        ProvisioningFailedException)
+فاز ۱۰ — Refund (بند ۳۷-۳۸ سند):
+  - بازگشت دوطرفه (مشتری + نماینده) از روی Snapshot خودِ سفارش، نه
+    قیمت روز → RefundService::execute()
+  - Idempotent (سفارش بازگشت‌خورده دوباره بازگشت نمی‌خورد) →
+    OperationService::runOnce('refund:order:{id}')
+  - تست‌های موجود: refunding_a_reseller_order_gives_both_sides_their_money_back،
+    refund_uses_the_order_price_snapshot_after_product_prices_change،
+    an_order_cannot_be_refunded_twice
 
-پوشش تست موجود: PurchaseFlowTest، ResellerPurchaseFinancialTest،
-ProvisioningAndRenewalTest، CommissionAndBridgeTest.
+=== شکاف واقعیِ پیداشده و رفعش ===
 
-=== تغییرات این پچ ===
+تنها چیزی که واقعاً ناقص بود، نه در کد بلکه در پوشش تست: طبق بند ۵۶
+سند («Reseller Renewal» صریحاً در فهرست تست‌های الزامی است)، در کل
+پروژه هیچ تستی Double-Debit تمدید را در Context نماینده تأیید
+نمی‌کرد — همه‌ی تست‌های Renewal موجود فقط Context اصلی را پوشش
+می‌دادند. با توجه به این‌که دقیقاً همین نوع شکاف (تست‌نشدنِ مسیر
+نماینده) در تاریخچه‌ی همین پروژه یک‌بار واقعاً باعث باگ مالی در مسیر
+خرید شده بود (نسخه‌های ۳.۰.۶ ↔ ۳.۰.۷ در پروژه‌ی پیشین)، این شکاف
+جدی گرفته و بسته شد:
 
-طبق تصمیم صریح («کد مرده را بگذاریم برای آخرین مرحله‌ی پاک‌سازی، ولی
-اسم تست‌ها برای شفافیت کد همین حالا باید عوض شود»)، فقط یک نوع تغییر
-اعمال شد: تغییر نامِ ۴ متد تستی که هنوز اسم قدیمی (base_price/
-sold_price) را در نامشان داشتند، هرچند خودِ تست از فیلدهای نهایی
-(main_price/reseller_price/customers_price) استفاده می‌کرد — یعنی فقط
-اسم متد، نه منطق، عقب افتاده بود:
+  tests/Feature/Purchase/ProvisioningAndRenewalTest.php
+    + a_reseller_renewal_debits_the_customer_and_the_reseller_in_one_operation
 
-  tests/Feature/Resellers/ResellerPurchaseFinancialTest.php
-    purchase_debits_customer_by_sold_price_and_reseller_by_base_price
-    → purchase_debits_customer_by_customers_price_and_reseller_by_reseller_price
+    تأیید می‌کند: تمدید یک اکانت متعلق به مشتریِ یک نماینده، دقیقاً
+    customers_price را از کیف‌پول مشتری (در Context همان نماینده) و
+    دقیقاً reseller_price را از کیف‌پول نماینده (در Main) کسر می‌کند
+    — نه بیشتر، نه از کیف‌پول اشتباه — و سفارش تمدید reseller_id،
+    main_price=null، reseller_price و customers_price صحیح را
+    Snapshot می‌کند. زمان و ترافیک هم مثل مسیر Main درست ریست می‌شوند.
 
-  tests/Feature/Resellers/ResellerCoreServicesTest.php
-    selling_price_below_base_price_is_rejected
-    → selling_price_below_reseller_price_is_rejected
+    کد RenewalService/PurchaseGuard/PriceSnapshot تغییری نکرد — چون
+    منطقشان از قبل درست بود؛ این تست فقط همان درستی را برای Context
+    نماینده هم مستند و قفل می‌کند تا رگرسیون آینده فوراً رد شود.
 
-  tests/Feature/ResellerPanel/ResellerPanelIsolationTest.php
-    reseller_can_set_a_valid_selling_price_but_not_one_below_base_price
-    → reseller_can_set_a_valid_selling_price_but_not_one_below_reseller_price
+جست‌وجوی نهایی بند ۵۷ سند (بعد از این پچ، روی app/resources/tests):
+صفر نتیجه — بدون تغییر نسبت به فاز ۷و۸.
 
-  tests/Feature/ResellerPanel/ResellerPanelRenderTest.php
-    admin_can_set_a_resellers_base_price_from_the_main_admin_panel
-    → admin_can_set_a_products_reseller_price_from_the_main_admin_panel
+=== یادداشت اجرا ===
 
-جست‌وجوی نهایی طبق بند ۵۷ سند (بعد از این پچ):
-    git grep -n -E "custom_price|sellingPriceForReseller|corePrice|soldPrice|base_price|core_price|sold_price"
-در app/resources/tests (غیر از migrationهای تاریخی) صفر نتیجه می‌دهد.
-
-=== موارد عمداً به تعویق‌افتاده (طبق تصمیم صریح) ===
-
-این دو مورد در این پچ دست نخوردند — نه چون فراموش شدند، بلکه چون
-صریحاً برای مرحله‌ی جداگانه‌ی پاک‌سازی نگه داشته شدند:
-
-۱. کد مرده: PaymentService::initiate() هنوز purpose='order' را به‌عنوان
-   مقدار مجاز می‌پذیرد، اما هیچ کانالی (ربات اصلی، ربات نماینده، سایت،
-   پنل) آن را صدا نمی‌زند — معماریِ واقعیِ پیاده‌شده، خرید را از یک
-   کیف‌پولِ از‌قبل‌شارژ‌شده کسر می‌کند (wallet_transactions به‌عنوان
-   ledger واقعی)، نه با یک Payment مستقل به‌ازای هر سفارش.
-۲. دنرمالایز نکردن wallet_transactions: طبق بند ۳۳ سند، «Financial
-   Operations» باید user_id/store_type/reseller_id/order_id مستقل
-   داشته باشد؛ در حال حاضر این‌ها فقط از طریق wallet→owner و
-   reference→Order قابل استخراج‌اند، نه ستون مستقل. از نظر عملکردی
-   مشکلی ایجاد نمی‌کند (گزارش‌ها مستقیماً از ستون‌های Order می‌خوانند)
-   ولی برای تطبیق کامل با متن بند ۳۳ هنوز باز است.
+بدون Migration جدید. فقط یک فایل تست اضافه شد؛ اسکیما یا کد سرویس‌ها
+دست نخورده. حتماً بعد از اعمال:
+    php artisan test --filter=ProvisioningAndRenewalTest
+و در صورت سبز بودن، کل مجموعه:
+    php artisan test
 
 === فاز بعدی ===
 
-طبق ترتیب سند: فاز ۹ (Renewal) و فاز ۱۰ (Refund) — بررسی اینکه آیا
-RenewalService دقیقاً از همین سه قیمت و همین Contextها استفاده می‌کند
-یا رگرسیونی مشابه چیزی که در نسخه‌های ۳.۰.۶ ↔ ۳.۰.۷ (پروژه‌ی پیشین)
-دیده شد دارد. RefundService در همین بررسی از قبل تأیید شد (بالا).
-حتماً بعد از اعمال این پچ php artisan test را اجرا و نتیجه را ارسال
-کنید.
+فاز ۷ تا ۱۰ (Order/Payment Snapshot، Purchase، Renewal، Refund) هرکدام
+Audit و در صورت نیاز تکمیل شدند. طبق ترتیب سند، فاز باقی‌مانده‌ی
+واقعی: فاز ۱۱ (Provisioning Policy — retry/refund از پنل ادمین) و
+فاز ۱۲ (هماهنگی نهایی Telegram/Filament با نام‌های جدید، که در فاز ۵
+تا حد زیادی همین الان انجام شده). پیشنهاد: فاز ۱۱ را Audit کنیم — آیا
+تنظیم retry/refund از ProvisioningSetting همان‌طور که بند ۳۶-۳۷ سند
+می‌خواهد، هم برای خرید و هم برای تمدید یکسان اعمال می‌شود؟
+
+همچنین دو موردی که در فاز ۷و۸ عمداً به مرحله‌ی پاک‌سازی موکول شده
+بودند (کد مرده‌ی payments.purpose='order' و دنرمالایزنشدنِ
+wallet_transactions) هنوز باز هستند و منتظر همان مرحله‌ی پاک‌سازی‌اند.

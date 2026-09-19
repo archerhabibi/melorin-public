@@ -6,6 +6,8 @@ use App\Models\Account;
 use App\Models\Category;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\Reseller;
+use App\Models\ResellerProductPrice;
 use App\Models\ServerPanel;
 use App\Models\User;
 use App\Services\Core\Provisioning\ProvisioningFailedException;
@@ -729,5 +731,75 @@ class ProvisioningAndRenewalTest extends TestCase
                 ->where('product_id', $product->id)
                 ->count()
         );
+    }
+
+    /**
+     * بند ۴۱ سند («Reseller Renewal → Customers_price از کیف‌پول مشتری
+     * در Context نماینده + reseller_price از کیف‌پول نماینده در Main»)
+     * و بند ۵۶ («Reseller Renewal» صریحاً در فهرست پوشش تست الزامی است).
+     *
+     * تا این پچ، فقط تمدید در Context اصلی تست شده بود — یعنی همان
+     * شکافی که در نسخه‌ی قبلی همین پروژه (خرید نماینده) قبل از اصلاح،
+     * یک‌بار واقعاً باگ ایجاد کرده بود (خرید با قیمت خرده‌فروشی به‌جای
+     * قیمت نمایندگان). این تست دقیقاً همان رگرسیون را برای مسیر تمدید
+     * می‌بندد.
+     */
+    #[Test]
+    public function a_reseller_renewal_debits_the_customer_and_the_reseller_in_one_operation(): void
+    {
+        $this->panelSucceeds();
+
+        $reseller = Reseller::factory()->create(['status' => 'active']);
+        $product = $this->makeProduct(price: 150000, days: 30, gb: 50);
+        $product->update(['reseller_price' => 100000]);
+
+        ResellerProductPrice::create([
+            'reseller_id' => $reseller->id,
+            'product_id' => $product->id,
+            'customers_price' => 130000,
+            'is_enabled' => true,
+        ]);
+
+        $store = StoreContext::reseller($reseller);
+        $customer = $this->identity->resolveCustomerAccount(User::factory()->create(), $store);
+
+        $this->wallet->credit($customer, 130000);
+        $this->wallet->credit($reseller, 100000);
+
+        $account = Account::factory()->create([
+            'customer_account_id' => $customer->id,
+            'product_id' => $product->id,
+            'server_panel_id' => $product->category->serverPanels()->first()->id,
+            'panel_username' => 'reseller_renew_1',
+            'expires_at' => now()->subDay(),
+            'traffic_gb' => 10,
+            'traffic_used_gb' => 8,
+            'status' => 'active',
+        ]);
+
+        $renewed = app(\App\Services\Core\Renewal\RenewalService::class)
+            ->renew($account, idempotencyKey: 'renew:test:reseller-double-debit');
+
+        // هر دو طرف دقیقاً به‌اندازه‌ی سهم خودشان کسر شده‌اند — نه هیچ
+        // بیشتر و نه از کیف‌پول اشتباه (Rule 6: Customers_price هرگز
+        // از کیف‌پول نماینده کسر نمی‌شود).
+        $this->assertEquals(0, $this->wallet->getBalance($customer));
+        $this->assertEquals(0, $this->wallet->getBalance($reseller));
+
+        $renewalOrder = Order::query()
+            ->where('customer_account_id', $customer->id)
+            ->where('product_id', $product->id)
+            ->latest('id')
+            ->firstOrFail();
+
+        $this->assertEquals($reseller->id, $renewalOrder->reseller_id);
+        $this->assertNull($renewalOrder->main_price);
+        $this->assertEquals(100000, (float) $renewalOrder->reseller_price);
+        $this->assertEquals(130000, (float) $renewalOrder->customers_price);
+
+        $renewed->refresh();
+        $this->assertEquals(50, (float) $renewed->traffic_gb);
+        $this->assertEquals(0, (float) $renewed->traffic_used_gb);
+        $this->assertTrue($renewed->expires_at->isFuture());
     }
 }
