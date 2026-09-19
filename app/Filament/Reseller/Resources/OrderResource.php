@@ -35,16 +35,17 @@ class OrderResource extends Resource
                 Tables\Columns\TextColumn::make('id')->label('#'),
                 Tables\Columns\TextColumn::make('user.full_name')->label('مشتری'),
                 Tables\Columns\TextColumn::make('product.name')->label('محصول'),
-                Tables\Columns\TextColumn::make('reseller_price')->label('هزینه‌ی پایه')->money('IRT', divideBy: 1),
-                Tables\Columns\TextColumn::make('customers_price')->label('قیمت فروش')->money('IRT', divideBy: 1),
+                Tables\Columns\TextColumn::make('reseller_price')->label('هزینه‌ی تأمین (reseller_price)')->money('IRT', divideBy: 1),
+                Tables\Columns\TextColumn::make('customers_price')->label('قیمت فروش (customers_price)')->money('IRT', divideBy: 1),
                 Tables\Columns\TextColumn::make('profit')
                     ->label('سود')
                     ->getStateUsing(fn (Order $record) => number_format($record->resellerProfit()).' تومان'),
                 Tables\Columns\BadgeColumn::make('status')
                     ->label('وضعیت')
+                    ->formatStateUsing(fn ($state) => Order::statusLabels()[$state] ?? $state)
                     ->colors([
-                        'warning' => 'pending', 'success' => ['paid', 'account_created'],
-                        'danger' => 'failed', 'gray' => 'refunded',
+                        'warning' => ['pending', 'provisioning'], 'success' => ['paid', 'account_created'],
+                        'danger' => ['failed', 'provision_failed'], 'gray' => 'refunded',
                     ]),
                 Tables\Columns\TextColumn::make('created_at')->label('تاریخ')->dateTime('Y-m-d H:i'),
             ])

@@ -185,7 +185,7 @@ class PurchaseFlowTest extends TestCase
     public function a_reseller_at_minus_450_with_limit_500_can_still_buy_something_costing_50(): void
     {
         [$customer, $store, $product] = $this->resellerSetup(
-            debtLimit: 500, resellerPrice: 50, sellingPrice: 80
+            debtLimit: 500, resellerPrice: 50, customersPrice: 80
         );
 
         // اعتبار را به -۴۵۰ می‌رسانیم
@@ -207,7 +207,7 @@ class PurchaseFlowTest extends TestCase
     public function a_reseller_at_minus_450_with_limit_500_is_blocked_at_cost_51(): void
     {
         [$customer, $store, $product] = $this->resellerSetup(
-            debtLimit: 500, resellerPrice: 51, sellingPrice: 80
+            debtLimit: 500, resellerPrice: 51, customersPrice: 80
         );
 
         $this->wallet->adminAdjust($store->reseller, -450);
@@ -232,7 +232,7 @@ class PurchaseFlowTest extends TestCase
     public function a_reseller_with_no_debt_limit_behaves_exactly_as_before(): void
     {
         [$customer, $store, $product] = $this->resellerSetup(
-            debtLimit: 0, resellerPrice: 100, sellingPrice: 130
+            debtLimit: 0, resellerPrice: 100, customersPrice: 130
         );
 
         $this->wallet->credit($customer, 130);
@@ -320,7 +320,7 @@ class PurchaseFlowTest extends TestCase
     public function refunding_a_reseller_order_gives_both_sides_their_money_back(): void
     {
         [$customer, $store, $product] = $this->resellerSetup(
-            debtLimit: 0, resellerPrice: 100, sellingPrice: 130
+            debtLimit: 0, resellerPrice: 100, customersPrice: 130
         );
 
         $this->wallet->credit($customer, 130);
@@ -341,7 +341,7 @@ class PurchaseFlowTest extends TestCase
     public function refund_uses_the_order_price_snapshot_after_product_prices_change(): void
     {
         [$customer, $store, $product] = $this->resellerSetup(
-            debtLimit: 0, resellerPrice: 90000, sellingPrice: 140000
+            debtLimit: 0, resellerPrice: 90000, customersPrice: 140000
         );
 
         $this->wallet->credit($customer, 140000);
@@ -411,19 +411,19 @@ class PurchaseFlowTest extends TestCase
     /**
      * @return array{0: \App\Models\CustomerAccount, 1: StoreContext, 2: Product}
      */
-    protected function resellerSetup(float $debtLimit, float $resellerPrice, float $sellingPrice): array
+    protected function resellerSetup(float $debtLimit, float $resellerPrice, float $customersPrice): array
     {
         $reseller = Reseller::factory()->create([
             'status' => 'active',
             'debt_limit' => $debtLimit,
         ]);
 
-        $product = $this->makeProduct(mainPrice: $sellingPrice * 2, resellerPrice: $resellerPrice);
+        $product = $this->makeProduct(mainPrice: $customersPrice * 2, resellerPrice: $resellerPrice);
 
         ResellerProductPrice::create([
             'reseller_id' => $reseller->id,
             'product_id' => $product->id,
-            'customers_price' => $sellingPrice,
+            'customers_price' => $customersPrice,
             'is_enabled' => true,
         ]);
 

@@ -102,13 +102,13 @@ class ResellerCoreServicesTest extends TestCase
     }
 
     #[Test]
-    public function selling_price_below_reseller_price_is_rejected(): void
+    public function customers_price_below_reseller_price_is_rejected(): void
     {
         $reseller = Reseller::factory()->create();
         $product = Product::factory()->create(['main_price' => 100000]);
 
         $this->expectException(InvalidArgumentException::class);
-        $this->pricing->setSellingPrice($reseller, $product, 90000);
+        $this->pricing->setCustomersPrice($reseller, $product, 90000);
     }
 
     #[Test]
@@ -120,11 +120,11 @@ class ResellerCoreServicesTest extends TestCase
         $product = Product::factory()->create(['main_price' => 100000]);
 
         // زیر حداقل قیمت
-        $this->assertThrows(fn () => $this->pricing->setSellingPrice($reseller, $product, 105000), InvalidArgumentException::class);
+        $this->assertThrows(fn () => $this->pricing->setCustomersPrice($reseller, $product, 105000), InvalidArgumentException::class);
         // بالای سقف سود (100000 پایه + 50000 سقف سود = 150000)
-        $this->assertThrows(fn () => $this->pricing->setSellingPrice($reseller, $product, 160000), InvalidArgumentException::class);
+        $this->assertThrows(fn () => $this->pricing->setCustomersPrice($reseller, $product, 160000), InvalidArgumentException::class);
         // مقدار مجاز
-        $setting = $this->pricing->setSellingPrice($reseller, $product, 130000);
+        $setting = $this->pricing->setCustomersPrice($reseller, $product, 130000);
         $this->assertEquals(130000, $setting->customers_price);
         $this->assertTrue($setting->is_enabled);
     }
@@ -135,7 +135,7 @@ class ResellerCoreServicesTest extends TestCase
         $reseller = Reseller::factory()->create();
         $product = Product::factory()->create(['main_price' => 100000, 'status' => 'active']);
 
-        $this->pricing->setSellingPrice($reseller, $product, 130000);
+        $this->pricing->setCustomersPrice($reseller, $product, 130000);
         $this->assertTrue($this->pricing->isSellable($reseller, $product));
 
         $this->pricing->disable($reseller, $product);
@@ -149,8 +149,8 @@ class ResellerCoreServicesTest extends TestCase
         $activeProduct = Product::factory()->create(['main_price' => 100000, 'status' => 'active']);
         $inactiveProduct = Product::factory()->create(['main_price' => 100000, 'status' => 'inactive']);
 
-        $this->pricing->setSellingPrice($reseller, $activeProduct, 120000);
-        $this->pricing->setSellingPrice($reseller, $inactiveProduct, 120000);
+        $this->pricing->setCustomersPrice($reseller, $activeProduct, 120000);
+        $this->pricing->setCustomersPrice($reseller, $inactiveProduct, 120000);
 
         $ids = $this->pricing->sellableProducts($reseller)->pluck('id');
         $this->assertTrue($ids->contains($activeProduct->id));

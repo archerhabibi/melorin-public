@@ -29,14 +29,14 @@ class ConversationState
 
     public const WALLET_AWAITING_DEPOSITOR_NAME = 'wallet:awaiting_depositor_name';
 
-    // شارژ کیف‌پول/اعتبار خودِ نماینده نزد پلتفرم — تاییدش با ادمین اصلی است
-    public const RESELLER_WALLET_AWAITING_AMOUNT = 'reseller_wallet:awaiting_amount';
+    // شارژ Wallet صاحبِ نماینده در Main Context (برای پرداخت reseller_price) — تاییدش با ادمین اصلی است
+    public const OWNER_MAIN_WALLET_TOPUP_AWAITING_AMOUNT = 'owner_main_wallet_topup:awaiting_amount';
 
-    public const RESELLER_WALLET_CHOOSE_METHOD = 'reseller_wallet:choose_method';
+    public const OWNER_MAIN_WALLET_TOPUP_CHOOSE_METHOD = 'owner_main_wallet_topup:choose_method';
 
-    public const RESELLER_WALLET_AWAITING_RECEIPT = 'reseller_wallet:awaiting_receipt';
+    public const OWNER_MAIN_WALLET_TOPUP_AWAITING_RECEIPT = 'owner_main_wallet_topup:awaiting_receipt';
 
-    public const RESELLER_WALLET_AWAITING_DEPOSITOR_NAME = 'reseller_wallet:awaiting_depositor_name';
+    public const OWNER_MAIN_WALLET_TOPUP_AWAITING_DEPOSITOR_NAME = 'owner_main_wallet_topup:awaiting_depositor_name';
 
     public function find(Reseller $reseller, int $chatId): ResellerConversationState
     {

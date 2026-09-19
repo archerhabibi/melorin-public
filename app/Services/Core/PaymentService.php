@@ -56,7 +56,11 @@ class PaymentService
             throw new \InvalidArgumentException('مبلغ باید بزرگ‌تر از صفر باشد.');
         }
 
-        if (! in_array($purpose, ['order', 'wallet_charge'], true)) {
+        // فاز ۱۲: خرید هیچ‌وقت Payment نمی‌سازد؛ خرید مستقیماً از Wallet هر
+        // Context کسر می‌شود (بند ۱۶). تنها Payment واقعی، شارژ کیف‌پول است.
+        // purpose=order کد مرده بود و دیگر پذیرفته نمی‌شود (مقدار enum در
+        // دیتابیس برای ردیف‌های تاریخی دست‌نخورده می‌ماند).
+        if ($purpose !== 'wallet_charge') {
             throw new \InvalidArgumentException("purpose نامعتبر: {$purpose}");
         }
 
@@ -281,9 +285,6 @@ class PaymentService
                 'reviewed_at' => now(),
             ]);
 
-            // فقط شارژ کیف پول مستقیماً داخل هسته انجام می‌شود؛ برای
-            // purpose=order، تصمیم این‌که سفارش چطور تکمیل شود به کانالی
-            // که آن سفارش را ساخته (از طریق PaymentConfirmed) واگذار می‌شود.
             // مقصدِ شارژ بسته به wallet_owner_type فرق می‌کند: کیف‌پول
             // شخصیِ کاربر (مشتری عادی یا مشتریِ یک نماینده) یا کیف‌پول
             // (اعتبار) خودِ نماینده نزد پلتفرم.

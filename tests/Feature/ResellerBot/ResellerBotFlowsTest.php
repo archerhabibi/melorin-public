@@ -96,18 +96,18 @@ class ResellerBotFlowsTest extends TestCase
         ]);
     }
 
-    protected function sellableProduct(Reseller $reseller, float $basePrice, float $sellingPrice): Product
+    protected function sellableProduct(Reseller $reseller, float $mainPrice, float $customersPrice): Product
     {
         $panel = ServerPanel::factory()->create(['panel_type' => 'marzban']);
         $category = Category::factory()->create(['status' => 'active', 'server_selection_mode' => 'auto']);
         $category->serverPanels()->attach($panel);
 
-        $product = Product::factory()->create(['category_id' => $category->id, 'main_price' => $basePrice, 'status' => 'active']);
+        $product = Product::factory()->create(['category_id' => $category->id, 'main_price' => $mainPrice, 'status' => 'active']);
 
         ResellerProductPrice::create([
             'reseller_id' => $reseller->id,
             'product_id' => $product->id,
-            'customers_price' => $sellingPrice,
+            'customers_price' => $customersPrice,
             'is_enabled' => true,
         ]);
 
@@ -132,7 +132,7 @@ class ResellerBotFlowsTest extends TestCase
                 $customerUser,
                 \App\Services\Core\Store\StoreContext::fromReseller($reseller),
             );
-        $product = $this->sellableProduct($reseller, basePrice: 10, sellingPrice: 14);
+        $product = $this->sellableProduct($reseller, mainPrice: 10, customersPrice: 14);
 
         $wallet = app(WalletService::class);
         $wallet->charge($customerAccount, 20);
@@ -166,7 +166,7 @@ class ResellerBotFlowsTest extends TestCase
         $this->assertDatabaseMissing('reseller_conversation_states', [
             'reseller_id' => $reseller->id,
             'telegram_chat_id' => 900002,
-            'step' => ConversationState::RESELLER_WALLET_CHOOSE_METHOD,
+            'step' => ConversationState::OWNER_MAIN_WALLET_TOPUP_CHOOSE_METHOD,
         ]);
     }
 

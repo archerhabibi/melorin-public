@@ -19,7 +19,7 @@
         <x-filament::section>
             <div class="text-sm text-gray-500 dark:text-gray-400">میانگین هر سفارش</div>
             <div class="mt-1 text-2xl font-bold">{{ $money($s['average_order']) }}</div>
-            <div class="mt-1 text-xs text-gray-500">حاشیه‌ی نمایندگان: {{ $money($s['gross_margin']) }}</div>
+            <div class="mt-1 text-xs text-gray-500">حاشیه‌ی نمایندگان: {{ $money($s['reseller_margin']) }}</div>
         </x-filament::section>
 
         <x-filament::section>

@@ -88,7 +88,7 @@ class UpdateRouter
 
             match ($step) {
                 ConversationState::WALLET_AWAITING_RECEIPT => $this->wallet->handleReceiptPhoto($reseller, $chatId, $user, $largest['file_id']),
-                ConversationState::RESELLER_WALLET_AWAITING_RECEIPT => $this->resellerWallet->handleReceiptPhoto($reseller, $chatId, $user, $largest['file_id']),
+                ConversationState::OWNER_MAIN_WALLET_TOPUP_AWAITING_RECEIPT => $this->resellerWallet->handleReceiptPhoto($reseller, $chatId, $user, $largest['file_id']),
                 default => null,
             };
 
@@ -147,8 +147,8 @@ class UpdateRouter
         match ($step) {
             ConversationState::WALLET_AWAITING_AMOUNT => $this->wallet->handleCustomAmountText($reseller, $chatId, $user, $text),
             ConversationState::WALLET_AWAITING_DEPOSITOR_NAME => $this->wallet->handleDepositorName($reseller, $chatId, $user, $text),
-            ConversationState::RESELLER_WALLET_AWAITING_AMOUNT => $this->resellerWallet->handleCustomAmountText($reseller, $chatId, $user, $text),
-            ConversationState::RESELLER_WALLET_AWAITING_DEPOSITOR_NAME => $this->resellerWallet->handleDepositorName($reseller, $chatId, $user, $text),
+            ConversationState::OWNER_MAIN_WALLET_TOPUP_AWAITING_AMOUNT => $this->resellerWallet->handleCustomAmountText($reseller, $chatId, $user, $text),
+            ConversationState::OWNER_MAIN_WALLET_TOPUP_AWAITING_DEPOSITOR_NAME => $this->resellerWallet->handleDepositorName($reseller, $chatId, $user, $text),
             default => $this->start->showMainMenu($reseller, $chatId, $user),
         };
     }

@@ -40,18 +40,18 @@ class Keyboards
         return self::encode(['inline_keyboard' => $rows]);
     }
 
-    /** فقط محصولاتی که خودِ نماینده فعال/قیمت‌گذاری کرده — قیمت نمایش‌داده‌شده قیمت فروش نماینده است، نه قیمت پایه */
+    /** فقط محصولاتی که خودِ نماینده فعال/قیمت‌گذاری کرده — قیمت نمایش‌داده‌شده customers_price است، نه main_price یا reseller_price */
     public static function productList(iterable $productsWithPrice): string
     {
         $rows = [];
 
         foreach ($productsWithPrice as $row) {
-            [$product, $sellingPrice] = $row;
+            [$product, $customersPrice] = $row;
 
             $label = sprintf(
                 '%s — %s تومان (%s روز%s)',
                 $product->name,
-                number_format($sellingPrice),
+                number_format($customersPrice),
                 $product->duration_days,
                 $product->traffic_gb ? ", {$product->traffic_gb} گیگ" : ''
             );

@@ -45,15 +45,15 @@ class ResellerPurchaseFinancialTest extends TestCase
         return $category;
     }
 
-    protected function sellableProduct(Reseller $reseller, float $basePrice, float $sellingPrice): Product
+    protected function sellableProduct(Reseller $reseller, float $mainPrice, float $customersPrice): Product
     {
         $category = $this->makeCategoryWithPanel();
-        $product = Product::factory()->create(['category_id' => $category->id, 'main_price' => $basePrice]);
+        $product = Product::factory()->create(['category_id' => $category->id, 'main_price' => $mainPrice]);
 
         ResellerProductPrice::create([
             'reseller_id' => $reseller->id,
             'product_id' => $product->id,
-            'customers_price' => $sellingPrice,
+            'customers_price' => $customersPrice,
             'is_enabled' => true,
         ]);
 
@@ -75,7 +75,7 @@ class ResellerPurchaseFinancialTest extends TestCase
 
         $reseller = Reseller::factory()->create();
         $customer = User::factory()->create(['reseller_id' => $reseller->id]);
-        $product = $this->sellableProduct($reseller, basePrice: 10, sellingPrice: 14);
+        $product = $this->sellableProduct($reseller, mainPrice: 10, customersPrice: 14);
 
         $this->wallet->charge($customer, 20);
         $this->wallet->charge($reseller, 30);
@@ -108,7 +108,7 @@ class ResellerPurchaseFinancialTest extends TestCase
 
         $reseller = Reseller::factory()->create();
         $customer = User::factory()->create(['reseller_id' => $reseller->id]);
-        $product = $this->sellableProduct($reseller, basePrice: 10, sellingPrice: 14);
+        $product = $this->sellableProduct($reseller, mainPrice: 10, customersPrice: 14);
 
         // مشتری هیچ موجودی‌ای ندارد؛ نماینده موجودی کافی دارد
         $this->wallet->charge($reseller, 100);
@@ -131,7 +131,7 @@ class ResellerPurchaseFinancialTest extends TestCase
 
         $reseller = Reseller::factory()->create();
         $customer = User::factory()->create(['reseller_id' => $reseller->id]);
-        $product = $this->sellableProduct($reseller, basePrice: 10, sellingPrice: 14);
+        $product = $this->sellableProduct($reseller, mainPrice: 10, customersPrice: 14);
 
         // مشتری موجودی کافی دارد؛ نماینده هیچ اعتباری ندارد
         $this->wallet->charge($customer, 100);
@@ -157,7 +157,7 @@ class ResellerPurchaseFinancialTest extends TestCase
 
         $reseller = Reseller::factory()->create();
         $customer = User::factory()->create(['reseller_id' => $reseller->id]);
-        $product = $this->sellableProduct($reseller, basePrice: 10, sellingPrice: 14);
+        $product = $this->sellableProduct($reseller, mainPrice: 10, customersPrice: 14);
 
         $this->wallet->charge($customer, 20);
         $this->wallet->charge($reseller, 30);
@@ -205,7 +205,7 @@ class ResellerPurchaseFinancialTest extends TestCase
         $reseller = Reseller::factory()->create();
         $customer = User::factory()->create(['reseller_id' => $reseller->id]);
         // نماینده محصول را فعال کرده، ولی سیستم اصلی محصول را غیرفعال می‌کند
-        $product = $this->sellableProduct($reseller, basePrice: 10, sellingPrice: 14);
+        $product = $this->sellableProduct($reseller, mainPrice: 10, customersPrice: 14);
         $product->update(['status' => 'inactive']);
 
         $this->wallet->charge($customer, 100);
@@ -224,7 +224,7 @@ class ResellerPurchaseFinancialTest extends TestCase
         $otherReseller = Reseller::factory()->create();
         // این مشتری متعلق به نماینده‌ی دیگری است
         $customer = User::factory()->create(['reseller_id' => $otherReseller->id]);
-        $product = $this->sellableProduct($reseller, basePrice: 10, sellingPrice: 14);
+        $product = $this->sellableProduct($reseller, mainPrice: 10, customersPrice: 14);
 
         $this->wallet->charge($customer, 100);
         $this->wallet->charge($reseller, 100);
@@ -240,7 +240,7 @@ class ResellerPurchaseFinancialTest extends TestCase
 
         $reseller = Reseller::factory()->create();
         $customer = User::factory()->create(['reseller_id' => null]);
-        $product = $this->sellableProduct($reseller, basePrice: 10, sellingPrice: 14);
+        $product = $this->sellableProduct($reseller, mainPrice: 10, customersPrice: 14);
 
         $this->wallet->charge($customer, 100);
         $this->wallet->charge($reseller, 100);

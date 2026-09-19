@@ -7,10 +7,9 @@ use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
 /**
- * طبق اصل معماری بند ۳۴، PaymentService نباید مستقیماً بداند نتیجه‌ی یک
- * پرداخت با purpose=order باید چه کاری در ربات/سایت/نماینده انجام دهد.
- * به‌جایش این رویداد را منتشر می‌کند؛ هر کانال Listener خودش را ثبت
- * می‌کند (مثلاً: تحویل کانفیگ در ربات، به‌روزرسانی صفحه‌ی سفارش در سایت).
+ * پس از تأیید پرداخت (شارژ کیف‌پول) منتشر می‌شود؛ PaymentService نباید
+ * بداند هر کانال چه اعلانی بدهد. هر کانال Listener خودش را ثبت می‌کند
+ * (مثلاً اعلان تلگرام).
  */
 class PaymentConfirmed
 {

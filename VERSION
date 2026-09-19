@@ -1,36 +1,30 @@
-Phase 11 — Provisioning Failure Policy (retry / refund / retry_then_refund) + پنل وب
+Phase 12 — هماهنگی نهایی Telegram/Filament با مدل سه‌قیمتی
 
-طبق ترتیب ۱۵مرحله‌ای سند معماری v2.0 (بند ۵۹، مرحله‌ی ۱۱). جزئیات کامل:
-docs/PHASE-11-PROVISIONING-POLICY.md
+طبق ترتیب ۱۵مرحله‌ای سند معماری v2.0 (بند ۵۹، مرحله‌ی ۱۲). جزئیات کامل:
+docs/PHASE-12-UI-NAMING-AND-CLEANUP.md
 
-=== نتیجه‌ی Audit ===
-صفحه‌ی انتخاب retry/refund از قبل وجود داشت ولی واقعاً کار نمی‌کرد:
-سیاست فقط روی «خرید» اعمال می‌شد نه تمدید؛ هیچ Job/Commandی retry خودکار
-انجام نمی‌داد؛ retry روی سفارش تمدید اکانت جدید می‌ساخت؛ در پنل هیچ دکمه‌ی
-دستی تلاش مجدد/بازگشت وجه نبود؛ و ربات اصلی حتی وقتی بازگشتی رخ نداده بود
-می‌گفت «مبلغ بازگشت داده شد».
+=== باگ واقعی ===
+صفحه‌ی «گزارشات و آمار» با هر بار باز شدن ErrorException می‌داد
+($from/$to در Reports::getSummary تعریف‌نشده بودند). رفع شد.
 
 === تغییرات ===
-- گزینه‌ی سوم «هر دو» = retry_then_refund (اول ۳ تلاش خودکار، بعد بازگشت خودکار).
-  اگر منظورتان از «هر دو» چیز دیگری بود، فقط جدول ProvisioningFailureHandler::handle عوض می‌شود.
-- ProvisioningFailureHandler: تنها نقطه‌ی اعمال سیاست، برای خرید و تمدید.
-- FailedOrderRecovery + Command «provisioning:retry-failed» (هر دقیقه از scheduler).
-- دکمه‌های «🔁 تلاش مجدد» و «↩️ بازگشت وجه» در جدول و صفحه‌ی مشاهده‌ی سفارش‌ها،
-  فیلتر/برچسب وضعیت‌های جدید، badge سفارش‌های نیازمند رسیدگی، Infolist جزئیات.
-- اطلاع‌رسانی به مشتری (ربات اصلی/نماینده) بعد از retry موفق یا بازگشت.
-- پیام‌های خطای ربات‌ها بر اساس نتیجه‌ی واقعی سیاست.
-- اصلاح‌های جانبی: شمارش تلاش «بدون سرور»، پاداش/کمیسیون بعد از retry موفق،
-  قفل اتمیک برای retry/refund هم‌زمان.
+- ربات اصلی: $product->main_price → $product->mainPrice() (بند ۱۳).
+- setSellingPrice → setCustomersPrice؛ selling_price → customers_price (فرم پنل نماینده و Keyboard)؛
+  base_cost/gross_margin گزارش → supply_cost/reseller_margin.
+- برچسب‌های پنل ادمین/نماینده با نام سه قیمت (main_price / reseller_price / customers_price).
+- پنل نماینده: وضعیت‌های provisioning/provision_failed برچسب و رنگ گرفتند.
+- ثابت‌های RESELLER_WALLET_* → OWNER_MAIN_WALLET_TOPUP_* (بند ۴۹ سند).
+- PaymentService::initiate فقط wallet_charge می‌پذیرد (purpose=order کد مرده بود).
+- ARCHITECTURE.md بند ۷ به سه قیمت نهایی بازنویسی شد.
+- تست دائمی «هیچ نام قیمتِ Legacy نمی‌ماند» (بند ۵۷) + تست Reports + تست purpose.
 
 === اجرا ===
-Migration جدید (دو ستون nullable روی orders):
-    php artisan migrate
-سپس:
-    php artisan test --filter=Provisioning
+Migration ندارد.
     php artisan test
-تغییر رفتار پیش‌فرض: سیاست retry حالا واقعاً خودکار retry می‌کند (قبلاً فقط دستی بود).
 نکته: این پچ در محیطی بدون PHP نوشته شد و اجرا نشده است؛ حتماً تست‌ها را اجرا کنید.
+در صورت شکست هر تست، خروجی را بفرستید تا اصلاح شود.
 
 === فاز بعدی ===
-فاز ۱۲: هماهنگی نهایی Telegram/Filament با نام‌های جدید. باقی‌مانده از قبل:
-کد مرده‌ی payments.purpose='order' و دنرمالایزنشدن wallet_transactions.
+فاز ۱۳ سند: انتقال کامل تست‌ها به مدل نهایی (اکثر آن در این فاز و فازهای ۹–۱۰ انجام شده؛
+باید Coverage بند ۵۶ بررسی شود)، فاز ۱۴: Static Search نهایی (تست دائمی آن اضافه شد)،
+فاز ۱۵: php artisan test کامل.

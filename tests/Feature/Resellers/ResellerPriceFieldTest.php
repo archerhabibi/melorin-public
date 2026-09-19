@@ -42,7 +42,7 @@ class ResellerPriceFieldTest extends TestCase
         );
     }
 
-    protected function sellableProduct(Reseller $reseller, float $price, ?float $resellerPrice, float $sellingPrice): Product
+    protected function sellableProduct(Reseller $reseller, float $price, ?float $resellerPrice, float $customersPrice): Product
     {
         $panel = ServerPanel::factory()->create(['panel_type' => 'marzban']);
         $category = Category::factory()->create(['server_selection_mode' => 'auto']);
@@ -57,7 +57,7 @@ class ResellerPriceFieldTest extends TestCase
         ResellerProductPrice::create([
             'reseller_id' => $reseller->id,
             'product_id' => $product->id,
-            'customers_price' => $sellingPrice,
+            'customers_price' => $customersPrice,
             'is_enabled' => true,
         ]);
 
@@ -75,7 +75,7 @@ class ResellerPriceFieldTest extends TestCase
         $reseller = Reseller::factory()->create();
         $customer = User::factory()->create(['reseller_id' => $reseller->id]);
 
-        $product = $this->sellableProduct($reseller, price: 150000, resellerPrice: 90000, sellingPrice: 140000);
+        $product = $this->sellableProduct($reseller, price: 150000, resellerPrice: 90000, customersPrice: 140000);
 
         $wallet = app(WalletService::class);
         $customerAccount = $this->resellerCustomerAccount($customer, $reseller);
@@ -107,7 +107,7 @@ class ResellerPriceFieldTest extends TestCase
 
         $reseller = Reseller::factory()->create();
         $customer = User::factory()->create(['reseller_id' => $reseller->id]);
-        $product = $this->sellableProduct($reseller, price: 100000, resellerPrice: null, sellingPrice: 130000);
+        $product = $this->sellableProduct($reseller, price: 100000, resellerPrice: null, customersPrice: 130000);
 
         $wallet = app(WalletService::class);
         $customerAccount = $this->resellerCustomerAccount($customer, $reseller);
@@ -136,7 +136,7 @@ class ResellerPriceFieldTest extends TestCase
 
         $reseller = Reseller::factory()->create();
         $customer = User::factory()->create(['reseller_id' => $reseller->id]);
-        $product = $this->sellableProduct($reseller, price: 150000, resellerPrice: 90000, sellingPrice: 140000);
+        $product = $this->sellableProduct($reseller, price: 150000, resellerPrice: 90000, customersPrice: 140000);
 
         $wallet = app(WalletService::class);
         $customerAccount = $this->resellerCustomerAccount($customer, $reseller);
@@ -155,7 +155,7 @@ class ResellerPriceFieldTest extends TestCase
             // انتظار می‌رود.
         }
 
-        // اگر بازگشت وجه به‌جای resellerBasePrice() از products.price
+        // اگر بازگشت وجه به‌جای resellerPrice() از main_price
         // (150,000) استفاده می‌کرد، اینجا موجودی نماینده ۲۱۰,۰۰۰
         // می‌شد — یعنی ۱۰,۰۰۰ بیشتر از چیزی که واقعاً کسر شده بود.
         $this->assertEquals(200000, $wallet->balance($customerAccount));
@@ -168,19 +168,19 @@ class ResellerPriceFieldTest extends TestCase
         $reseller = Reseller::factory()->create();
         $product = Product::factory()->create(['main_price' => 150000, 'reseller_price' => 90000]);
 
-        $setting = app(ResellerPricingService::class)->setSellingPrice($reseller, $product, 120000);
+        $setting = app(ResellerPricingService::class)->setCustomersPrice($reseller, $product, 120000);
 
         $this->assertEquals(120000, $setting->customers_price);
     }
 
     #[Test]
-    public function selling_price_below_the_wholesale_reseller_price_is_still_rejected(): void
+    public function customers_price_below_the_wholesale_reseller_price_is_still_rejected(): void
     {
         $reseller = Reseller::factory()->create();
         $product = Product::factory()->create(['main_price' => 150000, 'reseller_price' => 90000]);
 
         $this->expectException(InvalidArgumentException::class);
 
-        app(ResellerPricingService::class)->setSellingPrice($reseller, $product, 80000);
+        app(ResellerPricingService::class)->setCustomersPrice($reseller, $product, 80000);
     }
 }

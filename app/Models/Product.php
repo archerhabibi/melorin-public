@@ -38,7 +38,7 @@ class Product extends Model
      |
      |     main_price      → فروش مستقیم Main به مشتری Main
      |     reseller_price  → قیمت تأمین محصول از Main برای نماینده
-     |     Customers_price → قیمت فروش نماینده به مشتریان خودش
+     |     customers_price → قیمت فروش نماینده به مشتریان خودش
      |
      | هیچ نام دیگری برای قیمت در کد استفاده نمی‌شود. مقادیر عددی ممکن
      | است برابر شوند (بند ۲۰، Rule 5) ولی معنایشان هرگز یکی نیست، پس
@@ -47,7 +47,7 @@ class Product extends Model
      | نگاشت به ستون‌های دیتابیس (مرحله ۵ سند: rename واقعی، نه Alias):
      |     main_price      = products.main_price
      |     reseller_price  = products.reseller_price ?? products.main_price
-     |     Customers_price = reseller_product_prices.customers_price
+     |     customers_price = reseller_product_prices.customers_price
      ------------------------------------------------------------------ */
 
     /**
@@ -79,7 +79,7 @@ class Product extends Model
     }
 
     /**
-     * `Customers_price` — قیمتی که مشتریِ یک نماینده در Context همان
+     * `customers_price` — قیمتی که مشتریِ یک نماینده در Context همان
      * نماینده می‌پردازد (بند ۶). این عدد کاملاً در اختیار خودِ نماینده
      * است و برای هر نماینده می‌تواند متفاوت باشد.
      *

@@ -41,7 +41,7 @@ class ResellerWalletHandler
     public function chooseAmount(Reseller $reseller, int $chatId, User $user, string $amount): void
     {
         if ($amount === 'custom') {
-            $this->state->set($reseller, $chatId, ConversationState::RESELLER_WALLET_AWAITING_AMOUNT, [], $user);
+            $this->state->set($reseller, $chatId, ConversationState::OWNER_MAIN_WALLET_TOPUP_AWAITING_AMOUNT, [], $user);
             $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => 'مبلغ دلخواه را به تومان وارد کنید (فقط عدد):']);
 
             return;
@@ -73,7 +73,7 @@ class ResellerWalletHandler
             return;
         }
 
-        $this->state->set($reseller, $chatId, ConversationState::RESELLER_WALLET_CHOOSE_METHOD, ['amount' => $amount], $user);
+        $this->state->set($reseller, $chatId, ConversationState::OWNER_MAIN_WALLET_TOPUP_CHOOSE_METHOD, ['amount' => $amount], $user);
 
         $this->telegram->sendMessage([
             'chat_id' => $chatId,
@@ -93,7 +93,7 @@ class ResellerWalletHandler
         );
 
         if ($method->type === 'card_to_card') {
-            $this->state->set($reseller, $chatId, ConversationState::RESELLER_WALLET_AWAITING_RECEIPT, ['payment_id' => $payment->id], $user);
+            $this->state->set($reseller, $chatId, ConversationState::OWNER_MAIN_WALLET_TOPUP_AWAITING_RECEIPT, ['payment_id' => $payment->id], $user);
 
             $card = $initiation->instructions['card_number'] ?? '—';
             $holder = $initiation->instructions['card_holder_name'] ?? '—';
@@ -126,7 +126,7 @@ class ResellerWalletHandler
         }
 
         $payment->update(['receipt_image' => $fileId]);
-        $this->state->set($reseller, $chatId, ConversationState::RESELLER_WALLET_AWAITING_DEPOSITOR_NAME, ['payment_id' => $paymentId], $user);
+        $this->state->set($reseller, $chatId, ConversationState::OWNER_MAIN_WALLET_TOPUP_AWAITING_DEPOSITOR_NAME, ['payment_id' => $paymentId], $user);
 
         $this->telegram->sendMessage([
             'chat_id' => $chatId,

@@ -66,15 +66,15 @@ class ProductResource extends Resource
                 // عددی که واقعاً از کیف‌پول نماینده در Main کسر می‌شود:
                 // reseller_price (بند ۵) — نه main_price.
                 Tables\Columns\TextColumn::make('reseller_price')
-                    ->label('قیمت نمایندگان')
+                    ->label('هزینه‌ی تأمین من (reseller_price)')
                     ->getStateUsing(fn (Product $record) => number_format($record->resellerPrice()).' تومان'),
                 Tables\Columns\TextColumn::make('duration_days')->label('مدت (روز)'),
                 Tables\Columns\IconColumn::make('is_enabled')
                     ->label('فعال برای من')
                     ->boolean()
                     ->getStateUsing(fn (Product $record) => $pricingService->isSellable($reseller, $record)),
-                Tables\Columns\TextColumn::make('selling_price')
-                    ->label('قیمت فروش من')
+                Tables\Columns\TextColumn::make('customers_price')
+                    ->label('قیمت فروش به مشتری (customers_price)')
                     ->getStateUsing(function (Product $record) use ($reseller) {
                         $price = $record->customersPrice($reseller);
 
@@ -98,18 +98,18 @@ class ProductResource extends Resource
                     ->label('تنظیم قیمت')
                     ->icon('heroicon-o-currency-dollar')
                     ->form([
-                        Forms\Components\TextInput::make('selling_price')
-                            ->label('قیمت فروش (تومان)')
+                        Forms\Components\TextInput::make('customers_price')
+                            ->label('قیمت فروش به مشتری — customers_price (تومان)')
                             ->numeric()
                             ->required()
                             ->minValue(0),
                     ])
                     ->fillForm(fn (Product $record) => [
-                        'selling_price' => $record->customersPrice($reseller) ?? $record->resellerPrice(),
+                        'customers_price' => $record->customersPrice($reseller) ?? $record->resellerPrice(),
                     ])
                     ->action(function (Product $record, array $data) use ($reseller, $pricingService) {
                         try {
-                            $pricingService->setSellingPrice($reseller, $record, (float) $data['selling_price']);
+                            $pricingService->setCustomersPrice($reseller, $record, (float) $data['customers_price']);
                         } catch (InvalidArgumentException $e) {
                             Notification::make()->title($e->getMessage())->danger()->send();
 
@@ -138,7 +138,7 @@ class ProductResource extends Resource
                             ->first()?->customers_price;
 
                         try {
-                            $pricingService->setSellingPrice($reseller, $record, (float) $price);
+                            $pricingService->setCustomersPrice($reseller, $record, (float) $price);
                         } catch (InvalidArgumentException $e) {
                             // قیمتِ ذخیره‌شده ممکن است با قوانین فعلی
                             // (که ادمین از آن زمان تغییر داده) دیگر مجاز

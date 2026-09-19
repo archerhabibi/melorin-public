@@ -77,7 +77,7 @@ class Keyboards
             $label = sprintf(
                 '%s — %s تومان (%s روز%s)',
                 $product->name,
-                number_format((float) $product->main_price),
+                number_format($product->mainPrice()),
                 $product->duration_days,
                 $product->traffic_gb ? ", {$product->traffic_gb} گیگ" : ''
             );

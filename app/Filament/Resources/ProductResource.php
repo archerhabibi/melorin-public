@@ -35,7 +35,8 @@ class ProductResource extends Resource
 
             Forms\Components\Grid::make(3)->schema([
                 Forms\Components\TextInput::make('main_price')
-                    ->label('قیمت پایه (تومان)')
+                    ->label('قیمت فروش مستقیم — main_price (تومان)')
+                    ->helperText('قیمتی که مشتریِ مستقیمِ فروشگاه اصلی می‌پردازد.')
                     ->numeric()
                     ->required()
                     ->suffix('تومان'),
@@ -52,8 +53,8 @@ class ProductResource extends Resource
             ]),
 
             Forms\Components\TextInput::make('reseller_price')
-                ->label('قیمت نمایندگان (تومان)')
-                ->helperText('قیمتی که ما این محصول را به نماینده می‌فروشیم — نه قیمت فروش نماینده (که همیشه دست خودِ نماینده است و اینجا تعیین نمی‌شود). معمولاً باید پایین‌تر از «قیمت پایه» باشد. خالی = همان «قیمت پایه» برای نماینده هم اعمال می‌شود.')
+                ->label('قیمت تأمین برای نماینده — reseller_price (تومان)')
+                ->helperText('قیمتی که ما این محصول را به نماینده می‌فروشیم — نه قیمت فروش نماینده (که همیشه دست خودِ نماینده است و اینجا تعیین نمی‌شود). معمولاً باید پایین‌تر از main_price باشد. خالی = همان main_price برای تأمین نماینده هم اعمال می‌شود.')
                 ->numeric()
                 ->suffix('تومان'),
 
@@ -81,13 +82,13 @@ class ProductResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('name')->label('نام')->searchable(),
-                Tables\Columns\TextColumn::make('main_price')->label('قیمت')->money('IRT', divideBy: 1)->sortable(),
+                Tables\Columns\TextColumn::make('main_price')->label('قیمت مستقیم (main_price)')->money('IRT', divideBy: 1)->sortable(),
                 // طبق درخواست صریح: این ستون همیشه دیده شود. قبلاً ->toggleable()
                 // داشت که آن را به یک ستون اختیاری تبدیل می‌کرد و با بقیه‌ی
                 // ستون‌های قیمت (که ثابت‌اند) ناهماهنگ بود — در حالی که این
                 // عدد، هزینه‌ی واقعیِ نماینده و مبنای کل معماری قیمت‌گذاری
                 // نمایندگی است.
-                Tables\Columns\TextColumn::make('reseller_price')->label('قیمت نمایندگان')->money('IRT', divideBy: 1)->placeholder('—')->sortable(),
+                Tables\Columns\TextColumn::make('reseller_price')->label('قیمت تأمین نماینده (reseller_price)')->money('IRT', divideBy: 1)->placeholder('—')->sortable(),
                 Tables\Columns\TextColumn::make('duration_days')->label('مدت (روز)'),
                 Tables\Columns\TextColumn::make('traffic_gb')->label('حجم (گیگ)')->placeholder('نامحدود'),
                 Tables\Columns\BadgeColumn::make('status')->label('وضعیت')

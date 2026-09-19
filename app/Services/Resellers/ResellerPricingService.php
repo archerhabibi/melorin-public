@@ -27,7 +27,7 @@ class ResellerPricingService
      *
      * @throws InvalidArgumentException اگر قیمت یا سودِ حاصل خارج از محدوده‌ی مجاز مرکزی باشد
      */
-    public function setSellingPrice(Reseller $reseller, Product $product, float $customersPrice): ResellerProductPrice
+    public function setCustomersPrice(Reseller $reseller, Product $product, float $customersPrice): ResellerProductPrice
     {
         $this->assertPriceAllowed($reseller, $product, $customersPrice);
 

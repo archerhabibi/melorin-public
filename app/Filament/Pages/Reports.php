@@ -141,7 +141,7 @@ class Reports extends Page implements HasForms
         $orders = $this->paidOrders();
 
         $revenue = (float) (clone $orders)->sum('main_price') + (float) (clone $orders)->sum('customers_price');
-        $baseCost = (float) (clone $orders)->sum('main_price') + (float) (clone $orders)->sum('reseller_price');
+        $supplyCost = (float) (clone $orders)->sum('main_price') + (float) (clone $orders)->sum('reseller_price');
         $count = (clone $orders)->count();
 
         $resellerRevenue = (float) (clone $orders)->whereNotNull('reseller_id')->sum('customers_price');
@@ -169,12 +169,12 @@ class Reports extends Page implements HasForms
             ->whereBetween('created_at', [$this->from(), $this->to()])
             ->sum('amount');
 
-        $pendingPayments = Payment::query()->where('status', 'pending')->whereBetween('created_at', [$from, $to])->count();
+        $pendingPayments = Payment::query()->where('status', 'pending')->whereBetween('created_at', [$this->from(), $this->to()])->count();
 
         return [
             'revenue' => (float) $revenue,
-            'base_cost' => (float) $baseCost,
-            'gross_margin' => (float) $revenue - (float) $baseCost,
+            'supply_cost' => (float) $supplyCost,
+            'reseller_margin' => (float) $revenue - (float) $supplyCost,
             'orders' => $count,
             'average_order' => $count > 0 ? (float) $revenue / $count : 0.0,
             'direct_revenue' => (float) $directRevenue,

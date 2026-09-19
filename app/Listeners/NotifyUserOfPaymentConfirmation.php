@@ -30,9 +30,7 @@ class NotifyUserOfPaymentConfirmation
 
         $amount = number_format((float) $payment->amount);
 
-        $text = $payment->purpose === 'wallet_charge'
-            ? "✅ واریزی شما تایید شد.\n\nمبلغ {$amount} تومان به کیف پول شما اضافه شد."
-            : "✅ پرداخت شما تایید شد.\n\nمبلغ: {$amount} تومان";
+        $text = "✅ واریزی شما تایید شد.\n\nمبلغ {$amount} تومان به کیف پول شما اضافه شد.";
 
         try {
             $this->telegram->sendMessage([
