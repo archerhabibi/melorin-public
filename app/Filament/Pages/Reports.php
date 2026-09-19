@@ -131,19 +131,20 @@ class Reports extends Page implements HasForms
 
     /**
      * کارت‌های خلاصه‌ی بالای صفحه. «سود خالص» تفاوت بین چیزی است که
-     * مشتری پرداخت کرده و قیمت پایه‌ی همان سفارش — که برای فروش
-     * نمایندگی یعنی سود نماینده، و برای فروش مستقیم صفر است (چون
-     * base_price همان قیمت خرده‌فروشی ثبت می‌شود).
+     * مشتری پرداخت کرده (main_price یا customers_price، هرکدام که پر
+     * است) و قیمتِ پایه‌ی همان سفارش (main_price یا reseller_price) —
+     * که برای فروش نمایندگی یعنی سود نماینده، و برای فروش مستقیم صفر
+     * است چون هردو عدد یکی‌اند (بند ۳۱ سند).
      */
     public function getSummary(): array
     {
         $orders = $this->paidOrders();
 
-        $revenue = (clone $orders)->sum('sold_price');
-        $baseCost = (clone $orders)->sum('base_price');
+        $revenue = (float) (clone $orders)->sum('main_price') + (float) (clone $orders)->sum('customers_price');
+        $baseCost = (float) (clone $orders)->sum('main_price') + (float) (clone $orders)->sum('reseller_price');
         $count = (clone $orders)->count();
 
-        $resellerRevenue = (clone $orders)->whereNotNull('reseller_id')->sum('sold_price');
+        $resellerRevenue = (float) (clone $orders)->whereNotNull('reseller_id')->sum('customers_price');
         $directRevenue = $revenue - $resellerRevenue;
 
         $newUsers = User::query()->whereBetween('created_at', [$this->from(), $this->to()])->count();
@@ -194,7 +195,10 @@ class Reports extends Page implements HasForms
     public function getDailyTrend(): Collection
     {
         return $this->paidOrders()
-            ->selectRaw('DATE(created_at) as day, SUM(sold_price) as revenue, SUM(sold_price - base_price) as margin, COUNT(*) as orders')
+            ->selectRaw('DATE(created_at) as day,
+                SUM(COALESCE(main_price, customers_price, 0)) as revenue,
+                SUM(COALESCE(customers_price, 0) - COALESCE(reseller_price, 0)) as margin,
+                COUNT(*) as orders')
             ->groupBy('day')
             ->orderBy('day')
             ->get();
@@ -205,7 +209,9 @@ class Reports extends Page implements HasForms
     {
         return $this->paidOrders()
             ->join('products', 'products.id', '=', 'orders.product_id')
-            ->selectRaw('products.name as name, COUNT(*) as orders, SUM(orders.sold_price) as revenue, SUM(orders.sold_price - orders.base_price) as margin')
+            ->selectRaw('products.name as name, COUNT(*) as orders,
+                SUM(COALESCE(orders.main_price, orders.customers_price, 0)) as revenue,
+                SUM(COALESCE(orders.customers_price, 0) - COALESCE(orders.reseller_price, 0)) as margin')
             ->groupBy('products.id', 'products.name')
             ->orderByDesc('revenue')
             ->get();
@@ -217,7 +223,7 @@ class Reports extends Page implements HasForms
         return $this->paidOrders()
             ->join('products', 'products.id', '=', 'orders.product_id')
             ->join('categories', 'categories.id', '=', 'products.category_id')
-            ->selectRaw('categories.name as name, COUNT(*) as orders, SUM(orders.sold_price) as revenue')
+            ->selectRaw('categories.name as name, COUNT(*) as orders, SUM(COALESCE(orders.main_price, orders.customers_price, 0)) as revenue')
             ->groupBy('categories.id', 'categories.name')
             ->orderByDesc('revenue')
             ->get();
@@ -244,8 +250,10 @@ class Reports extends Page implements HasForms
 
     /**
      * عملکرد نمایندگان. «سود پلتفرم» اینجا یعنی مبلغی که ما از نماینده
-     * گرفته‌ایم (base_price)، نه مبلغی که مشتریِ نماینده پرداخت کرده —
-     * آن تفاوت، سودِ خودِ نماینده است و درآمد ما نیست.
+     * گرفته‌ایم (reseller_price)، نه مبلغی که مشتریِ نماینده پرداخت
+     * کرده (customers_price) — آن تفاوت، سودِ خودِ نماینده است و درآمد
+     * ما نیست. چون این کوئری با whereNotNull('reseller_id') محدود شده،
+     * همه‌ی سفارش‌ها در Context نماینده‌اند، پس نیازی به COALESCE نیست.
      */
     public function getByReseller(): Collection
     {
@@ -255,9 +263,9 @@ class Reports extends Page implements HasForms
             ->join('users', 'users.id', '=', 'resellers.user_id')
             ->selectRaw('users.full_name as name, resellers.slug as slug,
                 COUNT(*) as orders,
-                SUM(orders.base_price) as platform_revenue,
-                SUM(orders.sold_price) as customer_paid,
-                SUM(orders.sold_price - orders.base_price) as reseller_profit')
+                SUM(orders.reseller_price) as platform_revenue,
+                SUM(orders.customers_price) as customer_paid,
+                SUM(orders.customers_price - orders.reseller_price) as reseller_profit')
             ->groupBy('resellers.id', 'users.full_name', 'resellers.slug')
             ->orderByDesc('platform_revenue')
             ->get();
@@ -284,7 +292,7 @@ class Reports extends Page implements HasForms
     {
         return $this->paidOrders()
             ->join('users', 'users.id', '=', 'orders.user_id')
-            ->selectRaw('users.full_name as name, users.telegram_id as telegram_id, COUNT(*) as orders, SUM(orders.sold_price) as spent')
+            ->selectRaw('users.full_name as name, users.telegram_id as telegram_id, COUNT(*) as orders, SUM(COALESCE(orders.main_price, orders.customers_price, 0)) as spent')
             ->groupBy('users.id', 'users.full_name', 'users.telegram_id')
             ->orderByDesc('spent')
             ->limit(10)

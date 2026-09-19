@@ -124,8 +124,7 @@ class CustomerAccountBackfillTest extends TestCase
             'product_id' => $product->id,
             'reseller_id' => null,
             'sales_channel' => 'main_bot',
-            'base_price' => 100000,
-            'sold_price' => 100000,
+            'main_price' => 100000,
             'status' => 'account_created',
         ]);
 
@@ -134,8 +133,8 @@ class CustomerAccountBackfillTest extends TestCase
             'product_id' => $product->id,
             'reseller_id' => $reseller->id,
             'sales_channel' => 'reseller_bot',
-            'base_price' => 70000,
-            'sold_price' => 90000,
+            'reseller_price' => 70000,
+            'customers_price' => 90000,
             'status' => 'account_created',
         ]);
 

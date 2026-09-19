@@ -217,10 +217,10 @@ class BuyAccountHandler
             return;
         }
 
-        if ($this->mainWalletBalance($user) < (float) $product->price) {
+        if ($this->mainWalletBalance($user) < (float) $product->main_price) {
             $this->telegram->sendMessage([
                 'chat_id' => $chatId,
-                'text' => "موجودی کیف پول شما کافی نیست.\nقیمت این تعرفه: ".number_format((float) $product->price)." تومان\nموجودی فعلی: ".number_format($this->mainWalletBalance($user))." تومان\n\nابتدا از بخش «💰 کیف پول و شارژ حساب» حساب خود را شارژ کنید.",
+                'text' => "موجودی کیف پول شما کافی نیست.\nقیمت این تعرفه: ".number_format((float) $product->main_price)." تومان\nموجودی فعلی: ".number_format($this->mainWalletBalance($user))." تومان\n\nابتدا از بخش «💰 کیف پول و شارژ حساب» حساب خود را شارژ کنید.",
             ]);
 
             return;

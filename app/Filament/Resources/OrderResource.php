@@ -35,7 +35,12 @@ class OrderResource extends Resource
                         'main_bot' => 'ربات اصلی', 'reseller_bot' => 'ربات نماینده',
                         'website' => 'سایت', 'panel' => 'پنل مدیریت', default => $state,
                     }),
-                Tables\Columns\TextColumn::make('sold_price')->label('مبلغ فروش')->money('IRT', divideBy: 1)->sortable(),
+                // این جدول هم سفارش‌های Main و هم سفارش‌های نمایندگی را
+                // نشان می‌دهد؛ «مبلغ فروش» بسته به Context، یا
+                // main_price است یا customers_price — هیچ‌وقت هردو.
+                Tables\Columns\TextColumn::make('customer_paid')
+                    ->label('مبلغ فروش')
+                    ->getStateUsing(fn (Order $record) => number_format((float) ($record->main_price ?? $record->customers_price)).' تومان'),
                 Tables\Columns\BadgeColumn::make('status')
                     ->label('وضعیت')
                     ->colors([

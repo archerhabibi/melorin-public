@@ -115,10 +115,10 @@ class AccountsHandler
 
         $balanceBeforeRenewal = $this->walletService->balance($customer);
 
-        if ($balanceBeforeRenewal < (float) $product->price) {
+        if ($balanceBeforeRenewal < (float) $product->main_price) {
             $this->telegram->sendMessage([
                 'chat_id' => $chatId,
-                'text' => 'برای تمدید، ابتدا کیف پول خود را شارژ کنید. هزینه‌ی تمدید: '.number_format((float) $product->price).' تومان',
+                'text' => 'برای تمدید، ابتدا کیف پول خود را شارژ کنید. هزینه‌ی تمدید: '.number_format((float) $product->main_price).' تومان',
             ]);
 
             return;

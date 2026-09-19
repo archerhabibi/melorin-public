@@ -100,7 +100,7 @@ class CommissionService
         $store = StoreContext::fromReseller($buyer->reseller);
         $referrerAccount = $this->identity->resolveCustomerAccount($referrerUser, $store);
 
-        $base = (float) $order->sold_price;
+        $base = (float) ($order->main_price ?? $order->customers_price);
         $amount = round($base * $rate / 100, 2);
 
         if ($amount <= 0) {

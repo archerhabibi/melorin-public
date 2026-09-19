@@ -124,25 +124,17 @@ final class PriceSnapshot
     /**
      * نگاشت به ستون‌های جدول orders.
      *
-     * ستون‌های فیزیکی عمداً تغییر نکرده‌اند (نصب‌های فعال نباید بشکنند)،
-     * ولی معنایشان دقیقاً همان سه قیمت سند است و در کد فقط با
-     * accessorهای Order::main_price / reseller_price / customers_price
-     * خوانده می‌شوند:
-     *
-     *     خرید Main       core_price = sold_price = main_price
-     *     خرید نمایندگی   core_price = reseller_price
-     *                     sold_price = Customers_price
+     * از مرحله ۵ (Pricing Migration) به بعد، ستون‌های فیزیکی هم دقیقاً
+     * همین سه نام‌اند و هرکدام فقط در Context خودش پر می‌شود — نه یک
+     * عدد مشترک زیر سه نام مختلف. سفارش Main فقط main_price دارد؛
+     * سفارش نماینده فقط reseller_price و customers_price (بند ۳۱ سند).
      */
     public function toOrderColumns(): array
     {
-        $core = $this->isReseller() ? $this->resellerPrice : $this->mainPrice;
-
         return [
-            // base_price برای سازگاری با گزارش‌ها و کدهای موجود نگه
-            // داشته می‌شود و همان core_price است (بند ۱۳ بلوپرینت).
-            'base_price' => $core,
-            'core_price' => $core,
-            'sold_price' => $this->customerDebit(),
+            'main_price' => $this->isReseller() ? null : $this->mainPrice,
+            'reseller_price' => $this->isReseller() ? $this->resellerPrice : null,
+            'customers_price' => $this->isReseller() ? $this->customersPrice : null,
         ];
     }
 }

@@ -14,7 +14,7 @@ class Order extends Model
 
     protected $fillable = [
         'user_id', 'customer_account_id', 'product_id', 'reseller_id', 'sales_channel',
-        'base_price', 'core_price', 'sold_price', 'payment_id', 'status',
+        'main_price', 'reseller_price', 'customers_price', 'payment_id', 'status',
         'provision_attempts', 'failure_reason',
     ];
 
@@ -56,9 +56,9 @@ class Order extends Model
     }
 
     protected $casts = [
-        'base_price' => 'decimal:2',
-        'core_price' => 'decimal:2',
-        'sold_price' => 'decimal:2',
+        'main_price' => 'decimal:2',
+        'reseller_price' => 'decimal:2',
+        'customers_price' => 'decimal:2',
     ];
 
     public function customerAccount(): BelongsTo
@@ -104,43 +104,15 @@ class Order extends Model
     /* ------------------------------------------------------------------
      | سه قیمت سند معماری، روی همین سفارش (بند ۱۵ و ۲۱).
      |
-     | ستون‌های فیزیکی (base_price / core_price / sold_price) عمداً
-     | دست‌نخورده مانده‌اند تا نصب‌های فعال و گزارش‌های موجود نشکنند، ولی
-     | کدِ جدید فقط این سه نام را می‌خواند:
-     |
-     |     context = main      → main_price        (= sold_price)
-     |     context = reseller  → reseller_price    (= core_price)
-     |                           Customers_price   (= sold_price)
-     |
-     | مقدار null یعنی «این قیمت در Context این سفارش اصلاً نقشی ندارد»
-     | — دقیقاً همان چیزی که بند ۸ و ۱۱ سند می‌گویند.
+     | از مرحله ۵ (Pricing Migration) این سه، ستون فیزیکی مستقل خودشان
+     | را دارند — نه یک عدد مشترک زیر سه نام. مقدار null یعنی «این
+     | قیمت در Context این سفارش اصلاً نقشی ندارد» (بند ۸ و ۱۱ سند)،
+     | و همین null بودن با خودِ ستون تضمین می‌شود، نه با یک Accessor.
      ------------------------------------------------------------------ */
 
     public function isResellerContext(): bool
     {
         return $this->reseller_id !== null;
-    }
-
-    /** `main_price` — فقط در سفارش‌های مستقیم فروشگاه اصلی معنا دارد. */
-    public function getMainPriceAttribute(): ?float
-    {
-        return $this->isResellerContext() ? null : (float) $this->sold_price;
-    }
-
-    /** `reseller_price` — آنچه از کیف‌پول نماینده در Main کسر شده است. */
-    public function getResellerPriceAttribute(): ?float
-    {
-        if (! $this->isResellerContext()) {
-            return null;
-        }
-
-        return (float) ($this->core_price ?? $this->base_price);
-    }
-
-    /** `Customers_price` — آنچه مشتریِ نماینده در Context نماینده پرداخته. */
-    public function getCustomersPriceAttribute(): ?float
-    {
-        return $this->isResellerContext() ? (float) $this->sold_price : null;
     }
 
     /**

@@ -27,7 +27,11 @@ class StatsOverview extends BaseWidget
             ->whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()])
             ->get();
 
-        $monthRevenue = (float) $monthOrders->sum('sold_price');
+        // این کوئری با ofReseller() محدود شده، یعنی همه‌ی سفارش‌ها در
+        // Context نماینده‌اند — پس «مبلغی که مشتری پرداخته» همیشه
+        // customers_price است، نه main_price (که اصلاً در این سفارش‌ها
+        // پر نمی‌شود).
+        $monthRevenue = (float) $monthOrders->sum('customers_price');
         $monthProfit = (float) $monthOrders->sum(fn (Order $o) => $o->resellerProfit());
         $customersCount = $reseller->customers()->count();
 

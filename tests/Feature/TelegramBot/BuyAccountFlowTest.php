@@ -99,7 +99,7 @@ class BuyAccountFlowTest extends TestCase
 
         $product = Product::factory()->create([
             'category_id' => $category->id,
-            'price' => 150000,
+            'main_price' => 150000,
         ]);
 
         app(BuyAccountHandler::class)->purchase(
@@ -144,7 +144,7 @@ class BuyAccountFlowTest extends TestCase
 
         $product = Product::factory()->create([
             'category_id' => $category->id,
-            'price' => 150000,
+            'main_price' => 150000,
         ]);
 
         app(WalletService::class)->charge($this->mainWalletOwner($user), 200000);
@@ -196,7 +196,7 @@ class BuyAccountFlowTest extends TestCase
 
         $product = Product::factory()->create([
             'category_id' => $category->id,
-            'price' => 150000,
+            'main_price' => 150000,
         ]);
 
         app(WalletService::class)->charge($this->mainWalletOwner($user), 200000);
@@ -263,7 +263,7 @@ class BuyAccountFlowTest extends TestCase
 
         $product = Product::factory()->create([
             'category_id' => $category->id,
-            'price' => 150000,
+            'main_price' => 150000,
         ]);
 
         app(WalletService::class)->charge($this->mainWalletOwner($user), 200000);

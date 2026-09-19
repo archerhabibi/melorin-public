@@ -89,7 +89,7 @@ class AccountSummaryAndRenewMessagingTest extends TestCase
         $category = Category::factory()->create();
         $category->serverPanels()->attach($panel);
 
-        $product = Product::factory()->create(['category_id' => $category->id, 'price' => $price]);
+        $product = Product::factory()->create(['category_id' => $category->id, 'main_price' => $price]);
 
         $customerAccount = app(IdentityService::class)->resolveCustomerAccount(
             $user,

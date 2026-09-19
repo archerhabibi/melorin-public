@@ -22,7 +22,7 @@ use App\Services\Core\Store\StoreContext;
 
 /**
  * طبق درخواست صریح: «قیمت نمایندگان» قیمتی است که پلتفرم به نماینده
- * می‌فروشد (Double-Debit base_price) — نه قیمت پایه‌ی خرده‌فروشی که
+ * می‌فروشد (Double-Debit reseller_price) — نه قیمت پایه‌ی خرده‌فروشی که
  * تا این نسخه اشتباهاً از کیف‌پول نماینده هم کسر می‌شد. این تست‌ها هم
  * مسیر خرید (AccountService) و هم قوانین قیمت‌گذاری
  * (ResellerPricingService::assertPriceAllowed) را با reseller_price
@@ -50,14 +50,14 @@ class ResellerPriceFieldTest extends TestCase
 
         $product = Product::factory()->create([
             'category_id' => $category->id,
-            'price' => $price,
+            'main_price' => $price,
             'reseller_price' => $resellerPrice,
         ]);
 
         ResellerProductPrice::create([
             'reseller_id' => $reseller->id,
             'product_id' => $product->id,
-            'custom_price' => $sellingPrice,
+            'customers_price' => $sellingPrice,
             'is_enabled' => true,
         ]);
 
@@ -93,8 +93,8 @@ class ResellerPriceFieldTest extends TestCase
         $this->assertEquals(60000, $wallet->balance($customerAccount));
         $this->assertEquals(110000, $wallet->balance($reseller));
 
-        $this->assertEquals(90000, $account->order->base_price);
-        $this->assertEquals(140000, $account->order->sold_price);
+        $this->assertEquals(90000, $account->order->reseller_price);
+        $this->assertEquals(140000, $account->order->customers_price);
     }
 
     #[Test]
@@ -123,7 +123,7 @@ class ResellerPriceFieldTest extends TestCase
         );
 
         $this->assertEquals(100000, $wallet->balance($reseller));
-        $this->assertEquals(100000, $account->order->base_price);
+        $this->assertEquals(100000, $account->order->reseller_price);
     }
 
     #[Test]
@@ -166,18 +166,18 @@ class ResellerPriceFieldTest extends TestCase
     public function reseller_can_sell_profitably_between_the_wholesale_price_and_the_retail_price(): void
     {
         $reseller = Reseller::factory()->create();
-        $product = Product::factory()->create(['price' => 150000, 'reseller_price' => 90000]);
+        $product = Product::factory()->create(['main_price' => 150000, 'reseller_price' => 90000]);
 
         $setting = app(ResellerPricingService::class)->setSellingPrice($reseller, $product, 120000);
 
-        $this->assertEquals(120000, $setting->custom_price);
+        $this->assertEquals(120000, $setting->customers_price);
     }
 
     #[Test]
     public function selling_price_below_the_wholesale_reseller_price_is_still_rejected(): void
     {
         $reseller = Reseller::factory()->create();
-        $product = Product::factory()->create(['price' => 150000, 'reseller_price' => 90000]);
+        $product = Product::factory()->create(['main_price' => 150000, 'reseller_price' => 90000]);
 
         $this->expectException(InvalidArgumentException::class);
 

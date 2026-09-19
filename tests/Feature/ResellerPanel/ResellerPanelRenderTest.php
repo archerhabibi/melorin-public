@@ -84,7 +84,7 @@ class ResellerPanelRenderTest extends TestCase
         $this->actingAs($admin, 'admin');
 
         $product = Product::factory()->create([
-            'price' => 150000,
+            'main_price' => 150000,
             'reseller_price' => null,
             'status' => 'active',
         ]);

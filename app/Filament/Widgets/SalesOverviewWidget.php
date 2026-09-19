@@ -24,15 +24,20 @@ class SalesOverviewWidget extends BaseWidget
     {
         $completedStatuses = ['paid', 'account_created'];
 
-        $todayRevenue = (float) Order::query()
+        // main_price و customers_price هیچ‌وقت هم‌زمان روی یک سفارش پر
+        // نیستند (بند ۳۱ سند)، پس SUM هرکدام به‌تنهایی NULLها را نادیده
+        // می‌گیرد و جمعشان دقیقاً معادل COALESCE است.
+        $todayOrdersQuery = fn () => Order::query()
             ->whereIn('status', $completedStatuses)
-            ->whereDate('created_at', today())
-            ->sum('sold_price');
+            ->whereDate('created_at', today());
+        $todayRevenue = (float) $todayOrdersQuery()->sum('main_price')
+            + (float) $todayOrdersQuery()->sum('customers_price');
 
-        $monthRevenue = (float) Order::query()
+        $monthOrdersQuery = fn () => Order::query()
             ->whereIn('status', $completedStatuses)
-            ->whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()])
-            ->sum('sold_price');
+            ->whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()]);
+        $monthRevenue = (float) $monthOrdersQuery()->sum('main_price')
+            + (float) $monthOrdersQuery()->sum('customers_price');
 
         $todayOrdersCount = Order::query()
             ->whereIn('status', $completedStatuses)

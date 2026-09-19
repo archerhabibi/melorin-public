@@ -17,8 +17,9 @@ class OrderFactory extends Factory
             'user_id' => User::factory(),
             'product_id' => Product::factory(),
             'sales_channel' => 'main_bot',
-            'base_price' => 100000,
-            'sold_price' => 100000,
+            'main_price' => 100000,
+            'reseller_price' => null,
+            'customers_price' => null,
             'status' => 'pending',
         ];
     }

@@ -59,7 +59,7 @@ class AccountServiceTest extends TestCase
 
         $user = User::factory()->create();
         $category = $this->makeCategoryWithPanel();
-        $product = Product::factory()->create(['category_id' => $category->id, 'price' => 100000]);
+        $product = Product::factory()->create(['category_id' => $category->id, 'main_price' => 100000]);
 
         $this->expectException(InsufficientBalanceException::class);
 
@@ -78,7 +78,7 @@ class AccountServiceTest extends TestCase
 
         $user = User::factory()->create();
         $category = $this->makeCategoryWithPanel();
-        $product = Product::factory()->create(['category_id' => $category->id, 'price' => 100000]);
+        $product = Product::factory()->create(['category_id' => $category->id, 'main_price' => 100000]);
 
         $this->wallet->charge($this->mainWalletOwner($user), 150000);
 
@@ -114,7 +114,7 @@ class AccountServiceTest extends TestCase
 
         $user = User::factory()->create();
         $category = $this->makeCategoryWithPanel();
-        $product = Product::factory()->create(['category_id' => $category->id, 'price' => 100000]);
+        $product = Product::factory()->create(['category_id' => $category->id, 'main_price' => 100000]);
 
         $this->wallet->charge($this->mainWalletOwner($user), 150000);
 
@@ -146,7 +146,7 @@ class AccountServiceTest extends TestCase
         $category = Category::factory()->create(['server_selection_mode' => 'auto']);
         $category->serverPanels()->attach([$busyPanel->id, $freePanel->id]);
 
-        $product = Product::factory()->create(['category_id' => $category->id, 'price' => 50000]);
+        $product = Product::factory()->create(['category_id' => $category->id, 'main_price' => 50000]);
         $user = User::factory()->create();
         $this->wallet->charge($this->mainWalletOwner($user), 50000);
 
@@ -169,7 +169,7 @@ class AccountServiceTest extends TestCase
         $category = Category::factory()->create(['server_selection_mode' => 'auto']);
         $category->serverPanels()->attach($panel);
 
-        $product = Product::factory()->create(['category_id' => $category->id, 'price' => 10000, 'traffic_gb' => 30]);
+        $product = Product::factory()->create(['category_id' => $category->id, 'main_price' => 10000, 'traffic_gb' => 30]);
 
         $user1 = User::factory()->create();
         $this->wallet->charge($this->mainWalletOwner($user1), 10000);
@@ -196,7 +196,7 @@ class AccountServiceTest extends TestCase
         $category = Category::factory()->create(['server_selection_mode' => 'auto', 'naming_mode' => 'custom']);
         $category->serverPanels()->attach($panel);
 
-        $product = Product::factory()->create(['category_id' => $category->id, 'price' => 10000]);
+        $product = Product::factory()->create(['category_id' => $category->id, 'main_price' => 10000]);
 
         $user1 = User::factory()->create();
         $this->wallet->charge($this->mainWalletOwner($user1), 10000);
@@ -229,7 +229,7 @@ class AccountServiceTest extends TestCase
         $category = Category::factory()->create(['server_selection_mode' => 'auto']);
         $category->serverPanels()->attach($panel);
 
-        $product = Product::factory()->create(['category_id' => $category->id, 'price' => 0, 'traffic_gb' => 30]);
+        $product = Product::factory()->create(['category_id' => $category->id, 'main_price' => 0, 'traffic_gb' => 30]);
 
         $user = User::factory()->create(['telegram_id' => 123456789]);
 

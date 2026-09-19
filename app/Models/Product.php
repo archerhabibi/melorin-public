@@ -12,12 +12,12 @@ class Product extends Model
     use HasFactory;
 
     protected $fillable = [
-        'category_id', 'name', 'price', 'reseller_price', 'traffic_gb', 'duration_days',
+        'category_id', 'name', 'main_price', 'reseller_price', 'traffic_gb', 'duration_days',
         'protocol_id', 'status', 'sale_limit', 'allowed_panel_ids',
     ];
 
     protected $casts = [
-        'price' => 'decimal:2',
+        'main_price' => 'decimal:2',
         'reseller_price' => 'decimal:2',
         'traffic_gb' => 'decimal:2',
         'allowed_panel_ids' => 'array',
@@ -44,11 +44,10 @@ class Product extends Model
      | است برابر شوند (بند ۲۰، Rule 5) ولی معنایشان هرگز یکی نیست، پس
      | هرکدام متد مستقل خودشان را دارند.
      |
-     | نگاشت به ستون‌های دیتابیس (عمداً تغییر نکرده‌اند تا نصب‌های موجود
-     | نشکنند):
-     |     main_price      = products.price
-     |     reseller_price  = products.reseller_price ?? products.price
-     |     Customers_price = reseller_product_prices.custom_price
+     | نگاشت به ستون‌های دیتابیس (مرحله ۵ سند: rename واقعی، نه Alias):
+     |     main_price      = products.main_price
+     |     reseller_price  = products.reseller_price ?? products.main_price
+     |     Customers_price = reseller_product_prices.customers_price
      ------------------------------------------------------------------ */
 
     /**
@@ -57,7 +56,7 @@ class Product extends Model
      */
     public function mainPrice(): float
     {
-        return (float) $this->price;
+        return (float) $this->main_price;
     }
 
     /**
@@ -71,7 +70,7 @@ class Product extends Model
      */
     public function resellerPrice(): float
     {
-        return (float) ($this->reseller_price ?? $this->price);
+        return (float) ($this->reseller_price ?? $this->main_price);
     }
 
     public function resellerPrices(): HasMany
@@ -101,6 +100,6 @@ class Product extends Model
             ->where('is_enabled', true)
             ->first();
 
-        return $setting ? (float) $setting->custom_price : null;
+        return $setting ? (float) $setting->customers_price : null;
     }
 }

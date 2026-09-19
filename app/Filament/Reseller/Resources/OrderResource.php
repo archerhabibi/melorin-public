@@ -35,8 +35,8 @@ class OrderResource extends Resource
                 Tables\Columns\TextColumn::make('id')->label('#'),
                 Tables\Columns\TextColumn::make('user.full_name')->label('مشتری'),
                 Tables\Columns\TextColumn::make('product.name')->label('محصول'),
-                Tables\Columns\TextColumn::make('base_price')->label('هزینه‌ی پایه')->money('IRT', divideBy: 1),
-                Tables\Columns\TextColumn::make('sold_price')->label('قیمت فروش')->money('IRT', divideBy: 1),
+                Tables\Columns\TextColumn::make('reseller_price')->label('هزینه‌ی پایه')->money('IRT', divideBy: 1),
+                Tables\Columns\TextColumn::make('customers_price')->label('قیمت فروش')->money('IRT', divideBy: 1),
                 Tables\Columns\TextColumn::make('profit')
                     ->label('سود')
                     ->getStateUsing(fn (Order $record) => number_format($record->resellerProfit()).' تومان'),

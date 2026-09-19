@@ -115,7 +115,7 @@ class AdminPanelUpdatesTest extends TestCase
         $user = User::factory()->create();
         Order::factory()->for($user)->create([
             'status' => 'paid',
-            'sold_price' => 50000,
+            'main_price' => 50000,
             'created_at' => today(),
         ]);
 

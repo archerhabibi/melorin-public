@@ -197,7 +197,7 @@ class ResellerPanelIsolationTest extends TestCase
         $reseller = Reseller::factory()->create([
             'min_sale_price_rule' => ['min_price' => 110000],
         ]);
-        $product = Product::factory()->create(['price' => 100000, 'status' => 'active']);
+        $product = Product::factory()->create(['main_price' => 100000, 'status' => 'active']);
 
         $this->actingAsReseller($reseller);
 
@@ -205,12 +205,12 @@ class ResellerPanelIsolationTest extends TestCase
             ->callTableAction('set_price', $product, data: ['selling_price' => 130000])
             ->assertHasNoTableActionErrors();
 
-        $this->assertEquals(130000, $product->fresh()->sellingPriceForReseller($reseller));
+        $this->assertEquals(130000, $product->fresh()->customersPrice($reseller));
 
         Livewire::test(ListProducts::class)
             ->callTableAction('set_price', $product, data: ['selling_price' => 105000]);
 
         // قیمت قبلی (معتبر) دست‌نخورده باقی مانده، چون تلاش دوم رد شده
-        $this->assertEquals(130000, $product->fresh()->sellingPriceForReseller($reseller));
+        $this->assertEquals(130000, $product->fresh()->customersPrice($reseller));
     }
 }

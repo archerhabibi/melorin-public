@@ -50,7 +50,7 @@ class ResellerCategoryToggleTest extends TestCase
 
         $product = Product::factory()->create([
             'category_id' => $category->id,
-            'price' => 150000,
+            'main_price' => 150000,
             'reseller_price' => 90000,
             'status' => 'active',
         ]);
@@ -58,7 +58,7 @@ class ResellerCategoryToggleTest extends TestCase
         ResellerProductPrice::create([
             'reseller_id' => $reseller->id,
             'product_id' => $product->id,
-            'custom_price' => 120000,
+            'customers_price' => 120000,
             'is_enabled' => true,
         ]);
 
@@ -104,7 +104,7 @@ class ResellerCategoryToggleTest extends TestCase
 
         // قیمت نباید پاک شده باشد — این همان چیزی است که در متن تأیید
         // اکشن «غیرفعال کردن» به نماینده وعده داده می‌شود.
-        $this->assertEquals(120000, $product->fresh()->sellingPriceForReseller($reseller));
+        $this->assertEquals(120000, $product->fresh()->customersPrice($reseller));
         $this->assertTrue($pricing->isSellable($reseller, $product));
     }
 
@@ -118,7 +118,7 @@ class ResellerCategoryToggleTest extends TestCase
         ResellerProductPrice::create([
             'reseller_id' => $resellerB->id,
             'product_id' => $product->id,
-            'custom_price' => 130000,
+            'customers_price' => 130000,
             'is_enabled' => true,
         ]);
 
@@ -193,8 +193,8 @@ class ResellerCategoryToggleTest extends TestCase
         // نماینده قیمت نمایندگان را می‌پردازد: 200,000 - 90,000
         $this->assertEquals(110000, $wallet->balance($reseller));
         // سود نماینده = 120,000 - 90,000 = 30,000
-        $this->assertEquals(90000, $account->order->base_price);
-        $this->assertEquals(120000, $account->order->sold_price);
+        $this->assertEquals(90000, $account->order->reseller_price);
+        $this->assertEquals(120000, $account->order->customers_price);
         $this->assertEquals($reseller->id, $account->order->reseller_id);
     }
 
@@ -214,7 +214,7 @@ class ResellerCategoryToggleTest extends TestCase
         $wallet->charge($customerAccount, 200000);
         $wallet->charge($reseller, 200000);
 
-        // محصول هنوز sellingPriceForReseller دارد، پس اگر AccountService
+        // محصول هنوز customersPrice() دارد، پس اگر AccountService
         // فقط به آن تکیه کند خرید انجام می‌شود. مسیر واقعیِ ربات از
         // sellableProducts() عبور می‌کند، که این محصول را برنمی‌گرداند —
         // یعنی مشتری اصلاً چنین دکمه‌ای نمی‌بیند.

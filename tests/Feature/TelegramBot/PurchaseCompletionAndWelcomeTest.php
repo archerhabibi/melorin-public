@@ -75,7 +75,7 @@ class PurchaseCompletionAndWelcomeTest extends TestCase
         $category = Category::factory()->create(['server_selection_mode' => 'auto']);
         $category->serverPanels()->attach($panel);
 
-        $product = Product::factory()->create(['category_id' => $category->id, 'price' => 150000]);
+        $product = Product::factory()->create(['category_id' => $category->id, 'main_price' => 150000]);
 
         $user = User::factory()->create(['telegram_id' => 111222333]);
         // مثل BuyAccountFlowTest: کیف‌پولی که خرید از آن کسر می‌کند

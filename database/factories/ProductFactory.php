@@ -15,7 +15,7 @@ class ProductFactory extends Factory
         return [
             'category_id' => Category::factory(),
             'name' => $this->faker->words(3, true),
-            'price' => $this->faker->randomFloat(2, 50000, 500000),
+            'main_price' => $this->faker->randomFloat(2, 50000, 500000),
             'traffic_gb' => $this->faker->randomElement([10, 30, 50, 100]),
             'duration_days' => $this->faker->randomElement([30, 60, 90]),
             'status' => 'active',

@@ -95,7 +95,7 @@ class CommissionAndBridgeTest extends TestCase
 
         return Product::factory()->create([
             'category_id' => $category->id,
-            'price' => $price,
+            'main_price' => $price,
             'status' => 'active',
         ]);
     }
@@ -230,7 +230,7 @@ class CommissionAndBridgeTest extends TestCase
         \App\Models\ResellerProductPrice::create([
             'reseller_id' => $reseller->id,
             'product_id' => $product->id,
-            'custom_price' => 100000,
+            'customers_price' => 100000,
             'is_enabled' => true,
         ]);
 
@@ -281,7 +281,7 @@ class CommissionAndBridgeTest extends TestCase
     /**
      * مهم‌ترین تست فاز G: مسیر قدیمی که ربات‌ها استفاده می‌کنند، بدون
      * هیچ تغییری در خودشان، حالا باید از هسته‌ی جدید عبور کند — یعنی
-     * سفارشش customer_account_id و core_price داشته باشد.
+     * سفارشش customer_account_id و main_price داشته باشد.
      */
     #[Test]
     public function the_legacy_account_service_now_routes_through_the_new_core(): void
@@ -299,7 +299,7 @@ class CommissionAndBridgeTest extends TestCase
         $order = $account->order;
 
         $this->assertEquals($customer->id, $order->customer_account_id, 'سفارش باید مالک Multi-Store داشته باشد');
-        $this->assertEquals(100000, (float) $order->core_price, 'اسنپ‌شات قیمت باید ثبت شده باشد');
+        $this->assertEquals(100000, (float) $order->main_price, 'اسنپ‌شات قیمت باید ثبت شده باشد');
         $this->assertEquals(1, $order->provision_attempts, 'باید از مسیر ProvisioningService عبور کرده باشد');
     }
 

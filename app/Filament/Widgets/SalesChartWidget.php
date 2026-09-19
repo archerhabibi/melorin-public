@@ -28,7 +28,10 @@ class SalesChartWidget extends ChartWidget
         $revenueByDay = Order::query()
             ->whereIn('status', ['paid', 'account_created'])
             ->where('created_at', '>=', today()->subDays(13))
-            ->selectRaw('DATE(created_at) as day, SUM(sold_price) as revenue')
+            // COALESCE چون این کوئری روی همه‌ی سفارش‌ها (Main و
+            // نمایندگی) اجرا می‌شود و «فروش» هرکدام از دو ستون متفاوت
+            // می‌آید — این دو هیچ‌وقت هم‌زمان پر نیستند (بند ۳۱ سند).
+            ->selectRaw('DATE(created_at) as day, SUM(COALESCE(main_price, customers_price, 0)) as revenue')
             ->groupBy('day')
             ->pluck('revenue', 'day');
 

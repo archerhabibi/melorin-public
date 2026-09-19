@@ -72,7 +72,7 @@ class RenewAccountFlowTest extends TestCase
 
         $product = Product::factory()->create([
             'category_id' => $category->id,
-            'price' => $price,
+            'main_price' => $price,
         ]);
 
         $customerAccount = app(IdentityService::class)->resolveCustomerAccount($user, StoreContext::main());

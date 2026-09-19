@@ -102,12 +102,12 @@ class ResellerBotFlowsTest extends TestCase
         $category = Category::factory()->create(['status' => 'active', 'server_selection_mode' => 'auto']);
         $category->serverPanels()->attach($panel);
 
-        $product = Product::factory()->create(['category_id' => $category->id, 'price' => $basePrice, 'status' => 'active']);
+        $product = Product::factory()->create(['category_id' => $category->id, 'main_price' => $basePrice, 'status' => 'active']);
 
         ResellerProductPrice::create([
             'reseller_id' => $reseller->id,
             'product_id' => $product->id,
-            'custom_price' => $sellingPrice,
+            'customers_price' => $sellingPrice,
             'is_enabled' => true,
         ]);
 
@@ -149,8 +149,8 @@ class ResellerBotFlowsTest extends TestCase
         $this->assertDatabaseHas('orders', [
             'reseller_id' => $reseller->id,
             'sales_channel' => 'reseller_bot',
-            'base_price' => 10,
-            'sold_price' => 14,
+            'reseller_price' => 10,
+            'customers_price' => 14,
         ]);
     }
 

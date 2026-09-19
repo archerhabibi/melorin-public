@@ -48,12 +48,12 @@ class ResellerPurchaseFinancialTest extends TestCase
     protected function sellableProduct(Reseller $reseller, float $basePrice, float $sellingPrice): Product
     {
         $category = $this->makeCategoryWithPanel();
-        $product = Product::factory()->create(['category_id' => $category->id, 'price' => $basePrice]);
+        $product = Product::factory()->create(['category_id' => $category->id, 'main_price' => $basePrice]);
 
         ResellerProductPrice::create([
             'reseller_id' => $reseller->id,
             'product_id' => $product->id,
-            'custom_price' => $sellingPrice,
+            'customers_price' => $sellingPrice,
             'is_enabled' => true,
         ]);
 
@@ -87,14 +87,14 @@ class ResellerPurchaseFinancialTest extends TestCase
             reseller: $reseller,
         );
 
-        // طبق بند ۶ سند: Customer Purchase Debit = sold_price
+        // طبق بند ۶ سند: Customer Purchase Debit = customers_price
         $this->assertEquals(6, $this->wallet->balance($customer));
-        // Reseller Purchase Debit = base_price
+        // Reseller Purchase Debit = reseller_price
         $this->assertEquals(20, $this->wallet->balance($reseller));
 
         $order = $account->order;
-        $this->assertEquals(10, $order->base_price);
-        $this->assertEquals(14, $order->sold_price);
+        $this->assertEquals(10, $order->reseller_price);
+        $this->assertEquals(14, $order->customers_price);
         $this->assertEquals(4, $order->resellerProfit());
         $this->assertEquals($reseller->id, $order->reseller_id);
         $this->assertEquals('reseller_bot', $order->sales_channel);
@@ -181,7 +181,7 @@ class ResellerPurchaseFinancialTest extends TestCase
         $reseller = Reseller::factory()->create();
         $customer = User::factory()->create(['reseller_id' => $reseller->id]);
         $category = $this->makeCategoryWithPanel();
-        $product = Product::factory()->create(['category_id' => $category->id, 'price' => 10, 'status' => 'active']);
+        $product = Product::factory()->create(['category_id' => $category->id, 'main_price' => 10, 'status' => 'active']);
         // عمداً هیچ ResellerProductPrice ای ساخته نمی‌شود — یعنی نماینده هرگز آن را فعال نکرده
 
         $this->wallet->charge($customer, 100);
@@ -255,7 +255,7 @@ class ResellerPurchaseFinancialTest extends TestCase
         $this->fakeSuccessfulPanel();
 
         $category = $this->makeCategoryWithPanel();
-        $product = Product::factory()->create(['category_id' => $category->id, 'price' => 100000]);
+        $product = Product::factory()->create(['category_id' => $category->id, 'main_price' => 100000]);
         $user = User::factory()->create();
 
         $this->wallet->charge($user, 150000);

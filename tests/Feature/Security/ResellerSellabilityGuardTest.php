@@ -42,7 +42,7 @@ class ResellerSellabilityGuardTest extends TestCase
 
         $product = Product::factory()->create([
             'category_id' => $category->id,
-            'price' => 150000,
+            'main_price' => 150000,
             'reseller_price' => 90000,
             'status' => 'active',
         ]);
@@ -50,7 +50,7 @@ class ResellerSellabilityGuardTest extends TestCase
         ResellerProductPrice::create([
             'reseller_id' => $reseller->id,
             'product_id' => $product->id,
-            'custom_price' => 120000,
+            'customers_price' => 120000,
             'is_enabled' => true,
         ]);
 
@@ -169,8 +169,8 @@ class ResellerSellabilityGuardTest extends TestCase
             $customer, $product, salesChannel: 'reseller_bot', reseller: $reseller,
         );
 
-        $this->assertEquals(90000, $account->order->base_price);
-        $this->assertEquals(120000, $account->order->sold_price);
+        $this->assertEquals(90000, $account->order->reseller_price);
+        $this->assertEquals(120000, $account->order->customers_price);
     }
 
     /**

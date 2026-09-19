@@ -136,9 +136,9 @@ class AccountService
                 'product_id' => $product->id,
                 'reseller_id' => null,
                 'sales_channel' => $salesChannel,
-                'base_price' => 0,
-                'core_price' => 0,
-                'sold_price' => 0,
+                'main_price' => 0,
+                'reseller_price' => null,
+                'customers_price' => null,
                 'status' => 'pending',
             ]);
 

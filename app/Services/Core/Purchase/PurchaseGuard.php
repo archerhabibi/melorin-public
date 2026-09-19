@@ -172,7 +172,7 @@ class PurchaseGuard
     /**
      * بند ۲۰ بلوپرینت — Reseller Debt Guard.
      *
-     *     new_balance = current_balance - core_price
+     *     new_balance = current_balance - reseller_price
      *     if new_balance < -debt_limit → مسدود
      *
      * در حالت مسدود، هیچ کسری از هیچ‌کدام از دو طرف انجام نمی‌شود و

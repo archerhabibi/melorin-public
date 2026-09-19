@@ -34,7 +34,7 @@ class ProductResource extends Resource
             Forms\Components\TextInput::make('name')->label('نام محصول')->required()->maxLength(255),
 
             Forms\Components\Grid::make(3)->schema([
-                Forms\Components\TextInput::make('price')
+                Forms\Components\TextInput::make('main_price')
                     ->label('قیمت پایه (تومان)')
                     ->numeric()
                     ->required()
@@ -81,7 +81,7 @@ class ProductResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('name')->label('نام')->searchable(),
-                Tables\Columns\TextColumn::make('price')->label('قیمت')->money('IRT', divideBy: 1)->sortable(),
+                Tables\Columns\TextColumn::make('main_price')->label('قیمت')->money('IRT', divideBy: 1)->sortable(),
                 // طبق درخواست صریح: این ستون همیشه دیده شود. قبلاً ->toggleable()
                 // داشت که آن را به یک ستون اختیاری تبدیل می‌کرد و با بقیه‌ی
                 // ستون‌های قیمت (که ثابت‌اند) ناهماهنگ بود — در حالی که این

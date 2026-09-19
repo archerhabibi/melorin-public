@@ -137,7 +137,7 @@ class ProvisioningAndRenewalTest extends TestCase
 
         return Product::factory()->create([
             'category_id' => $category->id,
-            'price' => $price,
+            'main_price' => $price,
             'duration_days' => $days,
             'traffic_gb' => $gb,
             'status' => 'active',
@@ -189,7 +189,7 @@ class ProvisioningAndRenewalTest extends TestCase
 
         $product = Product::factory()->create([
             'category_id' => $category->id,
-            'price' => 100000,
+            'main_price' => 100000,
             'traffic_gb' => 30,
             'duration_days' => 30,
             'status' => 'active',
@@ -441,9 +441,7 @@ class ProvisioningAndRenewalTest extends TestCase
             'customer_account_id' => $customer->id,
             'product_id' => $product->id,
             'sales_channel' => 'main_bot',
-            'base_price' => 1000,
-            'core_price' => 1000,
-            'sold_price' => 1000,
+            'main_price' => 1000,
             'status' => Order::STATUS_PENDING,
         ]);
 
@@ -636,7 +634,7 @@ class ProvisioningAndRenewalTest extends TestCase
 
         // قیمت محصول بعد از خرید/ایجاد اکانت تغییر می‌کند.
         $product->update([
-            'price' => 100000,
+            'main_price' => 100000,
             'reseller_price' => null,
         ]);
 
@@ -655,9 +653,7 @@ class ProvisioningAndRenewalTest extends TestCase
         ->firstOrFail();
 
         // Renewal باید قیمت فعلی را برای تراکنش جدید Snapshot کند.
-        $this->assertEquals(100000, (float) $renewalOrder->core_price);
-        $this->assertEquals(100000, (float) $renewalOrder->sold_price);
-        $this->assertEquals(100000, (float) $renewalOrder->base_price);
+        $this->assertEquals(100000, (float) $renewalOrder->main_price);
 
         // و مبلغ Renewal باید از موجودی فعلی کسر شده باشد.
         $this->assertEquals(
