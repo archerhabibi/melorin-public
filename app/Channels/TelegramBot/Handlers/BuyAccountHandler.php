@@ -12,6 +12,7 @@ use App\Models\Product;
 use App\Models\ServerPanel;
 use App\Models\User;
 use App\Services\Core\AccountService;
+use App\Services\Core\Provisioning\ProvisioningFailedException;
 use App\Services\Core\Store\IdentityService;
 use App\Services\Core\Store\StoreContext;
 use App\Services\Core\WalletService;
@@ -232,8 +233,13 @@ class BuyAccountHandler
             $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => 'موجودی کیف پول کافی نیست.']);
 
             return;
+        } catch (ProvisioningFailedException $e) {
+            // پیام بر اساس سیاست فعلی ادمین (بازگشت فوری / تلاش مجدد / رسیدگی)
+            $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => "خرید ناموفق بود: {$e->getMessage()}\n{$e->customerNotice()}"]);
+
+            return;
         } catch (\RuntimeException $e) {
-            $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => "خرید ناموفق بود: {$e->getMessage()}\nمبلغ به کیف پول شما بازگشت داده شد."]);
+            $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => "خرید ناموفق بود: {$e->getMessage()}\nدر صورت کسر وجه، سفارش ثبت شده و پشتیبانی پیگیری می‌کند."]);
 
             return;
         }

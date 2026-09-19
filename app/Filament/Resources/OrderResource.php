@@ -4,6 +4,11 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\OrderResource\Pages;
 use App\Models\Order;
+use App\Services\Core\Provisioning\FailedOrderRecovery;
+use App\Services\Core\Provisioning\RecoveryResult;
+use Filament\Infolists;
+use Filament\Infolists\Infolist;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -43,24 +48,134 @@ class OrderResource extends Resource
                     ->getStateUsing(fn (Order $record) => number_format((float) ($record->main_price ?? $record->customers_price)).' تومان'),
                 Tables\Columns\BadgeColumn::make('status')
                     ->label('وضعیت')
+                    ->formatStateUsing(fn ($state) => Order::statusLabels()[$state] ?? $state)
                     ->colors([
-                        'warning' => 'pending', 'info' => 'paid',
-                        'success' => 'account_created', 'danger' => 'failed', 'gray' => 'refunded',
+                        'warning' => ['pending', 'provisioning'], 'info' => 'paid',
+                        'success' => 'account_created', 'danger' => ['failed', 'provision_failed'], 'gray' => 'refunded',
                     ]),
                 Tables\Columns\TextColumn::make('created_at')->label('تاریخ')->dateTime('Y-m-d H:i')->sortable(),
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
-                Tables\Filters\SelectFilter::make('status')->options([
-                    'pending' => 'در انتظار', 'paid' => 'پرداخت‌شده',
-                    'account_created' => 'تحویل‌شده', 'failed' => 'ناموفق', 'refunded' => 'بازگشت‌شده',
-                ]),
+                Tables\Filters\SelectFilter::make('status')->label('وضعیت')->options(Order::statusLabels()),
                 Tables\Filters\SelectFilter::make('sales_channel')->label('کانال فروش')->options([
                     'main_bot' => 'ربات اصلی', 'reseller_bot' => 'ربات نماینده',
                     'website' => 'سایت', 'panel' => 'پنل مدیریت',
                 ]),
             ])
-            ->actions([Tables\Actions\ViewAction::make()]);
+            ->actions([
+                Tables\Actions\ViewAction::make(),
+
+                Tables\Actions\Action::make('retryProvisioning')
+                    ->label('🔁 تلاش مجدد')
+                    ->color('warning')
+                    ->visible(fn (Order $record) => $record->status === Order::STATUS_PROVISION_FAILED)
+                    ->requiresConfirmation()
+                    ->modalDescription('سرویس بدون هیچ کسر مالی جدید دوباره ساخته/تمدید می‌شود. اگر تلاش‌های قبلی ممکن است روی پنل اثر کرده باشند، ابتدا پنل را بررسی کنید.')
+                    ->action(fn (Order $record) => static::runRetry($record)),
+
+                Tables\Actions\Action::make('refundOrder')
+                    ->label('↩️ بازگشت وجه')
+                    ->color('gray')
+                    ->visible(fn (Order $record) => $record->status === Order::STATUS_PROVISION_FAILED)
+                    ->requiresConfirmation()
+                    ->modalDescription(fn (Order $record) => static::refundSummary($record))
+                    ->action(fn (Order $record) => static::runRefund($record)),
+            ]);
+    }
+
+    public static function infolist(Infolist $infolist): Infolist
+    {
+        $money = fn ($state) => $state === null ? '—' : number_format((float) $state).' تومان';
+
+        return $infolist->schema([
+            Infolists\Components\Section::make('سفارش')->columns(3)->schema([
+                Infolists\Components\TextEntry::make('id')->label('#'),
+                Infolists\Components\TextEntry::make('status')->label('وضعیت')->badge()
+                    ->formatStateUsing(fn ($state) => Order::statusLabels()[$state] ?? $state)
+                    ->color(fn ($state) => match ($state) {
+                        'account_created' => 'success',
+                        'provision_failed', 'failed' => 'danger',
+                        'pending', 'provisioning' => 'warning',
+                        'paid' => 'info',
+                        default => 'gray',
+                    }),
+                Infolists\Components\TextEntry::make('created_at')->label('تاریخ')->dateTime('Y-m-d H:i'),
+                Infolists\Components\TextEntry::make('user.full_name')->label('کاربر')->placeholder('—'),
+                Infolists\Components\TextEntry::make('product.name')->label('محصول')->placeholder('—'),
+                Infolists\Components\TextEntry::make('reseller.user.full_name')->label('نماینده')->placeholder('—'),
+                Infolists\Components\TextEntry::make('main_price')->label('main_price')->formatStateUsing($money),
+                Infolists\Components\TextEntry::make('customers_price')->label('customers_price')->formatStateUsing($money),
+                Infolists\Components\TextEntry::make('reseller_price')->label('reseller_price')->formatStateUsing($money),
+            ]),
+            Infolists\Components\Section::make('Provisioning')->columns(3)->schema([
+                Infolists\Components\TextEntry::make('provision_attempts')->label('تعداد تلاش')->placeholder('0'),
+                Infolists\Components\TextEntry::make('next_provision_retry_at')->label('تلاش خودکار بعدی')->dateTime('Y-m-d H:i')->placeholder('—'),
+                Infolists\Components\TextEntry::make('renews_account_id')->label('تمدید اکانت #')->placeholder('— (سفارش خرید)'),
+                Infolists\Components\TextEntry::make('failure_reason')->label('دلیل آخرین شکست')->placeholder('—')->columnSpanFull(),
+            ]),
+        ]);
+    }
+
+    public static function getNavigationBadge(): ?string
+    {
+        $count = Order::query()->where('status', Order::STATUS_PROVISION_FAILED)->count();
+
+        return $count > 0 ? (string) $count : null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'danger';
+    }
+
+    /** خلاصه‌ی مبالغی که بازگشت وجه از روی اسنپ‌شات خودِ سفارش پس می‌دهد */
+    public static function refundSummary(Order $order): string
+    {
+        $customer = (float) ($order->customers_price ?? $order->main_price ?? 0);
+        $text = 'مشتری: '.number_format($customer).' تومان';
+
+        if ($order->isResellerContext()) {
+            $text .= ' | نماینده (reseller_price): '.number_format((float) $order->reseller_price).' تومان';
+        }
+
+        return $text.' — از روی قیمت‌های ثبت‌شده‌ی همین سفارش، نه قیمت امروز.';
+    }
+
+    public static function runRetry(Order $order): RecoveryResult
+    {
+        // ادمین آگاهانه تصمیم می‌گیرد → سقف تلاش نادیده گرفته می‌شود
+        try {
+            $result = app(FailedOrderRecovery::class)->retry($order, force: true);
+        } catch (\Throwable $e) {
+            $result = new RecoveryResult(RecoveryResult::FAILED, $e->getMessage());
+        }
+
+        static::notifyResult($result, 'تلاش مجدد');
+
+        return $result;
+    }
+
+    public static function runRefund(Order $order): RecoveryResult
+    {
+        $result = app(FailedOrderRecovery::class)->refund($order);
+
+        static::notifyResult($result, 'بازگشت وجه');
+
+        return $result;
+    }
+
+    protected static function notifyResult(RecoveryResult $result, string $what): void
+    {
+        $notification = Notification::make()->title("{$what}: {$result->message}");
+
+        match ($result->status) {
+            RecoveryResult::SUCCEEDED => $notification->success(),
+            RecoveryResult::SKIPPED => $notification->warning(),
+            default => $notification->danger(),
+        };
+
+        $notification->send();
     }
 
     public static function getPages(): array

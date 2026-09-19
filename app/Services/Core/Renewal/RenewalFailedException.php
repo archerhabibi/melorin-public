@@ -2,6 +2,7 @@
 
 namespace App\Services\Core\Renewal;
 
+use App\Services\Core\Provisioning\Concerns\CarriesFailureOutcome;
 use RuntimeException;
 
 /**
@@ -11,4 +12,7 @@ use RuntimeException;
  * نیست — تسویه‌ی مالی پیش از این نقطه انجام شده و سفارش در وضعیت
  * provision_failed باقی می‌ماند تا قابل پیگیری و جبران باشد.
  */
-class RenewalFailedException extends RuntimeException {}
+class RenewalFailedException extends RuntimeException
+{
+    use CarriesFailureOutcome;
+}

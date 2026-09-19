@@ -61,10 +61,27 @@ class ProvisioningService
             );
         }
 
+        // سفارش تمدید هرگز اکانت جدید نمی‌سازد؛ مسیرش RenewalService::retry
+        // است (بدون این چک، retry روی سفارش تمدید یک اکانت تازه می‌ساخت).
+        if ($order->isRenewal()) {
+            throw new ProvisioningFailedException(
+                "سفارش #{$order->id} یک سفارش تمدید است؛ ساخت اکانت جدید برای آن مجاز نیست."
+            );
+        }
+
         // اگر اکانت از قبل ساخته شده (retry روی سفارشی که در واقع موفق
         // بوده)، همان را برمی‌گردانیم. بدون این چک، یک retry می‌توانست
-        // اکانت دوم روی پنل بسازد و ظرفیت را دوبرابر مصرف کند.
+        // اکانت دوم روی پنل بسازد و ظرفیت را دوبرابر مصرف کند. وضعیت
+        // سفارش هم اصلاح می‌شود تا در provisioning/provision_failed نماند.
         if ($existing = $order->account) {
+            if ($order->status !== Order::STATUS_ACCOUNT_CREATED) {
+                $order->update([
+                    'status' => Order::STATUS_ACCOUNT_CREATED,
+                    'failure_reason' => null,
+                    'next_provision_retry_at' => null,
+                ]);
+            }
+
             return $existing;
         }
 
@@ -72,6 +89,10 @@ class ProvisioningService
         $panel = $manualPanel ?? $this->serverSelection->select($product->category);
 
         if (! $panel) {
+            // این هم یک تلاش حساب می‌شود؛ وگرنه شمارنده صفر می‌ماند و
+            // retry (یا retry_then_refund) هرگز به سقف نمی‌رسید.
+            $order->update(['provision_attempts' => (int) $order->provision_attempts + 1]);
+
             $this->recordFailure($order, 'هیچ سرور فعالی برای این دسته‌بندی در دسترس نیست.');
 
             throw new ProvisioningFailedException('هیچ سرور فعالی برای این دسته‌بندی در دسترس نیست.');
@@ -156,6 +177,7 @@ class ProvisioningService
                 $order->update([
                     'status' => Order::STATUS_ACCOUNT_CREATED,
                     'failure_reason' => null,
+                    'next_provision_retry_at' => null,
                 ]);
 
                 $panel->increment('active_accounts_count');
@@ -171,10 +193,43 @@ class ProvisioningService
     }
 
     /**
+     * رزرو اتمیک سفارش برای یک تلاش مجدد (provision_failed → provisioning).
+     *
+     * یک UPDATE شرطی است، نه «بخوان و بعد بنویس»: اگر Command زمان‌بندی‌شده
+     * و کلیک ادمین هم‌زمان برسند، فقط یکی ۱ ردیف را تغییر می‌دهد و دیگری
+     * false می‌گیرد — پس دو تلاش موازی (دو اکانت روی پنل) ممکن نیست.
+     *
+     * $force=true سقف MAX_ATTEMPTS را نادیده می‌گیرد (فقط تصمیم دستی ادمین).
+     */
+    public function claimForRetry(Order $order, bool $force = false): bool
+    {
+        $query = Order::query()
+            ->whereKey($order->getKey())
+            ->where('status', Order::STATUS_PROVISION_FAILED);
+
+        if (! $force) {
+            $query->where('provision_attempts', '<', self::MAX_ATTEMPTS);
+        }
+
+        $claimed = $query->update([
+            'status' => Order::STATUS_PROVISIONING,
+            'next_provision_retry_at' => null,
+        ]) === 1;
+
+        if ($claimed) {
+            $order->refresh();
+        }
+
+        return $claimed;
+    }
+
+    /**
      * بند ۲۵ — آیا این سفارش هنوز فرصت تلاش مجدد دارد؟
      *
      * بعد از سه تلاش، سفارش در provision_failed می‌ماند تا ادمین دستی
-     * رسیدگی کند. عمداً بازگشت وجه خودکار انجام نمی‌شود: ممکن است اکانت
+     * رسیدگی کند (مگر سیاست retry_then_refund که بعد از تلاش سوم خودکار
+     * بازگشت می‌دهد — ProvisioningFailureHandler). در سیاست retry بازگشت
+     * خودکار انجام نمی‌شود: ممکن است اکانت
      * روی پنل واقعاً ساخته شده باشد و فقط پاسخ به ما نرسیده باشد، و
      * بازگشت خودکار در آن حالت یعنی هم سرویس داده‌ایم هم پول برگردانده‌ایم.
      * تصمیم با ادمین است.
@@ -185,7 +240,7 @@ class ProvisioningService
             && $order->provision_attempts < self::MAX_ATTEMPTS;
     }
 
-    protected function recordFailure(Order $order, string $reason, ?Operation $operation = null): void
+    public function recordFailure(Order $order, string $reason, ?Operation $operation = null): void
     {
         $order->update([
             'status' => Order::STATUS_PROVISION_FAILED,

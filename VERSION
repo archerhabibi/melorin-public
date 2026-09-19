@@ -1,81 +1,36 @@
-Phase 9 & 10 — Renewal + Refund (طبق ترتیب ۱۵مرحله‌ای سند معماری v2.0)
+Phase 11 — Provisioning Failure Policy (retry / refund / retry_then_refund) + پنل وب
 
-بخشی از یک مسیر چندمرحله‌ای است، نه یک نسخه‌ی مستقل.
+طبق ترتیب ۱۵مرحله‌ای سند معماری v2.0 (بند ۵۹، مرحله‌ی ۱۱). جزئیات کامل:
+docs/PHASE-11-PROVISIONING-POLICY.md
 
-=== نتیجه‌ی Audit (طبق بند ۵۷ سند: جست‌وجوی کامل قبل از هر اقدام) ===
+=== نتیجه‌ی Audit ===
+صفحه‌ی انتخاب retry/refund از قبل وجود داشت ولی واقعاً کار نمی‌کرد:
+سیاست فقط روی «خرید» اعمال می‌شد نه تمدید؛ هیچ Job/Commandی retry خودکار
+انجام نمی‌داد؛ retry روی سفارش تمدید اکانت جدید می‌ساخت؛ در پنل هیچ دکمه‌ی
+دستی تلاش مجدد/بازگشت وجه نبود؛ و ربات اصلی حتی وقتی بازگشتی رخ نداده بود
+می‌گفت «مبلغ بازگشت داده شد».
 
-مثل فاز ۷ و ۸، هر دوی این فازها از قبل — زیر همان کار «v3.1.1:
-store-aware purchase architecture A تا G» — به‌طور کامل پیاده شده
-بودند. شواهد:
+=== تغییرات ===
+- گزینه‌ی سوم «هر دو» = retry_then_refund (اول ۳ تلاش خودکار، بعد بازگشت خودکار).
+  اگر منظورتان از «هر دو» چیز دیگری بود، فقط جدول ProvisioningFailureHandler::handle عوض می‌شود.
+- ProvisioningFailureHandler: تنها نقطه‌ی اعمال سیاست، برای خرید و تمدید.
+- FailedOrderRecovery + Command «provisioning:retry-failed» (هر دقیقه از scheduler).
+- دکمه‌های «🔁 تلاش مجدد» و «↩️ بازگشت وجه» در جدول و صفحه‌ی مشاهده‌ی سفارش‌ها،
+  فیلتر/برچسب وضعیت‌های جدید، badge سفارش‌های نیازمند رسیدگی، Infolist جزئیات.
+- اطلاع‌رسانی به مشتری (ربات اصلی/نماینده) بعد از retry موفق یا بازگشت.
+- پیام‌های خطای ربات‌ها بر اساس نتیجه‌ی واقعی سیاست.
+- اصلاح‌های جانبی: شمارش تلاش «بدون سرور»، پاداش/کمیسیون بعد از retry موفق،
+  قفل اتمیک برای retry/refund هم‌زمان.
 
-فاز ۹ — Renewal (بند ۴۱ سند):
-  - main_price برای Renewal در Context اصلی، customers_price +
-    reseller_price (Double Debit) برای Renewal در Context نماینده
-    → RenewalService::execute()، دقیقاً همان ترتیب و همان
-    PriceSnapshot/PurchaseGuard که در فاز ۸ برای خرید استفاده می‌شود
-  - بند ۲۸ («Renewal یعنی هم Time هم Traffic») → applyOnPanel():
-    resetUsage صریح بعد از updateAccount، با لاگ در صورت عدم پشتیبانی
-    پنل
-  - بند ۲۹ (مالی موفق/پنل ناموفق نباید مبهم بماند) →
-    Order::STATUS_PROVISION_FAILED + Operation::markFailed()
-  - بند ۱۲/۵۳ (Snapshot در لحظه‌ی Renewal، نه قیمت قدیمی) → تست
-    a_renewal_uses_current_prices_and_creates_a_new_price_snapshot
-
-فاز ۱۰ — Refund (بند ۳۷-۳۸ سند):
-  - بازگشت دوطرفه (مشتری + نماینده) از روی Snapshot خودِ سفارش، نه
-    قیمت روز → RefundService::execute()
-  - Idempotent (سفارش بازگشت‌خورده دوباره بازگشت نمی‌خورد) →
-    OperationService::runOnce('refund:order:{id}')
-  - تست‌های موجود: refunding_a_reseller_order_gives_both_sides_their_money_back،
-    refund_uses_the_order_price_snapshot_after_product_prices_change،
-    an_order_cannot_be_refunded_twice
-
-=== شکاف واقعیِ پیداشده و رفعش ===
-
-تنها چیزی که واقعاً ناقص بود، نه در کد بلکه در پوشش تست: طبق بند ۵۶
-سند («Reseller Renewal» صریحاً در فهرست تست‌های الزامی است)، در کل
-پروژه هیچ تستی Double-Debit تمدید را در Context نماینده تأیید
-نمی‌کرد — همه‌ی تست‌های Renewal موجود فقط Context اصلی را پوشش
-می‌دادند. با توجه به این‌که دقیقاً همین نوع شکاف (تست‌نشدنِ مسیر
-نماینده) در تاریخچه‌ی همین پروژه یک‌بار واقعاً باعث باگ مالی در مسیر
-خرید شده بود (نسخه‌های ۳.۰.۶ ↔ ۳.۰.۷ در پروژه‌ی پیشین)، این شکاف
-جدی گرفته و بسته شد:
-
-  tests/Feature/Purchase/ProvisioningAndRenewalTest.php
-    + a_reseller_renewal_debits_the_customer_and_the_reseller_in_one_operation
-
-    تأیید می‌کند: تمدید یک اکانت متعلق به مشتریِ یک نماینده، دقیقاً
-    customers_price را از کیف‌پول مشتری (در Context همان نماینده) و
-    دقیقاً reseller_price را از کیف‌پول نماینده (در Main) کسر می‌کند
-    — نه بیشتر، نه از کیف‌پول اشتباه — و سفارش تمدید reseller_id،
-    main_price=null، reseller_price و customers_price صحیح را
-    Snapshot می‌کند. زمان و ترافیک هم مثل مسیر Main درست ریست می‌شوند.
-
-    کد RenewalService/PurchaseGuard/PriceSnapshot تغییری نکرد — چون
-    منطقشان از قبل درست بود؛ این تست فقط همان درستی را برای Context
-    نماینده هم مستند و قفل می‌کند تا رگرسیون آینده فوراً رد شود.
-
-جست‌وجوی نهایی بند ۵۷ سند (بعد از این پچ، روی app/resources/tests):
-صفر نتیجه — بدون تغییر نسبت به فاز ۷و۸.
-
-=== یادداشت اجرا ===
-
-بدون Migration جدید. فقط یک فایل تست اضافه شد؛ اسکیما یا کد سرویس‌ها
-دست نخورده. حتماً بعد از اعمال:
-    php artisan test --filter=ProvisioningAndRenewalTest
-و در صورت سبز بودن، کل مجموعه:
+=== اجرا ===
+Migration جدید (دو ستون nullable روی orders):
+    php artisan migrate
+سپس:
+    php artisan test --filter=Provisioning
     php artisan test
+تغییر رفتار پیش‌فرض: سیاست retry حالا واقعاً خودکار retry می‌کند (قبلاً فقط دستی بود).
+نکته: این پچ در محیطی بدون PHP نوشته شد و اجرا نشده است؛ حتماً تست‌ها را اجرا کنید.
 
 === فاز بعدی ===
-
-فاز ۷ تا ۱۰ (Order/Payment Snapshot، Purchase، Renewal، Refund) هرکدام
-Audit و در صورت نیاز تکمیل شدند. طبق ترتیب سند، فاز باقی‌مانده‌ی
-واقعی: فاز ۱۱ (Provisioning Policy — retry/refund از پنل ادمین) و
-فاز ۱۲ (هماهنگی نهایی Telegram/Filament با نام‌های جدید، که در فاز ۵
-تا حد زیادی همین الان انجام شده). پیشنهاد: فاز ۱۱ را Audit کنیم — آیا
-تنظیم retry/refund از ProvisioningSetting همان‌طور که بند ۳۶-۳۷ سند
-می‌خواهد، هم برای خرید و هم برای تمدید یکسان اعمال می‌شود؟
-
-همچنین دو موردی که در فاز ۷و۸ عمداً به مرحله‌ی پاک‌سازی موکول شده
-بودند (کد مرده‌ی payments.purpose='order' و دنرمالایزنشدنِ
-wallet_transactions) هنوز باز هستند و منتظر همان مرحله‌ی پاک‌سازی‌اند.
+فاز ۱۲: هماهنگی نهایی Telegram/Filament با نام‌های جدید. باقی‌مانده از قبل:
+کد مرده‌ی payments.purpose='order' و دنرمالایزنشدن wallet_transactions.

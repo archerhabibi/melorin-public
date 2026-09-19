@@ -2,6 +2,7 @@
 
 namespace App\Services\Core\Provisioning;
 
+use App\Services\Core\Provisioning\Concerns\CarriesFailureOutcome;
 use RuntimeException;
 
 /**
@@ -11,4 +12,7 @@ use RuntimeException;
  * «پول کسر نشد» نیست — تسویه‌ی مالی پیش از این نقطه و در تراکنش جدا
  * انجام شده. وضعیت مالی سفارش را باید از خودِ Order خواند.
  */
-class ProvisioningFailedException extends RuntimeException {}
+class ProvisioningFailedException extends RuntimeException
+{
+    use CarriesFailureOutcome;
+}

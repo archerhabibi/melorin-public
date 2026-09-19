@@ -13,6 +13,7 @@ use App\Models\Product;
 use App\Models\Reseller;
 use App\Models\User;
 use App\Services\Core\AccountService;
+use App\Services\Core\Provisioning\ProvisioningFailedException;
 use App\Services\Core\WalletService;
 use App\Services\Core\Store\IdentityService;
 use App\Services\Core\Store\StoreContext;
@@ -119,6 +120,10 @@ class BuyAccountHandler
             return;
         } catch (ResellerScopeViolationException $e) {
             $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => $e->getMessage()]);
+
+            return;
+        } catch (ProvisioningFailedException $e) {
+            $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => "خرید ناموفق بود: {$e->getMessage()}\n{$e->customerNotice()}"]);
 
             return;
         } catch (\RuntimeException $e) {

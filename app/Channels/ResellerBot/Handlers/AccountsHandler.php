@@ -10,6 +10,7 @@ use App\Models\Account;
 use App\Models\Reseller;
 use App\Models\User;
 use App\Services\Core\AccountService;
+use App\Services\Core\Renewal\RenewalFailedException;
 use App\Services\Core\Renewal\RenewalService;
 use App\Services\Core\WalletService;
 use App\Services\Resellers\ResellerPricingService;
@@ -149,6 +150,11 @@ class AccountsHandler
             app(RenewalService::class)->renew($account);
         } catch (InsufficientBalanceException) {
             $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => 'موجودی کافی نیست.']);
+
+            return;
+        } catch (RenewalFailedException $e) {
+            // پیام بر اساس سیاست فعلی ادمین (بازگشت فوری / تلاش مجدد / رسیدگی)
+            $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => "تمدید ناموفق بود: {$e->getMessage()}\n{$e->customerNotice()}"]);
 
             return;
         } catch (\RuntimeException $e) {

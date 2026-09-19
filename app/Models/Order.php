@@ -16,6 +16,7 @@ class Order extends Model
         'user_id', 'customer_account_id', 'product_id', 'reseller_id', 'sales_channel',
         'main_price', 'reseller_price', 'customers_price', 'payment_id', 'status',
         'provision_attempts', 'failure_reason',
+        'renews_account_id', 'next_provision_retry_at',
     ];
 
     /*
@@ -59,7 +60,27 @@ class Order extends Model
         'main_price' => 'decimal:2',
         'reseller_price' => 'decimal:2',
         'customers_price' => 'decimal:2',
+        'next_provision_retry_at' => 'datetime',
     ];
+
+    /**
+     * برچسب فارسی وضعیت‌ها برای پنل ادمین (badge، فیلتر، صفحه‌ی مشاهده).
+     * تا امروز provisioning و provision_failed در پنل با رنگ/برچسب خام
+     * نشان داده می‌شدند و در فیلتر اصلاً وجود نداشتند — یعنی ادمین راهی
+     * برای پیداکردن سفارش‌های «پول گرفته شده، سرویس تحویل نشده» نداشت.
+     */
+    public static function statusLabels(): array
+    {
+        return [
+            self::STATUS_PENDING => 'در انتظار',
+            self::STATUS_PAID => 'پرداخت‌شده',
+            self::STATUS_PROVISIONING => 'در حال ساخت',
+            self::STATUS_ACCOUNT_CREATED => 'تحویل‌شده',
+            self::STATUS_PROVISION_FAILED => 'ساخت ناموفق — نیازمند رسیدگی',
+            self::STATUS_FAILED => 'ناموفق',
+            self::STATUS_REFUNDED => 'بازگشت‌شده',
+        ];
+    }
 
     public function customerAccount(): BelongsTo
     {
@@ -79,6 +100,12 @@ class Order extends Model
     public function reseller(): BelongsTo
     {
         return $this->belongsTo(Reseller::class);
+    }
+
+    /** اکانتی که این سفارشِ تمدید، تمدیدش می‌کند (null برای سفارش خرید) */
+    public function renewedAccount(): BelongsTo
+    {
+        return $this->belongsTo(Account::class, 'renews_account_id');
     }
 
     public function payment(): BelongsTo
@@ -109,6 +136,16 @@ class Order extends Model
      | قیمت در Context این سفارش اصلاً نقشی ندارد» (بند ۸ و ۱۱ سند)،
      | و همین null بودن با خودِ ستون تضمین می‌شود، نه با یک Accessor.
      ------------------------------------------------------------------ */
+
+    /**
+     * سفارش تمدید یک اکانت موجود است، نه خرید اکانت جدید. این تمایز برای
+     * Provisioning حیاتی است: retry روی سفارش تمدید باید همان اکانت را
+     * تمدید کند، نه اکانت تازه بسازد.
+     */
+    public function isRenewal(): bool
+    {
+        return $this->renews_account_id !== null;
+    }
 
     public function isResellerContext(): bool
     {

@@ -7,12 +7,12 @@ use App\Models\CustomerAccount;
 use App\Models\Operation;
 use App\Models\Order;
 use App\Models\Product;
-use App\Models\ProvisioningSetting;
 use App\Models\ServerPanel;
 use App\Services\Core\Affiliate\CommissionService;
 use App\Services\Core\Affiliate\ReferralService;
 use App\Services\Core\OperationService;
 use App\Services\Core\Provisioning\ProvisioningFailedException;
+use App\Services\Core\Provisioning\ProvisioningFailureHandler;
 use App\Services\Core\Provisioning\ProvisioningService;
 use App\Services\Core\Store\StoreContext;
 use App\Services\Core\WalletService;
@@ -49,7 +49,7 @@ class PurchaseService
         protected OperationService $operations,
         protected CommissionService $commissions,
         protected ReferralService $referrals,
-        protected RefundService $refunds,
+        protected ProvisioningFailureHandler $failures,
     ) {}
 
     /**
@@ -194,27 +194,11 @@ class PurchaseService
                 operation: $operation,
             );
         } catch (ProvisioningFailedException $e) {
-            // بند ۲۲: سیاست شکست عمداً یک تنظیم است، نه یک تصمیم قطعیِ
-            // کد — پنل ادمین (صفحه‌ی «شکست ساخت اکانت») بین این دو
-            // انتخاب می‌کند:
-            //
-            //   retry  (پیش‌فرض) — چیزی تغییر نمی‌کند: سفارش در
-            //           provision_failed می‌ماند، وضعیت مالی روی سفارش
-            //           صریح و دست‌نخورده باقی می‌ماند، جبران با
-            //           retryProvisioning() یا رسیدگی دستی است.
-            //   refund — بازگشت خودکار و دوطرفه از همین‌جا، با همان
-            //           RefundService که برای بازگشت دستی هم استفاده
-            //           می‌شود (پس idempotent است و طبق بند ۱۳ سند
-            //           قیمت‌گذاری دقیقاً همان دو عددی که کسر شده بود
-            //           را برمی‌گرداند، نه قیمت امروز).
-            if (ProvisioningSetting::refundsAutomatically()) {
-                $this->refunds->refundOrder(
-                    $order,
-                    "بازگشت خودکار وجه به‌دلیل شکست ساخت اکانت — سفارش #{$order->id}",
-                );
-            }
-
-            throw $e;
+            // فاز ۱۱: سیاست شکست (retry / refund / retry_then_refund) در
+            // پنل ادمین انتخاب می‌شود و ProvisioningFailureHandler آن را
+            // برای خرید و تمدید یکسان اعمال می‌کند. نتیجه روی استثنا
+            // می‌نشیند تا کانال به مشتری پیام درست بدهد.
+            throw $e->withOutcome($this->failures->handle($order));
         }
 
         // ── مرحله‌ی ۳: پاداش و کمیسیون (فاز F) ─────────────────────
@@ -227,10 +211,15 @@ class PurchaseService
         // ترتیب اهمیت دارد: اول پاداش اولین خرید (که خودش بررسی می‌کند
         // واقعاً اولین است یا نه)، بعد کمیسیون درصدی. جابه‌جا کردنشان
         // باعث می‌شد سفارش جاری در شمارش «اولین خرید» حساب شود.
-        $this->referrals->awardFirstPurchaseBonus($order, $operation);
-        $this->commissions->awardForOrder($order, $operation);
+        $this->awardBenefits($order, $operation);
 
         return $account;
+    }
+
+    protected function awardBenefits(Order $order, ?Operation $operation = null): void
+    {
+        $this->referrals->awardFirstPurchaseBonus($order, $operation);
+        $this->commissions->awardForOrder($order, $operation);
     }
 
     /**
@@ -241,14 +230,39 @@ class PurchaseService
      * مسیر درست برای جبران است؛ فراخوانی دوباره‌ی purchase() یعنی کسر
      * دوباره از مشتری.
      */
-    public function retryProvisioning(Order $order): Account
+    public function retryProvisioning(Order $order, bool $force = false): Account
     {
-        if (! $this->provisioning->canRetry($order)) {
+        if ($order->isRenewal()) {
+            throw new PurchaseNotAllowedException(
+                "سفارش #{$order->id} یک سفارش تمدید است؛ تلاش مجدد آن از مسیر RenewalService::retry انجام می‌شود."
+            );
+        }
+
+        // رزرو اتمیک — دو retry هم‌زمان ممکن نیست
+        if (! $this->provisioning->claimForRetry($order, $force)) {
             throw new PurchaseNotAllowedException(
                 "سفارش #{$order->id} قابل تلاش مجدد نیست (وضعیت: {$order->status}، تلاش‌ها: {$order->provision_attempts})."
             );
         }
 
-        return $this->provisioning->provision($order);
+        try {
+            $account = $this->provisioning->provision($order);
+        } catch (ProvisioningFailedException $e) {
+            throw $e->withOutcome($this->failures->handle($order));
+        } catch (\Throwable $e) {
+            // خطای غیرمنتظره هم نباید سفارش را در provisioning رها کند
+            $this->provisioning->recordFailure($order->fresh(), $e->getMessage());
+
+            throw (new ProvisioningFailedException(
+                "خطای غیرمنتظره در ساخت اکانت: {$e->getMessage()}",
+                previous: $e
+            ))->withOutcome($this->failures->handle($order));
+        }
+
+        // سفارشی که با retry نجات پیدا کرده باید مثل خریدِ موفق از اولین
+        // تلاش رفتار کند: پاداش/کمیسیون (هر دو idempotent‌اند).
+        $this->awardBenefits($order->fresh());
+
+        return $account;
     }
 }

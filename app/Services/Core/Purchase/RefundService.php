@@ -99,6 +99,7 @@ class RefundService
             $order->update([
                 'status' => Order::STATUS_REFUNDED,
                 'failure_reason' => $reason,
+                'next_provision_retry_at' => null,
             ]);
 
             return $refunded;

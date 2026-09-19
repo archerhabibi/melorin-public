@@ -2,7 +2,9 @@
 
 namespace App\Filament\Pages;
 
+use App\Models\Order;
 use App\Models\ProvisioningSetting;
+use App\Services\Core\Provisioning\ProvisioningService;
 use Filament\Forms;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
@@ -10,22 +12,16 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 
 /**
- * تنظیم سراسری «وقتی ساخت اکانت روی پنل بعد از کسر پول شکست بخورد،
- * سیستم چه کار کند؟» — بند ۲۲ سند معماری Reseller: «مگر اینکه سیستم
- * عمداً وضعیت Pending/Retry برای آن عملیات تعریف کرده باشد.»
+ * تنظیم سراسری «وقتی ساخت/تمدید اکانت بعد از کسر پول شکست بخورد، سیستم
+ * چه کند؟» (بند ۳۵ تا ۳۷ سند). سه گزینه؛ هر سه هم برای خرید و هم برای
+ * تمدید اعمال می‌شوند (ProvisioningFailureHandler):
  *
- * دو گزینه، هر دو در PurchaseService و RenewalService پیاده‌سازی
- * شده‌اند:
+ *   retry             — تلاش مجدد خودکار؛ هرگز بازگشت وجه خودکار.
+ *   refund            — بازگشت فوری و دوطرفه‌ی وجه؛ بدون تلاش مجدد.
+ *   retry_then_refund — هر دو: اول تلاش مجدد، و در صورت شکست همه‌ی تلاش‌ها، بازگشت.
  *
- *   retry  — پول کسرشده باقی می‌ماند، سفارش provision_failed می‌شود و
- *            با retryProvisioning() (بدون کسر دوباره) یا رسیدگی دستی
- *            ادمین جبران می‌شود. مناسب وقتی می‌خواهید قبل از بازگشتِ
- *            قطعی، خودتان وضعیت را ببینید.
- *
- *   refund — بازگشت خودکار و فوری: مشتری و (در فروش نمایندگی) نماینده
- *            هر دو بلافاصله پولشان را پس می‌گیرند و سفارش refunded
- *            می‌شود. مناسب وقتی نمی‌خواهید مشتری منتظر رسیدگی دستی
- *            بماند.
+ * دکمه‌های دستی «تلاش مجدد / بازگشت وجه» برای هر سفارش، در صفحه‌ی
+ * «سفارش‌ها» و مستقل از این تنظیم در دسترس‌اند.
  */
 class ProvisioningSettings extends Page implements HasForms
 {
@@ -43,27 +39,35 @@ class ProvisioningSettings extends Page implements HasForms
 
     public function mount(): void
     {
-        $this->form->fill(
-            ProvisioningSetting::current()->only(['failure_policy'])
-        );
+        $this->form->fill(['failure_policy' => ProvisioningSetting::activePolicy()]);
     }
 
     public function form(Forms\Form $form): Forms\Form
     {
+        $max = ProvisioningService::MAX_ATTEMPTS;
+
         return $form
             ->schema([
                 Forms\Components\Radio::make('failure_policy')
-                    ->label('در صورت شکست ساخت اکانت بعد از کسر پول')
+                    ->label('در صورت شکست ساخت/تمدید اکانت بعد از کسر پول')
                     ->options([
-                        ProvisioningSetting::POLICY_RETRY => 'در انتظار رسیدگی بماند (retry دستی/خودکار، بدون کسر دوباره)',
-                        ProvisioningSetting::POLICY_REFUND => 'وجه بلافاصله و خودکار بازگردانده شود',
+                        ProvisioningSetting::POLICY_RETRY => "تلاش مجدد خودکار (تا {$max} بار) — بدون بازگشت خودکار وجه",
+                        ProvisioningSetting::POLICY_REFUND => 'بازگشت فوری وجه — بدون تلاش مجدد',
+                        ProvisioningSetting::POLICY_RETRY_THEN_REFUND => "هر دو: اول تلاش مجدد (تا {$max} بار)، سپس بازگشت خودکار وجه",
                     ])
                     ->descriptions([
-                        ProvisioningSetting::POLICY_RETRY => 'سفارش با وضعیت «نیازمند رسیدگی» ثبت می‌شود. مشتری/نماینده هیچ‌کدام بلافاصله چیزی پس نمی‌گیرند؛ ادمین می‌تواند تلاش مجدد بزند یا دستی بازگشت وجه کند.',
-                        ProvisioningSetting::POLICY_REFUND => 'به‌محض شکست، مبلغ مشتری (و در فروش نمایندگی، مبلغ نماینده) خودکار به کیف‌پولشان برمی‌گردد و سفارش بازگشت‌خورده ثبت می‌شود.',
+                        ProvisioningSetting::POLICY_RETRY => 'پول کسرشده می‌ماند و سیستم با فاصله‌ی ۲ و ۴ دقیقه دوباره تلاش می‌کند (بدون کسر مجدد). اگر همه‌ی تلاش‌ها شکست بخورد، سفارش برای رسیدگی شما (تلاش مجدد یا بازگشت دستی) می‌ماند.',
+                        ProvisioningSetting::POLICY_REFUND => 'به‌محض اولین شکست، مبلغ مشتری (و در فروش نمایندگی، مبلغ نماینده) خودکار برمی‌گردد و سفارش «بازگشت‌شده» می‌شود.',
+                        ProvisioningSetting::POLICY_RETRY_THEN_REFUND => 'ابتدا مثل حالت اول تلاش مجدد خودکار انجام می‌شود؛ اگر پس از آخرین تلاش هم سرویس ساخته نشد، وجه مشتری (و نماینده) خودکار بازگردانده می‌شود. مشتری در هر دو نتیجه در ربات مطلع می‌شود.',
                     ])
                     ->default(ProvisioningSetting::POLICY_RETRY)
+                    ->in(ProvisioningSetting::policies())
                     ->required(),
+
+                Forms\Components\Placeholder::make('pending_info')
+                    ->label('سفارش‌های نیازمند رسیدگی در همین لحظه')
+                    ->content(fn () => Order::query()->where('status', Order::STATUS_PROVISION_FAILED)->count().' سفارش (صفحه‌ی «سفارش‌ها» ← فیلتر وضعیت)')
+                    ->helperText('تغییر سیاست فقط روی شکست‌های بعدی اثر دارد؛ سفارش‌های ازپیش‌شکست‌خورده با دکمه‌های همان صفحه رسیدگی می‌شوند.'),
             ])
             ->statePath('data');
     }
@@ -72,7 +76,9 @@ class ProvisioningSettings extends Page implements HasForms
     {
         $data = $this->form->getState();
 
-        ProvisioningSetting::current()->update($data);
+        ProvisioningSetting::current()->update([
+            'failure_policy' => $data['failure_policy'],
+        ]);
 
         Notification::make()
             ->title('تنظیمات شکست ساخت اکانت ذخیره شد')

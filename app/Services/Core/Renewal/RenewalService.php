@@ -8,6 +8,8 @@ use App\Models\Operation;
 use App\Models\Order;
 use App\Services\Core\OperationService;
 use App\Services\Core\Panels\PanelDriverFactory;
+use App\Services\Core\Provisioning\ProvisioningFailureHandler;
+use App\Services\Core\Provisioning\ProvisioningService;
 use App\Services\Core\Purchase\PriceSnapshot;
 use App\Services\Core\Purchase\PurchaseGuard;
 use App\Services\Core\Purchase\PurchaseNotAllowedException;
@@ -41,6 +43,8 @@ class RenewalService
         protected WalletService $wallet,
         protected PurchaseGuard $guard,
         protected OperationService $operations,
+        protected ProvisioningService $provisioning,
+        protected ProvisioningFailureHandler $failures,
     ) {}
 
     public function renew(Account $account, ?string $idempotencyKey = null): Account
@@ -97,6 +101,7 @@ class RenewalService
                 'customer_account_id' => $customer->id,
                 'product_id' => $product->id,
                 'reseller_id' => $store->resellerId(),
+                'renews_account_id' => $account->id,
                 'sales_channel' => $store->isReseller() ? 'reseller_bot' : 'main_bot',
                 'status' => Order::STATUS_PENDING,
             ]));
@@ -135,25 +140,65 @@ class RenewalService
     }
 
     /**
+     * فاز ۱۱ — تلاش مجدد یک تمدیدِ شکست‌خورده روی پنل، بدون هیچ کسر جدید
+     * (بند ۳۹). تاریخ جدید از روی رکورد محلی محاسبه می‌شود که تا موفقیت
+     * تغییر نکرده؛ پس اگر تلاش قبلی روی پنل اثر کرده ولی پاسخش نرسیده
+     * بود، تمدید دوبار اعمال نمی‌شود.
+     */
+    public function retry(Order $order, bool $force = false): Account
+    {
+        if (! $order->isRenewal()) {
+            throw new PurchaseNotAllowedException("سفارش #{$order->id} یک سفارش تمدید نیست.");
+        }
+
+        $account = Account::query()->with(['product', 'serverPanel'])->find($order->renews_account_id);
+
+        if (! $account) {
+            throw new PurchaseNotAllowedException(
+                "اکانتِ مربوط به تمدید سفارش #{$order->id} دیگر وجود ندارد؛ فقط بازگشت وجه ممکن است."
+            );
+        }
+
+        $product = $order->product ?? $account->product;
+
+        if (! $product) {
+            throw new PurchaseNotAllowedException("محصول سفارش #{$order->id} دیگر موجود نیست؛ فقط بازگشت وجه ممکن است.");
+        }
+
+        if (! $this->provisioning->claimForRetry($order, $force)) {
+            throw new PurchaseNotAllowedException(
+                "سفارش #{$order->id} قابل تلاش مجدد نیست (وضعیت: {$order->status}، تلاش‌ها: {$order->provision_attempts})."
+            );
+        }
+
+        return $this->applyOnPanel($account, $product, $order, null);
+    }
+
+    /**
      * تمدید واقعی روی پنل + به‌روزرسانی رکورد محلی.
      *
      * مبنای تاریخ انقضای جدید عمداً max(اکنون، انقضای فعلی) است: اگر
      * کاربر زودتر از موعد تمدید کند، روزهای باقی‌مانده‌اش نباید بسوزد؛
      * و اگر اکانت از قبل منقضی شده، نباید تاریخ جدید در گذشته بیفتد.
      */
-    protected function applyOnPanel(Account $account, $product, Order $order, Operation $operation): Account
+    protected function applyOnPanel(Account $account, $product, Order $order, ?Operation $operation): Account
     {
-        $panel = $account->serverPanel;
-        $base = $account->expires_at && $account->expires_at->isFuture()
-            ? $account->expires_at->copy()
-            : now();
-
-        $newExpiry = $base->addDays((int) $product->duration_days);
-        $trafficBytes = $product->traffic_gb ? (int) ($product->traffic_gb * 1024 ** 3) : 0;
-
-        $driver = PanelDriverFactory::make($panel->panel_type);
+        $order->update([
+            'status' => Order::STATUS_PROVISIONING,
+            'provision_attempts' => (int) $order->provision_attempts + 1,
+        ]);
 
         try {
+            $panel = $account->serverPanel;
+            $base = $account->expires_at && $account->expires_at->isFuture()
+                ? $account->expires_at->copy()
+                : now();
+
+            $newExpiry = $base->addDays((int) $product->duration_days);
+            $trafficBytes = $product->traffic_gb ? (int) ($product->traffic_gb * 1024 ** 3) : 0;
+
+            $driver = PanelDriverFactory::make($panel->panel_type);
+
             $result = $driver->updateAccount($panel, $account->panel_username, new PanelAccountRequest(
                 username: $account->panel_username,
                 trafficBytes: $trafficBytes,
@@ -168,13 +213,8 @@ class RenewalService
                 throw new RenewalFailedException("تمدید روی پنل ناموفق بود: {$result->errorMessage}");
             }
 
-            // بند ۲۸: تمدید یعنی **هم زمان و هم ترافیک**. فراخوانی
-            // updateAccount بالا سقف ترافیک و تاریخ انقضا را ست می‌کند،
-            // ولی مصرفِ انباشته‌ی کاربر را صفر نمی‌کند — بدون
-            // resetUsage، اکانتی که حجمش تمام شده با تاریخ جدید هم کار
-            // نمی‌کند. اگر پنل این قابلیت را ندارد، تمدید را
-            // شکست‌خورده اعلام نمی‌کنیم (تاریخ و سقف حجم تمدید شده‌اند)
-            // ولی صریحاً لاگ می‌شود تا قابل پیگیری باشد.
+            // بند ۲۸: تمدید یعنی هم زمان و هم ترافیک. اگر پنل resetUsage
+            // ندارد، تمدید شکست‌خورده اعلام نمی‌شود ولی لاگ می‌شود.
             try {
                 $driver->resetUsage($panel, $account->panel_username);
             } catch (\Throwable $e) {
@@ -186,13 +226,13 @@ class RenewalService
             }
         } catch (\Throwable $e) {
             // مالی موفق، پنل ناموفق — همان حالتی که بند ۲۹ می‌گوید باید
-            // صریح و قابل‌تشخیص بماند.
+            // صریح بماند. از اینجا سیاست شکست (فاز ۱۱) تصمیم می‌گیرد.
             $order->update([
                 'status' => Order::STATUS_PROVISION_FAILED,
                 'failure_reason' => mb_substr($e->getMessage(), 0, 1000),
             ]);
 
-            $operation->markFailed($e->getMessage());
+            $operation?->markFailed($e->getMessage());
 
             Log::error('renewal_failed_after_payment', [
                 'account_id' => $account->id,
@@ -200,13 +240,14 @@ class RenewalService
                 'error' => $e->getMessage(),
             ]);
 
-            throw $e instanceof RenewalFailedException
+            $failure = $e instanceof RenewalFailedException
                 ? $e
                 : new RenewalFailedException("خطا در تمدید روی پنل: {$e->getMessage()}", previous: $e);
+
+            throw $failure->withOutcome($this->failures->handle($order));
         }
 
-        // ریست کامل در رکورد محلی: سقف ترافیک به حجم محصول برمی‌گردد،
-        // مصرف صفر می‌شود و تاریخ انقضا تمدید می‌شود.
+        // ریست کامل در رکورد محلی
         $account->update([
             'expires_at' => $newExpiry,
             'traffic_gb' => $product->traffic_gb,
@@ -214,7 +255,11 @@ class RenewalService
             'status' => 'active',
         ]);
 
-        $order->update(['status' => Order::STATUS_ACCOUNT_CREATED]);
+        $order->update([
+            'status' => Order::STATUS_ACCOUNT_CREATED,
+            'failure_reason' => null,
+            'next_provision_retry_at' => null,
+        ]);
 
         return $account->fresh();
     }
