@@ -192,7 +192,7 @@ class ResellerPanelIsolationTest extends TestCase
     }
 
     #[Test]
-    public function reseller_can_set_a_valid_selling_price_but_not_one_below_base_price(): void
+    public function reseller_can_set_a_valid_selling_price_but_not_one_below_reseller_price(): void
     {
         $reseller = Reseller::factory()->create([
             'min_sale_price_rule' => ['min_price' => 110000],

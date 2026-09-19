@@ -69,7 +69,7 @@ class ResellerPurchaseFinancialTest extends TestCase
     }
 
     #[Test]
-    public function purchase_debits_customer_by_sold_price_and_reseller_by_base_price(): void
+    public function purchase_debits_customer_by_customers_price_and_reseller_by_reseller_price(): void
     {
         $this->fakeSuccessfulPanel();
 

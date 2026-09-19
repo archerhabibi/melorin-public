@@ -76,7 +76,7 @@ class ResellerPanelRenderTest extends TestCase
     }
 
     #[Test]
-    public function admin_can_set_a_resellers_base_price_from_the_main_admin_panel(): void
+    public function admin_can_set_a_products_reseller_price_from_the_main_admin_panel(): void
     {
         Filament::setCurrentPanel(Filament::getPanel('admin'));
 

@@ -102,7 +102,7 @@ class ResellerCoreServicesTest extends TestCase
     }
 
     #[Test]
-    public function selling_price_below_base_price_is_rejected(): void
+    public function selling_price_below_reseller_price_is_rejected(): void
     {
         $reseller = Reseller::factory()->create();
         $product = Product::factory()->create(['main_price' => 100000]);
