@@ -5,6 +5,7 @@ namespace App\Services\Core\Provisioning;
 use App\Models\Order;
 use App\Services\Core\Purchase\PurchaseNotAllowedException;
 use App\Services\Core\Purchase\PurchaseService;
+use App\Services\Core\Provisioning\ProvisioningService;
 use App\Services\Core\Renewal\RenewalFailedException;
 use App\Services\Core\Renewal\RenewalService;
 use Illuminate\Support\Collection;
@@ -30,6 +31,14 @@ class FailedOrderRecovery
      */
     public function retry(Order $order, bool $force = false): RecoveryResult
     {
+
+        if (! $force && (int) $order->provision_attempts >= ProvisioningService::MAX_ATTEMPTS) {
+            return new RecoveryResult(
+                RecoveryResult::SKIPPED,
+                "سفارش #{$order->id} به سقف تلاش مجاز رسیده و بدون force قابل تلاش مجدد نیست."
+            );
+        }
+
         try {
             $order->isRenewal()
                 ? $this->renewals->retry($order, $force)
@@ -79,7 +88,7 @@ class FailedOrderRecovery
     {
         return Order::query()
             ->where('status', Order::STATUS_PROVISION_FAILED)
-            ->where('provision_attempts', '<', ProvisioningService::MAX_ATTEMPTS)
+            ->where('provision_attempts', '<=', ProvisioningService::MAX_ATTEMPTS)
             ->whereNotNull('next_provision_retry_at')
             ->where('next_provision_retry_at', '<=', now())
             ->orderBy('next_provision_retry_at')

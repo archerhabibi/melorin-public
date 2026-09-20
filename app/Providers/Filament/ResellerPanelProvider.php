@@ -52,7 +52,14 @@ class ResellerPanelProvider extends PanelProvider
             ->path('')
             ->login()
             ->authGuard('reseller')
-            ->tenant(Reseller::class, slugAttribute: 'slug')
+            // ownershipRelationship صریح لازم است: Filament پیش‌فرض دنبال
+            // User::reseller() می‌گردد (از نام کلاس تننت مشتق می‌شود)،
+            // ولی فاز ۱۵ آن رابطه‌ی تک‌مقداری را از User حذف کرد (چون
+            // دیگر با مدل «مشتریِ چند نماینده» سازگار نبود — ر.ک.
+            // MembershipGuardTest::the_user_model_no_longer_exposes_a_single_reseller).
+            // رابطه‌ی درست برای صاحبِ نماینده (کسی که با User خودش وارد
+            // همین پنل می‌شود) همان User::resellerAccount() است.
+            ->tenant(Reseller::class, slugAttribute: 'slug', ownershipRelationship: 'resellerAccount')
             ->colors([
                 'primary' => Color::Emerald,
                 'gray' => Color::Slate,

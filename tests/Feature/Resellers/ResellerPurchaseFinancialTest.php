@@ -3,9 +3,11 @@
 namespace Tests\Feature\Resellers;
 
 use App\Exceptions\InsufficientBalanceException;
+use App\Services\Core\Purchase\ResellerDebtLimitException;
 use App\Exceptions\ResellerScopeViolationException;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProvisioningSetting;
 use App\Models\Reseller;
 use App\Models\ResellerProductPrice;
 use App\Models\ServerPanel;
@@ -138,7 +140,11 @@ class ResellerPurchaseFinancialTest extends TestCase
         // مشتری موجودی کافی دارد؛ نماینده هیچ اعتباری ندارد
         $this->wallet->charge($this->accountIn($customer, $reseller), 100);
 
-        $this->expectException(InsufficientBalanceException::class);
+        // طبق بند ۴۶ سند: کمبود اعتبار نماینده مفهوماً از کمبود موجودی
+        // مشتری جداست، پس استثنای اختصاصی خودش را دارد (نه
+        // InsufficientBalanceException عمومی) — همان چیزی که این تست
+        // خودش دارد اسمش را چک می‌کند.
+        $this->expectException(ResellerDebtLimitException::class);
 
         try {
             $this->accounts->purchase($customer, $product, salesChannel: 'reseller_bot', reseller: $reseller);
@@ -152,6 +158,11 @@ class ResellerPurchaseFinancialTest extends TestCase
     #[Test]
     public function panel_failure_refunds_both_customer_and_reseller(): void
     {
+        // سیاست پیش‌فرض از فاز ۱۱ به بعد retry است (بدون بازگشت خودکار)؛
+        // این تست دقیقاً بازگشتِ دوطرفه را می‌سنجد، پس باید صریحاً
+        // سیاست را refund بگذارد تا واقعاً بازگشتی اتفاق بیفتد.
+        ProvisioningSetting::current()->update(['failure_policy' => ProvisioningSetting::POLICY_REFUND]);
+
         Http::fake([
             '*/api/admin/token' => Http::response(['access_token' => 'fake-token'], 200),
             '*/api/user' => Http::response(['detail' => 'username already exists'], 409),

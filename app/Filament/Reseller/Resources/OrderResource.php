@@ -16,6 +16,8 @@ class OrderResource extends Resource
 
     protected static ?string $model = Order::class;
 
+    protected static bool $isScopedToTenant = false;
+
     protected static ?string $navigationIcon = 'heroicon-o-shopping-bag';
 
     protected static ?string $navigationGroup = 'مشتریان و فروش';

@@ -208,7 +208,7 @@ class ProvisioningService
             ->where('status', Order::STATUS_PROVISION_FAILED);
 
         if (! $force) {
-            $query->where('provision_attempts', '<', self::MAX_ATTEMPTS);
+           $query->where('provision_attempts', '<=', self::MAX_ATTEMPTS);
         }
 
         $claimed = $query->update([

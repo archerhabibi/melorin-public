@@ -1,3 +1,23 @@
+﻿Stage 15 (سند بند ۵۹) — Full Test Audit
+
+جزئیات: docs/STAGE-15-FULL-TEST-AUDIT.md
+
+php artisan test → ۹ شکست از ۲۸۰. پنج مورد رفع شد: Filament پنل نماینده
+(ownershipRelationship اشتباه به دلیل حذف User::reseller() در فاز ۱۵)،
+دو تست با انتظار بازگشت خودکار وجه که دیگر پیش‌فرض نیست (ResellerPriceFieldTest،
+ResellerPurchaseFinancialTest)، یک نوع استثنای قدیمی (ResellerDebtLimitException
+به‌جای InsufficientBalanceException، طبق بند ۴۶)، و BroadcastService که
+صاحبِ یک نماینده‌ی بدون‌سابقه را هم مخاطب Main حساب می‌کرد.
+
+باز مانده: چهار تست در FailurePolicyTest (دومین retry خودکار
+provision_attempts را افزایش نمی‌دهد) — نیازمند اجرای واقعی با دیباگ،
+جزئیات در سند.
+
+=== اجرا ===
+    php artisan test
+
+---
+
 تصمیم بند ۱۸ ↔ Rule 2/13 — خرید شخصی صاحب نماینده از Main
 
 جزئیات: docs/DECISION-CLAUSE-18-RESELLER-OWN-PURCHASE.md
@@ -11,7 +31,7 @@ main_price (بند ۱۸). یک مشتری عادی بدون تغییر همچن�
 گرفت؛ PurchaseService::execute() و RenewalService::execute() هر دو با
 $customer->user->resellerAccount()->exists() این حالت را تشخیص می‌دهند.
 تست Skipped فاز ۱۴ (FinalModelSpecTest::open_decision_...) به تست واقعی
-a_reseller_owner_buying_directly_from_main_pays_reseller_price_not_main_price
+_reseller_owner_buying_directly_from_main_pays_reseller_price_not_main_price
 تبدیل شد.
 
 این همان موردی است که در «باقی‌مانده»ی فاز ۱۵ زیر به‌عنوان باز فهرست
@@ -56,7 +76,7 @@ Phase 15 — Rule 12 (مشتریِ چند نماینده) + حذف ستون‌ه
 === ب) حذف ستون‌های legacy wallets ===
 Migration 2026_09_23_000001: owner_type / owner_id / customer_account_id + ایندکس‌ها و FK حذف می‌شوند.
 ⚠️ اگر Walletی بدون user_id مانده باشد Migration عمداً متوقف می‌شود (ردّ مالک فقط در همین ستون‌هاست).
-قبل از اجرا: بکاپ + بررسی  DB::table('wallets')->whereNull('user_id')->count() == 0
+قبل از اجرا: بکاپ + بررسی DB::table('wallets')->whereNull('user_id')->count() == 0
 
 === تست ===
 جدید: MembershipGuardTest، تست واقعی Rule 12، وب‌هوک چندنماینده‌ای، عضویت غیرفعال، پیام همگانی مشتریِ مشترک.
@@ -67,10 +87,9 @@ Migration 2026_09_23_000001: owner_type / owner_id / customer_account_id + ای�
 === اجرا ===
     php artisan migrate
     php artisan test
-انتظار: همه سبز به‌جز ۱ Skipped عمدی (تصمیم باز بند ۱۸).
-این پچ بدون PHP نوشته شد و اجرا نشده؛ Migration را حتماً ابتدا روی staging با کپی دیتابیس اجرا کنید.
+انتظار: همه سبز؛ تصمیم بند ۱۸ قبلاً در مرحله ۱۴ حل شده است.
+این پچ بدون PHP نوشته و اجرا نشده؛ Migration را حتماً ابتدا روی staging با کپی دیتابیس اجرا کنید.
 
 === باقی‌مانده ===
-- تصمیم بند ۱۸ (قیمت خرید شخصی صاحب نماینده در Main).
 - حذف ستون users.reseller_id همراه با Migration/تست‌های تاریخی backfill.
 - users.referrer_id سراسری است (نه per-store).

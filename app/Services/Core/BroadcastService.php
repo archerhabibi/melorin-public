@@ -103,9 +103,20 @@ class BroadcastService
 
         // Main: عضو فعال Main، یا کاربری که هیچ عضویتی ندارد (پیش‌فرضِ «کاربر مستقیم»).
         // مشتریِ صرفاً نمایندگان (و عضویت Mainِ غیرفعال‌شده) مخاطب Main نیست.
+        //
+        // «پیش‌فرضِ کاربر مستقیم» عمداً صاحبِ یک نماینده را شامل نمی‌شود:
+        // طبق Rule 1 سند، هر نماینده از قبل یک User واقعیِ Main بوده، پس
+        // در دنیای واقعی همیشه یک CustomerAccount فعالِ main دارد و از
+        // همان مسیر اول همین OR واجد شرایط می‌شود. کسی که هیچ
+        // CustomerAccount‌ای ندارد ولی صاحبِ یک نماینده هست، صرفاً یک
+        // Identity برای ورود به پنل خودش است (مثلاً در تست‌ها ساخته
+        // می‌شود)، نه یک «کاربر مستقیم Main» — نباید با پیام‌های Main
+        // مزاحمش شد.
         return $query->where(fn (Builder $q) => $q
             ->whereHas('customerAccounts', fn (Builder $a) => $a->where('status', 'active')->where('store_type', 'main'))
-            ->orWhereDoesntHave('customerAccounts'));
+            ->orWhere(fn (Builder $q2) => $q2
+                ->whereDoesntHave('customerAccounts')
+                ->whereDoesntHave('resellerAccount')));
     }
 
     /** ارسال همه‌ی گیرنده‌های در انتظارِ یک کمپین */

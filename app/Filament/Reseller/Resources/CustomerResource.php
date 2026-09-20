@@ -25,6 +25,8 @@ class CustomerResource extends Resource
 
     protected static ?string $model = User::class;
 
+    protected static bool $isScopedToTenant = false;
+
     protected static ?string $navigationIcon = 'heroicon-o-users';
 
     protected static ?string $navigationGroup = 'مشتریان و فروش';

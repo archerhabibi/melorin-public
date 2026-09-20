@@ -4,6 +4,7 @@ namespace Tests\Feature\Resellers;
 
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProvisioningSetting;
 use App\Models\Reseller;
 use App\Models\ResellerProductPrice;
 use App\Models\ServerPanel;
@@ -129,6 +130,15 @@ class ResellerPriceFieldTest extends TestCase
     #[Test]
     public function failed_account_creation_refunds_exactly_the_wholesale_price_that_was_debited(): void
     {
+        // این تست عمداً سیاست را refund می‌گذارد تا واقعاً بازگشت وجه
+        // اتفاق بیفتد و بشود بررسی کرد بازگشت از resellerPrice() استفاده
+        // می‌کند نه main_price. سیاست پیش‌فرض سیستم از فاز ۱۱ به بعد
+        // retry است (بند ۳۶ — بدون بازگشت خودکار، چون ممکن است اکانت
+        // واقعاً روی پنل ساخته شده باشد)، پس بدون این خط اصلاً بازگشتی
+        // رخ نمی‌داد و این تست چیزی را که می‌خواست بسنجد اصلاً امتحان
+        // نمی‌کرد.
+        ProvisioningSetting::current()->update(['failure_policy' => ProvisioningSetting::POLICY_REFUND]);
+
         Http::fake([
             '*/api/admin/token' => Http::response(['access_token' => 'fake-token'], 200),
             '*/api/user' => Http::response([], 500),
