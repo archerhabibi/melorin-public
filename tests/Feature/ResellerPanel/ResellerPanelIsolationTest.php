@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\URL;
 use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\Concerns\FakesTelegram;
+use Tests\Concerns\StoreMembers;
 use Tests\TestCase;
 
 /**
@@ -33,6 +34,7 @@ class ResellerPanelIsolationTest extends TestCase
 {
     use FakesTelegram;
     use RefreshDatabase;
+    use StoreMembers;
 
     protected function setUp(): void
     {
@@ -118,15 +120,25 @@ class ResellerPanelIsolationTest extends TestCase
         $resellerA = Reseller::factory()->create();
         $resellerB = Reseller::factory()->create();
 
-        $customerA = User::factory()->create(['reseller_id' => $resellerA->id]);
-        $customerB = User::factory()->create(['reseller_id' => $resellerB->id]);
+        $customerA = $this->memberOf($resellerA);
+        $customerB = $this->memberOf($resellerB);
+        // مشتریِ هر دو نماینده (Rule 12) در هر دو پنل دیده می‌شود
+        $both = $this->memberOf($resellerA);
+        $this->accountIn($both, $resellerB);
 
         $this->actingAsReseller($resellerA);
 
         Livewire::test(ListCustomers::class)
             ->assertSuccessful()
-            ->assertCanSeeTableRecords([$customerA])
+            ->assertCanSeeTableRecords([$customerA, $both])
             ->assertCanNotSeeTableRecords([$customerB]);
+
+        $this->actingAsReseller($resellerB);
+
+        Livewire::test(ListCustomers::class)
+            ->assertSuccessful()
+            ->assertCanSeeTableRecords([$customerB, $both])
+            ->assertCanNotSeeTableRecords([$customerA]);
     }
 
     #[Test]
@@ -152,7 +164,7 @@ class ResellerPanelIsolationTest extends TestCase
         $resellerA = Reseller::factory()->create();
         $resellerB = Reseller::factory()->create();
 
-        $customerB = User::factory()->create(['reseller_id' => $resellerB->id]);
+        $customerB = $this->memberOf($resellerB);
         $method = PaymentMethod::factory()->create();
 
         ['payment' => $paymentB] = app(PaymentService::class)->initiate(
@@ -174,7 +186,7 @@ class ResellerPanelIsolationTest extends TestCase
     public function reseller_can_approve_their_own_customers_pending_payment_from_the_panel(): void
     {
         $reseller = Reseller::factory()->create();
-        $customer = User::factory()->create(['reseller_id' => $reseller->id]);
+        $customer = $this->memberOf($reseller);
         $method = PaymentMethod::factory()->create();
 
         ['payment' => $payment] = app(PaymentService::class)->initiate(
@@ -188,7 +200,7 @@ class ResellerPanelIsolationTest extends TestCase
             ->callTableAction('approve', $payment)
             ->assertHasNoTableActionErrors();
 
-        $this->assertEquals(300000, app(WalletService::class)->balance($customer));
+        $this->assertEquals(300000, app(WalletService::class)->balance($this->accountIn($customer, $reseller)));
     }
 
     #[Test]

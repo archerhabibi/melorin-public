@@ -78,7 +78,7 @@ class ResellerPaymentApprovalTest extends TestCase
     {
         $resellerA = Reseller::factory()->create();
         $resellerB = Reseller::factory()->create();
-        $customerOfA = User::factory()->create(['reseller_id' => $resellerA->id]);
+        $customerOfA = User::factory()->create();
         $method = PaymentMethod::factory()->create();
 
        ['payment' => $payment] = $this->payments->initiate(

@@ -4,7 +4,6 @@ namespace App\Filament\Reseller\Pages;
 
 use App\Filament\Reseller\ResolvesCurrentReseller;
 use App\Jobs\SendResellerBroadcastMessage;
-use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
@@ -67,10 +66,8 @@ class BroadcastMessage extends Page implements HasForms
             return;
         }
 
-        $recipientCount = User::query()
-            ->where('reseller_id', $reseller->id)
-            ->whereNotNull('telegram_id')
-            ->count();
+        // همان منبعِ حقیقتِ ارسال واقعی (عضویت فعال در فروشگاه این نماینده)
+        $recipientCount = app(\App\Services\Core\BroadcastService::class)->recipientCount($reseller);
 
         if ($recipientCount === 0) {
             Notification::make()

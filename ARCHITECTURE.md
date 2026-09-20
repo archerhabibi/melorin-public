@@ -48,11 +48,19 @@ $customer = $identity->resolveCustomerAccount($user, $store);
 
 ---
 
+**عضویت (Scope) = `CustomerAccount`** (Rule 12): هر User می‌تواند هم‌زمان مشتری
+Main و مشتری چند نماینده باشد. هیچ ستونِ تک‌مقداری روی User مبنای Scope نیست.
+عضویت با /start ربات نماینده، انتساب پنل (`ResellerCustomerService::assign`) یا
+اولین خرید در ربات ساخته می‌شود؛ `AccountService::purchase` در فروشگاه نماینده
+عضویتِ موجود را می‌طلبد و خودکار عضو نمی‌سازد (بند ۶ و ۴۳). «حذف» مشتری یعنی
+`status=disabled` (Wallet حفظ می‌شود). مخاطب پیام همگانی هر فروشگاه همین اعضای فعال‌اند.
+
 ## ۳. کیف‌پول
 
 ```
 Wallet = User + StoreContext
 wallets(user_id, store_type, reseller_id, scope_key, balance)   UNIQUE(user_id, scope_key)
+(ستون‌های polymorphic قدیمی owner_type/owner_id/customer_account_id در فاز ۱۵ حذف شدند)
 ```
 
 Wallet یک موجودیت عمومی است؛ نه `customer_wallet` و نه `reseller_wallet`.
@@ -66,6 +74,7 @@ Wallet یک موجودیت عمومی است؛ نه `customer_wallet` و نه `r
 | مالکی که به `WalletService` می‌دهید | Wallet واقعی | کفِ مجاز |
 |---|---|---|
 | `CustomerAccount` | (user، store) همان عضویت | ۰ |
+| `User` (بدون Context) | Wallet او در **Main** — هرگز حدس‌زده‌شده از users.reseller_id | ۰ |
 | `Reseller` (پرداخت `reseller_price`) | **Wallet صاحبِ نماینده در Main** | `-debt_limit` |
 
 «اعتبار نماینده» Wallet جدا نیست (Rule 6). کفِ مجاز ویژگیِ *عملیات* است،
@@ -252,5 +261,5 @@ Idempotency و کمیسیون بهره‌مند شدند.
 - ادغام سفارش‌های مهمان با عضویت موجود
   (`IdentityService::attachGuestToIdentity` عمداً در آن حالت خطا می‌دهد
   به‌جای جابه‌جایی نصفه‌کاره‌ی داده)
-- `users.reseller_id` هنوز حذف نشده (Migration ۱۰ بلوپرینت)
+- `users.reseller_id` از فاز ۱۵ کاملاً بلااستفاده است (Rule 12) ولی خودِ ستون هنوز در جدول مانده؛ حذفش با تست‌های Migration تاریخی (`CustomerAccountBackfillTest`) هم‌زمان باید انجام شود
 - SoftEther (بند ۷۳)

@@ -72,6 +72,18 @@ class IdentityService
     }
 
     /**
+     * آیا این User عضو «فعال» این فروشگاه است؟ (Scope — بند ۶ و ۴۳)
+     *
+     * عضویت همان CustomerAccount است؛ هیچ ستون تک‌مقداریِ روی User
+     * (users.reseller_id) مبنای Scope نیست تا یک نفر بتواند هم‌زمان
+     * مشتری چند نماینده باشد (Rule 12).
+     */
+    public function isActiveMember(User $user, StoreContext $store): bool
+    {
+        return $this->findCustomerAccount($user, $store)?->isActive() === true;
+    }
+
+    /**
      * همه‌ی عضویت‌های یک Identity در فروشگاه‌های مختلف. برای پنل ادمین
      * («این کاربر در کدام فروشگاه‌ها مشتری است؟») و برای صفحه‌ی کاربری
      * سایت.

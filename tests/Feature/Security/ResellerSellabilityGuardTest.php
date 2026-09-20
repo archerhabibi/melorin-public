@@ -15,6 +15,7 @@ use App\Services\Resellers\ResellerPricingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Concerns\StoreMembers;
 use Tests\TestCase;
 
 /**
@@ -29,6 +30,7 @@ use Tests\TestCase;
 class ResellerSellabilityGuardTest extends TestCase
 {
     use RefreshDatabase;
+    use StoreMembers;
 
     protected function makeSellableProduct(Reseller $reseller, array $categoryAttributes = []): Product
     {
@@ -59,8 +61,8 @@ class ResellerSellabilityGuardTest extends TestCase
 
     protected function fundedCustomer(Reseller $reseller): User
     {
-        $customer = User::factory()->create(['reseller_id' => $reseller->id]);
-        app(WalletService::class)->charge($customer, 500000);
+        $customer = $this->memberOf($reseller);
+        app(WalletService::class)->charge($this->accountIn($customer, $reseller), 500000);
         app(WalletService::class)->charge($reseller, 500000);
 
         return $customer;
@@ -198,7 +200,7 @@ class ResellerSellabilityGuardTest extends TestCase
         }
 
         $wallet = app(WalletService::class);
-        $this->assertEquals(500000, $wallet->balance($customer->fresh()));
+        $this->assertEquals(500000, $wallet->balance($this->accountIn($customer, $reseller)));
         $this->assertEquals(500000, $wallet->balance($reseller->fresh()));
     }
 }

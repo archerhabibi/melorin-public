@@ -15,6 +15,7 @@ use App\Services\Core\WalletService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Concerns\StoreMembers;
 use Tests\TestCase;
 
 /**
@@ -24,6 +25,7 @@ use Tests\TestCase;
 class ResellerPurchaseFinancialTest extends TestCase
 {
     use RefreshDatabase;
+    use StoreMembers;
 
     protected AccountService $accounts;
 
@@ -74,10 +76,10 @@ class ResellerPurchaseFinancialTest extends TestCase
         $this->fakeSuccessfulPanel();
 
         $reseller = Reseller::factory()->create();
-        $customer = User::factory()->create(['reseller_id' => $reseller->id]);
+        $customer = $this->memberOf($reseller);
         $product = $this->sellableProduct($reseller, mainPrice: 10, customersPrice: 14);
 
-        $this->wallet->charge($customer, 20);
+        $this->wallet->charge($this->accountIn($customer, $reseller), 20);
         $this->wallet->charge($reseller, 30);
 
         $account = $this->accounts->purchase(
@@ -88,7 +90,7 @@ class ResellerPurchaseFinancialTest extends TestCase
         );
 
         // طبق بند ۶ سند: Customer Purchase Debit = customers_price
-        $this->assertEquals(6, $this->wallet->balance($customer));
+        $this->assertEquals(6, $this->wallet->balance($this->accountIn($customer, $reseller)));
         // Reseller Purchase Debit = reseller_price
         $this->assertEquals(20, $this->wallet->balance($reseller));
 
@@ -107,7 +109,7 @@ class ResellerPurchaseFinancialTest extends TestCase
         Http::fake();
 
         $reseller = Reseller::factory()->create();
-        $customer = User::factory()->create(['reseller_id' => $reseller->id]);
+        $customer = $this->memberOf($reseller);
         $product = $this->sellableProduct($reseller, mainPrice: 10, customersPrice: 14);
 
         // مشتری هیچ موجودی‌ای ندارد؛ نماینده موجودی کافی دارد
@@ -118,7 +120,7 @@ class ResellerPurchaseFinancialTest extends TestCase
         try {
             $this->accounts->purchase($customer, $product, salesChannel: 'reseller_bot', reseller: $reseller);
         } finally {
-            $this->assertEquals(0, $this->wallet->balance($customer));
+            $this->assertEquals(0, $this->wallet->balance($this->accountIn($customer, $reseller)));
             $this->assertEquals(100, $this->wallet->balance($reseller));
             Http::assertNothingSent();
         }
@@ -130,18 +132,18 @@ class ResellerPurchaseFinancialTest extends TestCase
         Http::fake();
 
         $reseller = Reseller::factory()->create();
-        $customer = User::factory()->create(['reseller_id' => $reseller->id]);
+        $customer = $this->memberOf($reseller);
         $product = $this->sellableProduct($reseller, mainPrice: 10, customersPrice: 14);
 
         // مشتری موجودی کافی دارد؛ نماینده هیچ اعتباری ندارد
-        $this->wallet->charge($customer, 100);
+        $this->wallet->charge($this->accountIn($customer, $reseller), 100);
 
         $this->expectException(InsufficientBalanceException::class);
 
         try {
             $this->accounts->purchase($customer, $product, salesChannel: 'reseller_bot', reseller: $reseller);
         } finally {
-            $this->assertEquals(100, $this->wallet->balance($customer));
+            $this->assertEquals(100, $this->wallet->balance($this->accountIn($customer, $reseller)));
             $this->assertEquals(0, $this->wallet->balance($reseller));
             Http::assertNothingSent();
         }
@@ -156,10 +158,10 @@ class ResellerPurchaseFinancialTest extends TestCase
         ]);
 
         $reseller = Reseller::factory()->create();
-        $customer = User::factory()->create(['reseller_id' => $reseller->id]);
+        $customer = $this->memberOf($reseller);
         $product = $this->sellableProduct($reseller, mainPrice: 10, customersPrice: 14);
 
-        $this->wallet->charge($customer, 20);
+        $this->wallet->charge($this->accountIn($customer, $reseller), 20);
         $this->wallet->charge($reseller, 30);
 
         $this->expectException(\RuntimeException::class);
@@ -168,7 +170,7 @@ class ResellerPurchaseFinancialTest extends TestCase
             $this->accounts->purchase($customer, $product, salesChannel: 'reseller_bot', reseller: $reseller);
         } finally {
             // طبق بند ۸ سند: «No lost money, no double charge, no orphan debit»
-            $this->assertEquals(20, $this->wallet->balance($customer));
+            $this->assertEquals(20, $this->wallet->balance($this->accountIn($customer, $reseller)));
             $this->assertEquals(30, $this->wallet->balance($reseller));
         }
     }
@@ -179,12 +181,12 @@ class ResellerPurchaseFinancialTest extends TestCase
         Http::fake();
 
         $reseller = Reseller::factory()->create();
-        $customer = User::factory()->create(['reseller_id' => $reseller->id]);
+        $customer = $this->memberOf($reseller);
         $category = $this->makeCategoryWithPanel();
         $product = Product::factory()->create(['category_id' => $category->id, 'main_price' => 10, 'status' => 'active']);
         // عمداً هیچ ResellerProductPrice ای ساخته نمی‌شود — یعنی نماینده هرگز آن را فعال نکرده
 
-        $this->wallet->charge($customer, 100);
+        $this->wallet->charge($this->accountIn($customer, $reseller), 100);
         $this->wallet->charge($reseller, 100);
 
         $this->expectException(\RuntimeException::class);
@@ -192,7 +194,7 @@ class ResellerPurchaseFinancialTest extends TestCase
         try {
             $this->accounts->purchase($customer, $product, salesChannel: 'reseller_bot', reseller: $reseller);
         } finally {
-            $this->assertEquals(100, $this->wallet->balance($customer));
+            $this->assertEquals(100, $this->wallet->balance($this->accountIn($customer, $reseller)));
             $this->assertEquals(100, $this->wallet->balance($reseller));
         }
     }
@@ -203,12 +205,12 @@ class ResellerPurchaseFinancialTest extends TestCase
         Http::fake();
 
         $reseller = Reseller::factory()->create();
-        $customer = User::factory()->create(['reseller_id' => $reseller->id]);
+        $customer = $this->memberOf($reseller);
         // نماینده محصول را فعال کرده، ولی سیستم اصلی محصول را غیرفعال می‌کند
         $product = $this->sellableProduct($reseller, mainPrice: 10, customersPrice: 14);
         $product->update(['status' => 'inactive']);
 
-        $this->wallet->charge($customer, 100);
+        $this->wallet->charge($this->accountIn($customer, $reseller), 100);
         $this->wallet->charge($reseller, 100);
 
         $this->expectException(\RuntimeException::class);
@@ -223,10 +225,9 @@ class ResellerPurchaseFinancialTest extends TestCase
         $reseller = Reseller::factory()->create();
         $otherReseller = Reseller::factory()->create();
         // این مشتری متعلق به نماینده‌ی دیگری است
-        $customer = User::factory()->create(['reseller_id' => $otherReseller->id]);
+        $customer = $this->memberOf($otherReseller);
         $product = $this->sellableProduct($reseller, mainPrice: 10, customersPrice: 14);
 
-        $this->wallet->charge($customer, 100);
         $this->wallet->charge($reseller, 100);
 
         $this->expectException(ResellerScopeViolationException::class);
@@ -239,10 +240,9 @@ class ResellerPurchaseFinancialTest extends TestCase
         Http::fake();
 
         $reseller = Reseller::factory()->create();
-        $customer = User::factory()->create(['reseller_id' => null]);
+        $customer = User::factory()->create();
         $product = $this->sellableProduct($reseller, mainPrice: 10, customersPrice: 14);
 
-        $this->wallet->charge($customer, 100);
         $this->wallet->charge($reseller, 100);
 
         $this->expectException(ResellerScopeViolationException::class);

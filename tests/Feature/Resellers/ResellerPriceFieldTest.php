@@ -73,7 +73,7 @@ class ResellerPriceFieldTest extends TestCase
         ]);
 
         $reseller = Reseller::factory()->create();
-        $customer = User::factory()->create(['reseller_id' => $reseller->id]);
+        $customer = User::factory()->create();
 
         $product = $this->sellableProduct($reseller, price: 150000, resellerPrice: 90000, customersPrice: 140000);
 
@@ -106,7 +106,7 @@ class ResellerPriceFieldTest extends TestCase
         ]);
 
         $reseller = Reseller::factory()->create();
-        $customer = User::factory()->create(['reseller_id' => $reseller->id]);
+        $customer = User::factory()->create();
         $product = $this->sellableProduct($reseller, price: 100000, resellerPrice: null, customersPrice: 130000);
 
         $wallet = app(WalletService::class);
@@ -135,7 +135,7 @@ class ResellerPriceFieldTest extends TestCase
         ]);
 
         $reseller = Reseller::factory()->create();
-        $customer = User::factory()->create(['reseller_id' => $reseller->id]);
+        $customer = User::factory()->create();
         $product = $this->sellableProduct($reseller, price: 150000, resellerPrice: 90000, customersPrice: 140000);
 
         $wallet = app(WalletService::class);

@@ -171,7 +171,7 @@ class ResellerCategoryToggleTest extends TestCase
         ]);
 
         $reseller = Reseller::factory()->create();
-        $customer = User::factory()->create(['reseller_id' => $reseller->id]);
+        $customer = User::factory()->create();
         $product = $this->sellableProduct($reseller);
 
         $wallet = app(WalletService::class);
@@ -202,7 +202,7 @@ class ResellerCategoryToggleTest extends TestCase
     public function purchasing_from_a_category_the_reseller_disabled_is_rejected(): void
     {
         $reseller = Reseller::factory()->create();
-        $customer = User::factory()->create(['reseller_id' => $reseller->id]);
+        $customer = User::factory()->create();
         $product = $this->sellableProduct($reseller);
 
         app(ResellerPricingService::class)->setCategoryEnabled($reseller, $product->category, false);

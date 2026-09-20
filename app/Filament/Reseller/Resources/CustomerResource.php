@@ -53,7 +53,10 @@ class CustomerResource extends Resource
                     // دارد، نه به خودِ User (بند ۱۷). خواندن مستقیم
                     // $record->wallet همیشه صفر نشان می‌داد.
                     ->content(fn (User $record) => number_format(
-                        app(\App\Services\Core\WalletService::class)->balance($record)
+                        app(\App\Services\Core\WalletService::class)->balanceIn(
+                            $record,
+                            \App\Services\Core\Store\StoreContext::reseller(static::currentReseller()),
+                        )
                     ).' تومان'),
             ]),
         ]);
@@ -70,7 +73,10 @@ class CustomerResource extends Resource
                 Tables\Columns\TextColumn::make('wallet_balance')
                     ->label('موجودی کیف پول')
                     ->getStateUsing(fn (User $record) => number_format(
-                        app(\App\Services\Core\WalletService::class)->balance($record)
+                        app(\App\Services\Core\WalletService::class)->balanceIn(
+                            $record,
+                            \App\Services\Core\Store\StoreContext::reseller(static::currentReseller()),
+                        )
                     ).' تومان'),
                 Tables\Columns\TextColumn::make('orders_count')->label('تعداد سفارش‌ها')->counts('orders'),
                 Tables\Columns\TextColumn::make('created_at')->label('عضویت از')->dateTime('Y-m-d'),
@@ -81,7 +87,14 @@ class CustomerResource extends Resource
     /** طبق «اصل طلایی امنیت»: تنها Scope واقعی همین‌جاست — بدون آن، این Resource همه‌ی کاربران سیستم (از جمله مشتریان نمایندگان دیگر و مشتریان مستقیم پنل اصلی) را نشان می‌داد */
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->where('reseller_id', static::currentReseller()->id);
+        // Scope واقعی: فقط Userهایی که عضو «همین» فروشگاه‌اند (CustomerAccount).
+        // هر User می‌تواند هم‌زمان مشتری چند نماینده باشد (Rule 12)، پس
+        // users.reseller_id تک‌مقداری دیگر مبنای فیلتر نیست.
+        $resellerId = static::currentReseller()->id;
+
+        return parent::getEloquentQuery()->whereHas('customerAccounts', function (Builder $q) use ($resellerId) {
+            $q->where('store_type', 'reseller')->where('reseller_id', $resellerId);
+        });
     }
 
     public static function getPages(): array

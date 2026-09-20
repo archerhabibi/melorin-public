@@ -4,6 +4,8 @@ namespace App\Channels\TelegramBot\Http\Controllers;
 
 use App\Channels\TelegramBot\UpdateRouter;
 use App\Models\User;
+use App\Services\Core\Store\IdentityService;
+use App\Services\Core\Store\StoreContext;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Cache;
@@ -121,6 +123,11 @@ class WebhookController
         }
 
         $user->save();
+
+        // عضویت در Main (Rule 12): هر کاربرِ ربات اصلی یک CustomerAccount در
+        // Main دارد؛ مخاطبِ پیام همگانی و Scope فقط از همین عضویت می‌آید،
+        // نه از users.reseller_id. Idempotent است.
+        app(IdentityService::class)->resolveCustomerAccount($user, StoreContext::main());
 
         $this->router->handle($update, $user, (int) $chat->getId());
 

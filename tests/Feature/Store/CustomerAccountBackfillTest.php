@@ -7,7 +7,6 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\Reseller;
 use App\Models\User;
-use App\Models\Wallet;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
@@ -64,53 +63,9 @@ class CustomerAccountBackfillTest extends TestCase
         $this->assertEquals($reseller->id, $resellerAccount->reseller_id);
     }
 
-    #[Test]
-    public function legacy_user_wallets_are_attached_to_their_customer_account(): void
-    {
-        $user = User::factory()->create(['reseller_id' => null]);
-
-        // کیف‌پول به سبک قدیم: مالکش خودِ User است
-        $wallet = Wallet::create([
-            'owner_type' => User::class,
-            'owner_id' => $user->id,
-            'balance' => 45000,
-        ]);
-
-        CustomerAccount::query()->forceDelete();
-        $this->runBackfill();
-
-        $wallet->refresh();
-        $account = CustomerAccount::where('user_id', $user->id)->firstOrFail();
-
-        $this->assertEquals($account->id, $wallet->customer_account_id);
-        // موجودی نباید حتی یک ریال جابه‌جا شود
-        $this->assertEquals(45000, (float) $wallet->balance);
-    }
-
-    /**
-     * کیف‌پول نماینده (اعتبار خودش نزد پلتفرم) نباید به CustomerAccount
-     * مهاجرت کند — بند ۷ بلوپرینت. این دو مفهوم کاملاً جدا هستند و
-     * قاطی‌کردنشان یعنی اعتبار نماینده قابل خرج‌کردن به‌عنوان پول مشتری.
-     */
-    #[Test]
-    public function reseller_credit_wallets_are_left_alone_by_the_backfill(): void
-    {
-        $reseller = Reseller::factory()->create();
-
-        $resellerWallet = Wallet::create([
-            'owner_type' => Reseller::class,
-            'owner_id' => $reseller->id,
-            'balance' => 900000,
-        ]);
-
-        CustomerAccount::query()->forceDelete();
-        $this->runBackfill();
-
-        $resellerWallet->refresh();
-
-        $this->assertNull($resellerWallet->customer_account_id);
-        $this->assertEquals(900000, (float) $resellerWallet->balance);
-    }
+    // فاز ۱۵: دو تست backfill کیف‌پول (legacy owner_type/customer_account_id) حذف شدند چون
+    // آن ستون‌ها دیگر وجود ندارند. منطق نگاشت/ادغام Walletهای قدیمی در
+    // WalletContextStructureTest (با بازسازیِ موقتِ ستون‌های legacy) تست می‌شود.
 
     #[Test]
     public function orders_are_assigned_to_the_store_they_were_placed_in(): void

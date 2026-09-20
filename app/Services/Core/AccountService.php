@@ -4,6 +4,7 @@ namespace App\Services\Core;
 
 use App\DataTransferObjects\PanelAccountRequest;
 use App\Exceptions\InsufficientBalanceException;
+use App\Exceptions\ResellerScopeViolationException;
 use App\Models\Account;
 use App\Models\Order;
 use App\Models\Product;
@@ -81,7 +82,20 @@ class AccountService
         // با یک حالت خاصِ بی‌ربط به پول.
         if (! $isTest) {
             $store = StoreContext::fromReseller($reseller);
-            $customer = $this->identity->resolveCustomerAccount($user, $store);
+
+            // Scope (بند ۶ و ۴۳ سند): «باید قبل از ایجاد یا Resolve کردن
+            // CustomerAccount بررسی شود.» در فروشگاه نماینده، خریدار باید
+            // از قبل عضو همین فروشگاه باشد (عضویت با /start ربات نماینده یا
+            // انتساب پنل ساخته می‌شود). اگر همین‌جا خودکار عضو می‌ساختیم،
+            // هر User با دانستن شناسه‌ی یک نماینده می‌توانست خودش را
+            // مشتری او کند. در Main عضویت همیشه خودکار ساخته می‌شود.
+            $customer = $store->isReseller()
+                ? $this->identity->findCustomerAccount($user, $store)
+                : $this->identity->resolveCustomerAccount($user, $store);
+
+            if (! $customer) {
+                throw new ResellerScopeViolationException('این کاربر مشتری این نماینده نیست.');
+            }
 
             return $this->purchaseService->purchase(
                 customer: $customer,

@@ -36,7 +36,10 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (! Schema::hasTable('wallets') || ! Schema::hasColumn('wallets', 'scope_key')) {
+        // بعد از Migration «drop_legacy_wallet_owner_columns» دیگر ردیف legacy وجود ندارد.
+        if (! Schema::hasTable('wallets')
+            || ! Schema::hasColumn('wallets', 'scope_key')
+            || ! Schema::hasColumn('wallets', 'owner_type')) {
             return;
         }
 

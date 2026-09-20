@@ -52,6 +52,12 @@ class WalletService
         return $this->resolveWallet((int) $user->getKey(), $context->storeType, $context->resellerId());
     }
 
+    /** موجودی Wallet یک User در یک Context صریح (بدون نیاز به ساخت CustomerAccount) */
+    public function balanceIn(User $user, StoreContext $context): float
+    {
+        return (float) $this->walletForContext($user, $context)->balance;
+    }
+
     protected function resolveWallet(int $userId, string $storeType, ?int $resellerId): Wallet
     {
         $scopeKey = Wallet::scopeKeyFor($storeType, $resellerId);
@@ -300,19 +306,17 @@ class WalletService
     }
 
     /**
-     * سازگاری با مسیرهای قدیمی که هنوز User را به WalletService می‌دهند
-     * (هندلرهای ربات، ویجت‌های پنل، تست‌های قدیمی‌تر).
+     * فاز ۱۵ (Rule 12): یک `User` بدون Context صریح **همیشه Main** است.
      *
-     * از زمان انتقال مالکیت کیف‌پول مشتری به CustomerAccount (بند ۱۷
-     * سند: Wallet باید Context را مشخص کند)، walletِ User نباید یک
-     * موجودیِ موازی باشد. یک User می‌تواند هم‌زمان مشتری Main و مشتری
-     * چند نماینده باشد (بند ۱۶ و Rule 9) و هر کدام کیف‌پول جدا دارند؛
-     * پس «کیف‌پول یک User» بدون Context اصلاً معنا ندارد.
+     * یک User می‌تواند هم‌زمان مشتری Main و مشتری چند نماینده باشد و هر
+     * Context Wallet جدا دارد؛ پس «Wallet یک User» بدون Context فقط در
+     * Main معنا دارد (بند ۲۲). قبلاً Context از `users.reseller_id`
+     * (تک‌مقداری) حدس زده می‌شد که هم Rule 12 را می‌شکست و هم بی‌صدا
+     * Wallet اشتباهی را نشان می‌داد.
      *
-     * اینجا User به CustomerAccountِ فروشگاه خودش resolve می‌شود. بدون
-     * این نگاشت، `balance($user)` همیشه صفر برمی‌گرداند در حالی که پول
-     * واقعاً در کیف‌پول CustomerAccount نشسته — دقیقاً همان باگی که در
-     * ربات نمایندگی («موجودی کیف پول شما: ۰») دیده می‌شد.
+     * هر مسیرِ خارج از Main باید Context را صریح بدهد:
+     *   - یک CustomerAccount (عضویت در فروشگاه نماینده)،
+     *   - یا walletForContext() / balanceIn() با StoreContext.
      *
      * Reseller از این نگاشت مستثناست و در keyFor() به Wallet صاحبش در Main
      * می‌رسد؛ کفِ مجاز آن (-debt_limit) از minimumBalanceFor می‌آید.
@@ -323,10 +327,7 @@ class WalletService
             return $owner;
         }
 
-        return app(IdentityService::class)->resolveCustomerAccount(
-            $owner,
-            StoreContext::fromReseller($owner->reseller),
-        );
+        return app(IdentityService::class)->resolveCustomerAccount($owner, StoreContext::main());
     }
 
     protected function assertCreditType(string $type): void

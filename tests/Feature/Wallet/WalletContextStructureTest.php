@@ -12,7 +12,9 @@ use App\Services\Core\Store\StoreContext;
 use App\Services\Core\WalletService;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -164,6 +166,21 @@ class WalletContextStructureTest extends TestCase
     }
 
     #[Test]
+    public function a_bare_user_owner_always_means_the_main_wallet(): void
+    {
+        // Rule 12: Context هرگز از users.reseller_id حدس زده نمی‌شود
+        $reseller = Reseller::factory()->create();
+        $user = User::factory()->create(['reseller_id' => $reseller->id]); // ستون deprecated
+
+        $this->identity->resolveCustomerAccount($user, StoreContext::reseller($reseller));
+
+        $this->wallet->credit($user, 10);
+
+        $this->assertEquals(10, $this->wallet->balanceIn($user, StoreContext::main()));
+        $this->assertEquals(0, $this->wallet->balanceIn($user, StoreContext::reseller($reseller)));
+    }
+
+    #[Test]
     public function a_guest_membership_has_no_wallet(): void
     {
         $guest = CustomerAccount::create(['user_id' => null, 'store_type' => 'main', 'status' => 'active']);
@@ -175,6 +192,8 @@ class WalletContextStructureTest extends TestCase
     #[Test]
     public function legacy_wallets_are_merged_by_context_without_changing_the_total(): void
     {
+        $this->restoreLegacyWalletColumns();
+
         $reseller = Reseller::factory()->create();
         $owner = $reseller->user;
         $ali = User::factory()->create();
@@ -237,6 +256,8 @@ class WalletContextStructureTest extends TestCase
     #[Test]
     public function the_merge_is_idempotent(): void
     {
+        $this->restoreLegacyWalletColumns();
+
         $reseller = Reseller::factory()->create();
         $ownerMain = $this->identity->resolveCustomerAccount($reseller->user, StoreContext::main());
         $now = now();
@@ -250,6 +271,20 @@ class WalletContextStructureTest extends TestCase
         $this->assertEquals(1, DB::table('wallets')->count());
         $this->assertEquals(30, (float) DB::table('wallets')->value('balance'));
         $this->assertEquals(1, DB::table('wallet_transactions')->count());
+    }
+
+    /**
+     * ستون‌های legacy در فاز ۱۵ از جدول حذف شدند؛ Migration ادغام (فاز ۱۳) هنوز
+     * روی دیتابیس‌های قدیمی اجرا می‌شود، پس برای تستش «شکلِ پیش از حذف» را
+     * (فقط در همین تست؛ با rollback تراکنش تست) دوباره می‌سازیم.
+     */
+    protected function restoreLegacyWalletColumns(): void
+    {
+        Schema::table('wallets', function (Blueprint $table) {
+            $table->string('owner_type')->nullable();
+            $table->unsignedBigInteger('owner_id')->nullable();
+            $table->unsignedBigInteger('customer_account_id')->nullable();
+        });
     }
 
     protected function runMerge(): void

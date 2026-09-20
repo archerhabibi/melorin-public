@@ -158,7 +158,7 @@ class ResellerBotFlowsTest extends TestCase
     public function owner_main_wallet_topup_menu_item_is_a_no_op_for_a_plain_customer(): void
     {
         $reseller = Reseller::factory()->create();
-        $customer = User::factory()->create(['reseller_id' => $reseller->id, 'telegram_id' => 900002]);
+        $customer = User::factory()->create(['telegram_id' => 900002]);
 
         $this->router()->handle($reseller, $this->textUpdate(900002, '💰 شارژ حساب نماینده'), $customer, 900002);
 

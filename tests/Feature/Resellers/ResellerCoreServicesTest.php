@@ -13,6 +13,7 @@ use App\Services\Resellers\ResellerPricingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Concerns\StoreMembers;
 use Tests\TestCase;
 
 /**
@@ -22,6 +23,7 @@ use Tests\TestCase;
 class ResellerCoreServicesTest extends TestCase
 {
     use RefreshDatabase;
+    use StoreMembers;
 
     protected ResellerCustomerService $customers;
 
@@ -35,25 +37,45 @@ class ResellerCoreServicesTest extends TestCase
     }
 
     #[Test]
-    public function assigning_a_customer_already_owned_by_another_reseller_is_rejected(): void
+    public function a_customer_of_one_reseller_can_also_be_assigned_to_another(): void
     {
+        // Rule 12: قبلاً «مشتریِ نماینده‌ی دیگر» رد می‌شد؛ حالا هر User می‌تواند مشتری چند نماینده باشد
         $resellerA = Reseller::factory()->create();
         $resellerB = Reseller::factory()->create();
-        $customer = User::factory()->create(['reseller_id' => $resellerA->id]);
+        $customer = $this->memberOf($resellerA);
 
-        $this->expectException(ResellerScopeViolationException::class);
         $this->customers->assign($resellerB, $customer);
+
+        $this->assertTrue($this->customers->ownsCustomer($resellerA, $customer));
+        $this->assertTrue($this->customers->ownsCustomer($resellerB, $customer));
+        $this->assertEquals(2, $customer->customerAccounts()->count());
     }
 
     #[Test]
     public function assigning_the_same_customer_to_the_same_reseller_twice_is_idempotent(): void
     {
         $reseller = Reseller::factory()->create();
-        $customer = User::factory()->create(['reseller_id' => $reseller->id]);
+        $customer = User::factory()->create();
 
         $this->customers->assign($reseller, $customer);
+        $this->customers->assign($reseller, $customer);
 
-        $this->assertEquals($reseller->id, $customer->fresh()->reseller_id);
+        $this->assertEquals(1, $customer->customerAccounts()->count());
+        $this->assertTrue($this->customers->ownsCustomer($reseller, $customer));
+    }
+
+    #[Test]
+    public function a_disabled_membership_cannot_be_silently_reactivated_by_assign(): void
+    {
+        $reseller = Reseller::factory()->create();
+        $customer = $this->memberOf($reseller);
+
+        $this->customers->remove($reseller, $customer);
+
+        $this->assertFalse($this->customers->ownsCustomer($reseller, $customer));
+
+        $this->expectException(ResellerScopeViolationException::class);
+        $this->customers->assign($reseller, $customer);
     }
 
     #[Test]
@@ -61,12 +83,33 @@ class ResellerCoreServicesTest extends TestCase
     {
         $resellerA = Reseller::factory()->create();
         $resellerB = Reseller::factory()->create();
-        $customerOfB = User::factory()->create(['reseller_id' => $resellerB->id]);
+        $customerOfB = $this->memberOf($resellerB);
 
-        $this->expectException(ResellerScopeViolationException::class);
-        $this->customers->remove($resellerA, $customerOfB);
+        try {
+            $this->customers->remove($resellerA, $customerOfB);
+            $this->fail('باید نقض Scope اعلام می‌شد');
+        } catch (ResellerScopeViolationException) {
+        }
 
-        $this->assertEquals($resellerB->id, $customerOfB->fresh()->reseller_id);
+        $this->assertTrue($this->customers->ownsCustomer($resellerB, $customerOfB), 'عضویت B دست‌نخورده می‌ماند');
+    }
+
+    #[Test]
+    public function removing_a_customer_disables_only_this_stores_membership_and_keeps_the_wallet(): void
+    {
+        $resellerA = Reseller::factory()->create();
+        $resellerB = Reseller::factory()->create();
+        $customer = $this->memberOf($resellerA);
+        $this->accountIn($customer, $resellerB);
+
+        $wallets = app(\App\Services\Core\WalletService::class);
+        $wallets->credit($this->accountIn($customer, $resellerA), 75);
+
+        $this->customers->remove($resellerA, $customer);
+
+        $this->assertFalse($this->customers->ownsCustomer($resellerA, $customer));
+        $this->assertTrue($this->customers->ownsCustomer($resellerB, $customer));
+        $this->assertEquals(75, $wallets->balanceIn($customer, \App\Services\Core\Store\StoreContext::reseller($resellerA)));
     }
 
     #[Test]
@@ -74,11 +117,17 @@ class ResellerCoreServicesTest extends TestCase
     {
         $resellerA = Reseller::factory()->create();
         $resellerB = Reseller::factory()->create();
-        User::factory()->count(3)->create(['reseller_id' => $resellerA->id]);
-        User::factory()->count(2)->create(['reseller_id' => $resellerB->id]);
+        foreach (range(1, 3) as $_) {
+            $this->memberOf($resellerA);
+        }
+        foreach (range(1, 2) as $_) {
+            $this->memberOf($resellerB);
+        }
 
         $this->assertCount(3, $this->customers->customersQuery($resellerA)->get());
         $this->assertCount(2, $this->customers->customersQuery($resellerB)->get());
+        $this->assertEquals(3, $resellerA->customers()->count());
+        $this->assertEquals(2, $resellerB->customers()->count());
     }
 
     #[Test]

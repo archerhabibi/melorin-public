@@ -1,32 +1,34 @@
-Phase 14 — مرحله‌ی ۱۳ سند: انتقال و تکمیل Testها به مدل نهایی
+Phase 15 — Rule 12 (مشتریِ چند نماینده) + حذف ستون‌های legacy جدول wallets
 
-طبق سند معماری v2.0 (بند ۵۶، ۵۷ و ۵۹ مرحله‌ی ۱۳). جزئیات و ماتریس ردیابی:
-docs/PHASE-14-FINAL-MODEL-TESTS.md
-(«۱۴» شماره‌ی پچ پروژه است؛ محتوا همان «مرحله‌ی ۱۳ سند» است.)
+جزئیات: docs/PHASE-15-MEMBERSHIP-AND-WALLET-CONTRACT.md
 
-=== تست‌های جدید ===
-tests/Feature/Architecture/FinalModelSpecTest.php:
-- سناریوی مالی خود سند با اعداد بند ۵۱ (main 12 / reseller 10 / A 14 / C 16): Main، Reseller A، Reseller C،
-  Walletهای مستقل، profit 4 و 6.
-- Debit اول و دوم قابل‌انتساب به user/wallet/context/order و زیر یک Operation (بند ۳۳–۳۴).
-- Refund از روی اسنپ‌شات (Main / مشتری نماینده / صاحب نماینده) بعد از تغییر قیمت‌ها.
-- Scope، Rule 13 (صاحب نماینده مشتری مستقیم Main)، Rule 14 (بدون User جدید، Wallet Main حفظ می‌شود).
-- نگهبان دائمی نام‌های ممنوعه‌ی Wallet (بند ۴۹).
+=== الف) Rule 12 ===
+عضویت = CustomerAccount؛ هیچ ستون تک‌مقداری روی User مبنای Scope نیست.
+- ربات نماینده: کاربرِ نماینده‌ی دیگر دیگر رد نمی‌شود؛ /start عضویت همان فروشگاه را می‌سازد؛ عضویت غیرفعال بی‌صدا فعال نمی‌شود.
+- ResellerCustomerService / Reseller::customers / پنل نماینده / پیام همگانی: همه روی CustomerAccount.
+- WalletService: User بدون Context = Main (نه حدس از users.reseller_id). balanceIn(User, StoreContext) اضافه شد.
+- AccountService::purchase در فروشگاه نماینده عضویت موجود را می‌طلبد (Scope قبل از ساخت CustomerAccount — بند ۶).
+- وب‌هوک ربات اصلی عضویت Main می‌سازد.
+- User::reseller() حذف شد؛ خودِ ستون users.reseller_id (بلااستفاده) هنوز در جدول است.
 
-=== تمیزکاری ===
-- ۵ نام تست با اصطلاح ممنوعه‌ی Wallet تغییر کرد؛ ۱۰ فایل کامنت «Customers_price» → «customers_price». بدون تغییر رفتار.
+=== ب) حذف ستون‌های legacy wallets ===
+Migration 2026_09_23_000001: owner_type / owner_id / customer_account_id + ایندکس‌ها و FK حذف می‌شوند.
+⚠️ اگر Walletی بدون user_id مانده باشد Migration عمداً متوقف می‌شود (ردّ مالک فقط در همین ستون‌هاست).
+قبل از اجرا: بکاپ + بررسی  DB::table('wallets')->whereNull('user_id')->count() == 0
 
-=== ⚠️ دو یافته‌ی نیازمند تصمیم (پیاده نشد؛ دو تست Skipped عمدی) ===
-1) Rule 12: کانال‌های ربات/پنل هنوز به users.reseller_id تک‌مقداری وابسته‌اند؛ کاربر نمی‌تواند از ربات
-   دو نماینده‌ی مختلف خرید کند (سرویس‌ها آماده‌اند). نیاز به یک فاز جدا.
-2) تناقض سند: بند ۱۸ می‌گوید خرید خودِ نماینده از Main با reseller_price است؛ Rule 2/13 می‌گویند main_price.
-   کد فعلی main_price می‌گیرد. تصمیم شما لازم است.
+=== تست ===
+جدید: MembershipGuardTest، تست واقعی Rule 12، وب‌هوک چندنماینده‌ای، عضویت غیرفعال، پیام همگانی مشتریِ مشترک.
+مهاجرت‌شده: ۱۰ فایل تست (helper مشترک tests/Concerns/StoreMembers.php).
+حذف: دو تست backfill کیف‌پول legacy (ستون‌شان دیگر نیست).
+تغییر رفتار آگاهانه: assign به نماینده‌ی دوم اکنون مجاز است (تست قدیمیِ برعکس بازنویسی شد).
 
 === اجرا ===
-Migration ندارد.
+    php artisan migrate
     php artisan test
-انتظار: همه سبز به‌جز ۲ Skipped عمدی. این پچ بدون PHP نوشته شد و اجرا نشده؛ خروجی را در صورت شکست بفرستید.
+انتظار: همه سبز به‌جز ۱ Skipped عمدی (تصمیم باز بند ۱۸).
+این پچ بدون PHP نوشته شد و اجرا نشده؛ Migration را حتماً ابتدا روی staging با کپی دیتابیس اجرا کنید.
 
-=== فاز بعدی ===
-مرحله‌ی ۱۴ سند (Static Search نهایی) عملاً با تست‌های دائمی پوشش داده شده؛ مرحله‌ی ۱۵: php artisan test کامل.
-پیشنهاد: فاز «برداشتن users.reseller_id از کانال‌ها» (Rule 12) و فاز «حذف ستون‌های legacy wallets».
+=== باقی‌مانده ===
+- تصمیم بند ۱۸ (قیمت خرید شخصی صاحب نماینده در Main).
+- حذف ستون users.reseller_id همراه با Migration/تست‌های تاریخی backfill.
+- users.referrer_id سراسری است (نه per-store).

@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Http;
 use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\Concerns\FakesTelegram;
+use Tests\Concerns\StoreMembers;
 use Tests\TestCase;
 
 /**
@@ -27,6 +28,7 @@ class P1P2HardeningTest extends TestCase
 {
     use FakesTelegram;
     use RefreshDatabase;
+    use StoreMembers;
 
     protected function pendingPaymentFor(User $user, ?Reseller $reseller = null, string $walletOwnerType = 'user'): Payment
     {
@@ -172,9 +174,12 @@ class P1P2HardeningTest extends TestCase
     #[Test]
     public function a_broadcast_records_one_recipient_row_per_targeted_user(): void
     {
-        User::factory()->create(['telegram_id' => 901, 'reseller_id' => null]);
-        User::factory()->create(['telegram_id' => 902, 'reseller_id' => null]);
-        User::factory()->create(['telegram_id' => null, 'reseller_id' => null]); // بدون تلگرام — نباید هدف باشد
+        // مخاطب Main = عضو فعال Main با telegram_id (Rule 12: عضویت CustomerAccount است)
+        $this->accountIn(User::factory()->create(['telegram_id' => 901]), null);
+        $this->accountIn(User::factory()->create(['telegram_id' => 902]), null);
+        $this->accountIn(User::factory()->create(['telegram_id' => null]), null); // بدون تلگرام — نباید هدف باشد
+        // مشتریِ صرفاً یک نماینده، مخاطب پیام همگانی Main نیست
+        $this->memberOf(Reseller::factory()->create(), ['telegram_id' => 903]);
 
         $broadcast = app(\App\Services\Core\BroadcastService::class)->create('سلام', null);
 
@@ -189,16 +194,24 @@ class P1P2HardeningTest extends TestCase
         $resellerA = Reseller::factory()->create();
         $resellerB = Reseller::factory()->create();
 
-        $mine = User::factory()->create(['telegram_id' => 1001, 'reseller_id' => $resellerA->id]);
-        User::factory()->create(['telegram_id' => 2002, 'reseller_id' => $resellerB->id]);
-        User::factory()->create(['telegram_id' => 3003, 'reseller_id' => null]);
+        $mine = $this->memberOf($resellerA, ['telegram_id' => 1001]);
+        $this->memberOf($resellerB, ['telegram_id' => 2002]);
+        $this->accountIn(User::factory()->create(['telegram_id' => 3003]), null); // مشتری مستقیم Main
 
-        $broadcast = app(\App\Services\Core\BroadcastService::class)->create('سلام', $resellerA);
+        // مشتریِ هر دو نماینده (Rule 12) پیام هر فروشگاه را جدا می‌گیرد
+        $both = $this->memberOf($resellerA, ['telegram_id' => 4004]);
+        $this->accountIn($both, $resellerB);
 
-        $this->assertEquals(1, $broadcast->total_recipients);
-        $this->assertDatabaseHas('broadcast_recipients', [
-            'broadcast_id' => $broadcast->id,
-            'user_id' => $mine->id,
-        ]);
+        $service = app(\App\Services\Core\BroadcastService::class);
+
+        $broadcastA = $service->create('سلام', $resellerA);
+        $broadcastB = $service->create('سلام', $resellerB);
+
+        $this->assertEquals(2, $broadcastA->total_recipients);
+        $this->assertDatabaseHas('broadcast_recipients', ['broadcast_id' => $broadcastA->id, 'user_id' => $mine->id]);
+        $this->assertDatabaseHas('broadcast_recipients', ['broadcast_id' => $broadcastA->id, 'user_id' => $both->id]);
+
+        $this->assertEquals(2, $broadcastB->total_recipients);
+        $this->assertDatabaseHas('broadcast_recipients', ['broadcast_id' => $broadcastB->id, 'user_id' => $both->id]);
     }
 }

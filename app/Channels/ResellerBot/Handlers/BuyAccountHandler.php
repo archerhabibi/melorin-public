@@ -56,7 +56,7 @@ class BuyAccountHandler
 
         $this->telegram->sendMessage([
             'chat_id' => $chatId,
-            'text' => '💰 موجودی کیف پول شما: '.number_format($this->walletService->balance($user))."تومان\n\nیک سبد فروش انتخاب کنید:",
+            'text' => '💰 موجودی کیف پول شما: '.number_format($this->walletService->balanceIn($user, StoreContext::reseller($reseller)))."تومان\n\nیک سبد فروش انتخاب کنید:",
             'reply_markup' => Keyboards::categoryList($categories),
         ]);
     }

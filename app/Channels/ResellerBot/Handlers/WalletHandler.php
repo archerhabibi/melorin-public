@@ -10,6 +10,7 @@ use App\Models\Reseller;
 use App\Models\User;
 use App\Services\Core\PaymentService;
 use App\Services\Core\WalletService;
+use App\Services\Core\Store\StoreContext;
 use Telegram\Bot\Api;
 
 /**
@@ -32,7 +33,7 @@ class WalletHandler
     {
         $this->telegram->sendMessage([
             'chat_id' => $chatId,
-            'text' => '💰 موجودی کیف پول شما: '.number_format($this->walletService->balance($user))."تومان\n\nبرای شارژ، مبلغ را انتخاب کنید:",
+            'text' => '💰 موجودی کیف پول شما: '.number_format($this->walletService->balanceIn($user, StoreContext::reseller($reseller)))."تومان\n\nبرای شارژ، مبلغ را انتخاب کنید:",
             'reply_markup' => Keyboards::walletTopupAmounts(),
         ]);
     }

@@ -45,6 +45,13 @@ return new class extends Migration
      */
     protected function backfillWallets(): void
     {
+        // فاز ۱۵: ستون‌های legacy wallets (owner_type/customer_account_id) در
+        // Migration «drop_legacy_wallet_owner_columns» حذف می‌شوند. روی دیتابیس‌های
+        // تازه (یا وقتی این تست بعد از حذف اجرا می‌شود) دیگر چیزی برای backfill نیست.
+        if (! \Illuminate\Support\Facades\Schema::hasColumn('wallets', 'owner_type')) {
+            return;
+        }
+
         DB::table('wallets')
             ->where('owner_type', \App\Models\User::class)
             ->whereNull('customer_account_id')
@@ -199,7 +206,9 @@ return new class extends Migration
 
     public function down(): void
     {
-        DB::table('wallets')->update(['customer_account_id' => null]);
+        if (\Illuminate\Support\Facades\Schema::hasColumn('wallets', 'customer_account_id')) {
+            DB::table('wallets')->update(['customer_account_id' => null]);
+        }
         DB::table('orders')->update(['customer_account_id' => null]);
         DB::table('accounts')->update(['customer_account_id' => null]);
         DB::table('payments')->update(['customer_account_id' => null]);

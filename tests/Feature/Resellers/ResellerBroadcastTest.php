@@ -11,6 +11,7 @@ use Mockery;
 use PHPUnit\Framework\Attributes\Test;
 use Telegram\Bot\Api;
 use Tests\Concerns\FakesTelegram;
+use Tests\Concerns\StoreMembers;
 use Tests\TestCase;
 
 /**
@@ -24,6 +25,7 @@ class ResellerBroadcastTest extends TestCase
 {
     use FakesTelegram;
     use RefreshDatabase;
+    use StoreMembers;
 
     #[Test]
     public function a_reseller_broadcast_only_reaches_that_resellers_own_customers(): void
@@ -31,20 +33,11 @@ class ResellerBroadcastTest extends TestCase
         $resellerA = Reseller::factory()->create(['bot_token' => 'token-a']);
         $resellerB = Reseller::factory()->create(['bot_token' => 'token-b']);
 
-        $mine = User::factory()->create([
-            'reseller_id' => $resellerA->id,
-            'telegram_id' => 1001,
-        ]);
+        $mine = $this->memberOf($resellerA, ['telegram_id' => 1001]);
 
-        $theirs = User::factory()->create([
-            'reseller_id' => $resellerB->id,
-            'telegram_id' => 2002,
-        ]);
+        $theirs = $this->memberOf($resellerB, ['telegram_id' => 2002]);
 
-        $coreCustomer = User::factory()->create([
-            'reseller_id' => null,
-            'telegram_id' => 3003,
-        ]);
+        $coreCustomer = User::factory()->create(['telegram_id' => 3003]);
 
         $telegram = Mockery::mock(Api::class);
 
@@ -73,10 +66,7 @@ class ResellerBroadcastTest extends TestCase
     {
         $reseller = Reseller::factory()->create(['bot_token' => 'token-a']);
 
-        User::factory()->create([
-            'reseller_id' => $reseller->id,
-            'telegram_id' => 1001,
-        ]);
+        $this->memberOf($reseller, ['telegram_id' => 1001]);
 
         $telegram = Mockery::mock(Api::class);
 
@@ -105,10 +95,7 @@ class ResellerBroadcastTest extends TestCase
     {
         $reseller = Reseller::factory()->create(['bot_token' => null]);
 
-        User::factory()->create([
-            'reseller_id' => $reseller->id,
-            'telegram_id' => 1001,
-        ]);
+        $this->memberOf($reseller, ['telegram_id' => 1001]);
 
         $factory = Mockery::mock(ResellerApiFactory::class);
 
@@ -125,10 +112,7 @@ class ResellerBroadcastTest extends TestCase
     {
         $reseller = Reseller::factory()->create(['bot_token' => 'token-a']);
 
-        User::factory()->create([
-            'reseller_id' => $reseller->id,
-            'telegram_id' => null,
-        ]);
+        $this->memberOf($reseller, ['telegram_id' => null]);
 
         $factory = Mockery::mock(ResellerApiFactory::class);
 

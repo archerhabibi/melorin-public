@@ -7,6 +7,8 @@ use App\Channels\ResellerBot\Support\Keyboards;
 use App\Models\Reseller;
 use App\Models\ResellerBotSetting;
 use App\Models\User;
+use App\Services\Core\Store\IdentityService;
+use App\Services\Core\Store\StoreContext;
 use App\Services\Resellers\ResellerService;
 use Illuminate\Support\Facades\Cache;
 use Telegram\Bot\Api;
@@ -23,22 +25,24 @@ class StartHandler
         protected Api $telegram,
         protected ConversationState $state,
         protected ResellerService $resellerService,
+        protected IdentityService $identity,
     ) {}
 
     public function handle(Reseller $reseller, int $chatId, User $user, ?string $payload): void
     {
         $this->state->reset($reseller, $chatId);
 
-        // اختصاص خودکار به این نماینده در اولین برخورد. اگر کاربر از قبل
-        // مشتری یک نماینده‌ی دیگر است، طبق «اصل طلایی» اجازه‌ی ادامه در
-        // این ربات را ندارد — این‌جا هم مثل AccountService::purchase()
-        // enforce می‌شود، نه فقط در لایه‌ی UI.
-        if ($user->reseller_id === null) {
-            $user->update(['reseller_id' => $reseller->id]);
-        } elseif ($user->reseller_id !== $reseller->id) {
+        // عضویت در فروشگاه این نماینده در اولین برخورد (بند ۵ و Rule 12):
+        // عضویت = CustomerAccount در همین فروشگاه. کاربری که مشتری
+        // نماینده‌ی دیگری (یا Main) هم هست کاملاً مجاز است؛ Wallet،
+        // سفارش و اکانت هر فروشگاه جدا می‌ماند. تنها مانع، عضویتی است که
+        // در همین فروشگاه غیرفعال/مسدود شده.
+        $membership = $this->identity->resolveCustomerAccount($user, StoreContext::reseller($reseller));
+
+        if (! $membership->isActive()) {
             $this->telegram->sendMessage([
                 'chat_id' => $chatId,
-                'text' => 'این حساب قبلاً نزد یک نماینده‌ی دیگر ثبت شده و امکان استفاده از این ربات را ندارد.',
+                'text' => 'حساب شما در این فروشگاه غیرفعال است. لطفاً با پشتیبانی تماس بگیرید.',
             ]);
 
             return;
@@ -62,9 +66,10 @@ class StartHandler
             return;
         }
 
-        $referrer = User::query()->where('id', $referrerId)->where('reseller_id', $reseller->id)->first();
+        $referrer = User::query()->find($referrerId);
 
-        if (! $referrer) {
+        // معرف باید عضو فعال «همین» فروشگاه باشد، نه هر کاربری
+        if (! $referrer || ! $this->identity->isActiveMember($referrer, StoreContext::reseller($reseller))) {
             return;
         }
 

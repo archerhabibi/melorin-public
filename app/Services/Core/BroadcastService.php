@@ -76,6 +76,12 @@ class BroadcastService
         return $broadcast->fresh();
     }
 
+    /** تعداد مخاطبان مجاز یک کمپین (برای نمایش پیش از ارسال) */
+    public function recipientCount(?Reseller $reseller): int
+    {
+        return $this->recipientQuery($reseller)->count();
+    }
+
     /**
      * گیرنده‌های مجاز. برای نماینده فقط مشتریان خودش — همان «اصل طلایی
      * جداسازی داده»؛ یک نماینده هرگز نباید به مشتری نماینده‌ی دیگر یا
@@ -83,13 +89,23 @@ class BroadcastService
      */
     protected function recipientQuery(?Reseller $reseller): Builder
     {
-        return User::query()
-            ->whereNotNull('telegram_id')
-            ->when(
-                $reseller,
-                fn (Builder $q) => $q->where('reseller_id', $reseller->id),
-                fn (Builder $q) => $q->whereNull('reseller_id'),
-            );
+        // فاز ۱۵ (Rule 12): مخاطب = عضو فعالِ «همان فروشگاه» (CustomerAccount)،
+        // نه users.reseller_id تک‌مقداری. کسی که مشتری چند فروشگاه است، پیام
+        // هر فروشگاه را جدا و فقط از همان فروشگاه می‌گیرد.
+        $query = User::query()->whereNotNull('telegram_id');
+
+        if ($reseller) {
+            return $query->whereHas('customerAccounts', fn (Builder $q) => $q
+                ->where('status', 'active')
+                ->where('store_type', 'reseller')
+                ->where('reseller_id', $reseller->id));
+        }
+
+        // Main: عضو فعال Main، یا کاربری که هیچ عضویتی ندارد (پیش‌فرضِ «کاربر مستقیم»).
+        // مشتریِ صرفاً نمایندگان (و عضویت Mainِ غیرفعال‌شده) مخاطب Main نیست.
+        return $query->where(fn (Builder $q) => $q
+            ->whereHas('customerAccounts', fn (Builder $a) => $a->where('status', 'active')->where('store_type', 'main'))
+            ->orWhereDoesntHave('customerAccounts'));
     }
 
     /** ارسال همه‌ی گیرنده‌های در انتظارِ یک کمپین */

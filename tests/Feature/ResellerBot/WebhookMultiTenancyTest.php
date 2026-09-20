@@ -3,9 +3,12 @@
 namespace Tests\Feature\ResellerBot;
 
 use App\Channels\ResellerBot\ResellerApiFactory;
+use App\Models\CustomerAccount;
 use App\Models\Reseller;
 use App\Models\ResellerConversationState;
 use App\Models\User;
+use App\Services\Core\Store\StoreContext;
+use App\Services\Core\WalletService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
 use PHPUnit\Framework\Attributes\Test;
@@ -25,17 +28,24 @@ class WebhookMultiTenancyTest extends TestCase
 {
     use RefreshDatabase;
 
+    /** @var array<int, array> پیام‌های ارسال‌شده توسط ربات (برای اطمینان از متن) */
+    protected array $sent = [];
+
     protected function fakeApiFactory(): Api
     {
         $telegram = Mockery::mock(Api::class);
         $telegram->shouldReceive('sendMessage')
             ->zeroOrMoreTimes()
-            ->andReturnUsing(fn (array $params) => new Message([
+            ->andReturnUsing(function (array $params) {
+                $this->sent[] = $params;
+
+                return new Message([
                 'message_id' => 1,
                 'date' => time(),
                 'chat' => ['id' => $params['chat_id'] ?? 1, 'type' => 'private'],
                 'text' => $params['text'] ?? '',
-            ]));
+                ]);
+            });
         $telegram->shouldReceive('getMe')->zeroOrMoreTimes()->andReturn(
             new \Telegram\Bot\Objects\User(['id' => 1, 'is_bot' => true, 'first_name' => 'Shop', 'username' => 'shop_bot'])
         );
@@ -75,7 +85,11 @@ class WebhookMultiTenancyTest extends TestCase
 
         $user = User::query()->where('telegram_id', 111111)->firstOrFail();
 
-        $this->assertEquals($resellerA->id, $user->reseller_id);
+        // عضویت = CustomerAccount در فروشگاه A (نه users.reseller_id)
+        $this->assertDatabaseHas('customer_accounts', [
+            'user_id' => $user->id, 'store_type' => 'reseller', 'reseller_id' => $resellerA->id, 'status' => 'active',
+        ]);
+        $this->assertDatabaseMissing('customer_accounts', ['user_id' => $user->id, 'reseller_id' => $resellerB->id]);
         $this->assertDatabaseHas('reseller_conversation_states', [
             'reseller_id' => $resellerA->id,
             'telegram_chat_id' => 111111,
@@ -83,6 +97,28 @@ class WebhookMultiTenancyTest extends TestCase
         $this->assertDatabaseMissing('reseller_conversation_states', [
             'reseller_id' => $resellerB->id,
             'telegram_chat_id' => 111111,
+        ]);
+    }
+
+    #[Test]
+    public function a_disabled_membership_is_told_so_and_is_not_silently_reactivated(): void
+    {
+        $this->fakeApiFactory();
+
+        $reseller = Reseller::factory()->create();
+        $telegramId = 555555;
+
+        $this->postJson("/reseller-bot/webhook/{$reseller->webhook_slug}", $this->startUpdate($telegramId))->assertOk();
+
+        $user = User::query()->where('telegram_id', $telegramId)->firstOrFail();
+        app(\App\Services\Resellers\ResellerCustomerService::class)->remove($reseller, $user);
+
+        $this->sent = [];
+        $this->postJson("/reseller-bot/webhook/{$reseller->webhook_slug}", $this->startUpdate($telegramId))->assertOk();
+
+        $this->assertStringContainsString('غیرفعال', $this->sent[0]['text']);
+        $this->assertDatabaseHas('customer_accounts', [
+            'user_id' => $user->id, 'reseller_id' => $reseller->id, 'status' => 'disabled',
         ]);
     }
 
@@ -96,7 +132,7 @@ class WebhookMultiTenancyTest extends TestCase
     }
 
     #[Test]
-    public function the_same_telegram_user_talking_to_two_different_reseller_bots_gets_independent_conversation_state(): void
+    public function the_same_telegram_user_can_be_a_customer_of_two_reseller_bots_with_independent_state_and_wallets(): void
     {
         $this->fakeApiFactory();
 
@@ -108,11 +144,22 @@ class WebhookMultiTenancyTest extends TestCase
 
         $this->postJson("/reseller-bot/webhook/{$resellerA->webhook_slug}", $this->startUpdate($telegramId))->assertOk();
 
-        // در این طراحی، این کاربر از قبل مشتری نماینده‌ی A است، پس ربات B باید او را رد کند
+        // Rule 12: مشتری نماینده‌ی A بودن مانع مشتری B شدن نیست
         $this->postJson("/reseller-bot/webhook/{$resellerB->webhook_slug}", $this->startUpdate($telegramId))->assertOk();
 
         $user = User::query()->where('telegram_id', $telegramId)->firstOrFail();
-        $this->assertEquals($resellerA->id, $user->reseller_id);
+
+        $this->assertEquals(2, CustomerAccount::where('user_id', $user->id)->count());
+        $this->assertDatabaseHas('customer_accounts', ['user_id' => $user->id, 'reseller_id' => $resellerA->id, 'status' => 'active']);
+        $this->assertDatabaseHas('customer_accounts', ['user_id' => $user->id, 'reseller_id' => $resellerB->id, 'status' => 'active']);
+
+        // Walletها مستقل‌اند
+        $wallets = app(WalletService::class);
+        $accountA = CustomerAccount::where('user_id', $user->id)->where('reseller_id', $resellerA->id)->firstOrFail();
+        $wallets->credit($accountA, 50);
+        $this->assertEquals(50, $wallets->balanceIn($user, StoreContext::reseller($resellerA)));
+        $this->assertEquals(0, $wallets->balanceIn($user, StoreContext::reseller($resellerB)));
+        $this->assertEquals(0, $wallets->balanceIn($user, StoreContext::main()));
 
         // ولی state مکالمه‌اش برای هر دو نماینده جداگانه ساخته شده (تداخل رخ نداده)
         $this->assertDatabaseHas('reseller_conversation_states', ['reseller_id' => $resellerA->id, 'telegram_chat_id' => $telegramId]);

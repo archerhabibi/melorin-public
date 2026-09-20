@@ -17,18 +17,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  *
  * فقط WalletService حق ساخت و تغییر موجودی را دارد.
  *
- * ستون‌های owner_type / owner_id / customer_account_id قدیمی‌اند: nullable
- * هستند، دیگر خوانده یا نوشته نمی‌شوند و در مرحله‌ی «contract» بعدی حذف
- * می‌شوند. عمداً هنوز در $fillable مانده‌اند تا تست‌های مهاجرت‌های
- * تاریخی بتوانند ردیف قدیمی‌شکل بسازند.
+ * ستون‌های polymorphic قدیمی (owner_type / owner_id / customer_account_id)
+ * در فاز ۱۵ حذف شدند.
  */
 class Wallet extends Model
 {
-    protected $fillable = [
-        'user_id', 'store_type', 'reseller_id', 'scope_key', 'balance',
-        // legacy — فقط برای داده‌ی تاریخی
-        'owner_type', 'owner_id', 'customer_account_id',
-    ];
+    protected $fillable = ['user_id', 'store_type', 'reseller_id', 'scope_key', 'balance'];
 
     protected $casts = ['balance' => 'decimal:2'];
 
@@ -40,7 +34,7 @@ class Wallet extends Model
         // هم‌گام می‌شود؛ insert خام باید خودش scope_key را بسازد.
         static::saving(function (self $wallet): void {
             if ($wallet->user_id === null) {
-                return; // ردیف قدیمیِ هنوز مهاجرت‌نکرده
+                throw new \InvalidArgumentException('Wallet باید به یک User تعلق داشته باشد (Wallet = User + StoreContext).');
             }
 
             $storeType = $wallet->store_type ?: 'main';

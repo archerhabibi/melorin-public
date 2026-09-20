@@ -336,12 +336,34 @@ class FinalModelSpecTest extends TestCase
     }
 
     #[Test]
-    public function known_gap_a_user_can_be_a_customer_of_two_resellers_through_the_bots(): void
+    public function a_user_can_be_a_customer_of_two_resellers_and_buy_from_both(): void
     {
-        // Rule 12 در لایه‌ی سرویس برقرار است (CustomerAccount)، ولی ResellerBot\StartHandler و
-        // ResellerCustomerService هنوز users.reseller_id تک‌مقداری را چک می‌کنند و کاربرِ
-        // نماینده‌ی دیگر را رد می‌کنند. باید در یک فاز جدا از مسیر CustomerAccount برداشته شود.
-        $this->markTestSkipped('Known gap (Rule 12): کانال‌های ربات/پنل هنوز به users.reseller_id تک‌مقداری وابسته‌اند — docs/PHASE-14-FINAL-MODEL-TESTS.md');
+        // Rule 12 — پیش‌تر به‌خاطر users.reseller_id تک‌مقداری در کانال‌ها ممکن نبود
+        $product = $this->product(mainPrice: 12, resellerPrice: 10);
+        $a = $this->reseller($product, 14);
+        $c = $this->reseller($product, 16);
+
+        $ali = User::factory()->create();
+        $customers = app(\App\Services\Resellers\ResellerCustomerService::class);
+        $customers->assign($a, $ali);
+        $customers->assign($c, $ali);
+
+        $aliInA = $this->identity->resolveCustomerAccount($ali, StoreContext::reseller($a));
+        $aliInC = $this->identity->resolveCustomerAccount($ali, StoreContext::reseller($c));
+
+        foreach ([$aliInA, $aliInC, $a, $c] as $owner) {
+            $this->wallet->credit($owner, 100);
+        }
+
+        $accounts = app(\App\Services\Core\AccountService::class);
+        $accounts->purchase($ali, $product, salesChannel: 'reseller_bot', reseller: $a, idempotencyKey: 'spec:r12:a');
+        $accounts->purchase($ali, $product, salesChannel: 'reseller_bot', reseller: $c, idempotencyKey: 'spec:r12:c');
+
+        $this->assertEquals(86, $this->balance($aliInA));
+        $this->assertEquals(84, $this->balance($aliInC));
+        $this->assertEquals(90, $this->balance($a));
+        $this->assertEquals(90, $this->balance($c));
+        $this->assertEquals(2, $ali->customerAccounts()->count());
     }
 
     #[Test]

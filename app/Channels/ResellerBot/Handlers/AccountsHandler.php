@@ -14,6 +14,7 @@ use App\Services\Core\Renewal\RenewalFailedException;
 use App\Services\Core\Renewal\RenewalService;
 use App\Services\Core\WalletService;
 use App\Services\Resellers\ResellerPricingService;
+use App\Services\Core\Store\StoreContext;
 use Illuminate\Support\Facades\DB;
 use Telegram\Bot\Api;
 use Telegram\Bot\FileUpload\InputFile;
@@ -122,7 +123,7 @@ class AccountsHandler
         $customersPrice = $product->customersPrice($reseller);
         $resellerPrice = $product->resellerPrice();
 
-        if ($this->walletService->balance($user) < $customersPrice) {
+        if ($this->walletService->balanceIn($user, StoreContext::reseller($reseller)) < $customersPrice) {
             $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => 'برای تمدید، ابتدا کیف پول خود را شارژ کنید. هزینه‌ی تمدید: '.number_format($customersPrice).' تومان']);
 
             return;
@@ -173,7 +174,7 @@ class AccountsHandler
 
         $this->telegram->sendMessage([
             'chat_id' => $chatId,
-            'text' => "✅ اکانت شما با موفقیت تمدید شد.\n\n".'موجودی کیف پول: '.number_format($this->walletService->balance($user)).' تومان',
+            'text' => "✅ اکانت شما با موفقیت تمدید شد.\n\n".'موجودی کیف پول: '.number_format($this->walletService->balanceIn($user, StoreContext::reseller($reseller))).' تومان',
         ]);
         $this->sendSummary($chatId, $account->fresh());
     }

@@ -23,7 +23,7 @@ class User extends Authenticatable implements FilamentUser, HasName, HasTenants
 
     protected $fillable = [
         'telegram_id', 'phone', 'username_site', 'email', 'password', 'full_name',
-        'status', 'referrer_id', 'joined_from', 'reseller_id',
+        'status', 'referrer_id', 'joined_from',
     ];
 
     protected $hidden = ['password'];
@@ -61,10 +61,9 @@ class User extends Authenticatable implements FilamentUser, HasName, HasTenants
         return $this->hasMany(User::class, 'referrer_id');
     }
 
-    public function reseller(): BelongsTo
-    {
-        return $this->belongsTo(Reseller::class);
-    }
+    // فاز ۱۵ (Rule 12): رابطه‌ی reseller() که از users.reseller_id (تک‌مقداری)
+    // می‌آمد حذف شد؛ عضویت در فروشگاه‌ها فقط از customerAccounts() می‌آید.
+    // ستون users.reseller_id عمداً هنوز در جدول هست (deprecated، بلااستفاده).
 
     public function resellerAccount(): HasOne
     {
