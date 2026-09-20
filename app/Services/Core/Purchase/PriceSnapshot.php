@@ -42,12 +42,23 @@ final class PriceSnapshot
         public readonly float $customersPrice,
     ) {}
 
-    /** خرید مستقیم از فروشگاه اصلی (بند ۸) — فقط main_price نقش دارد. */
-    public static function forMainStore(Product $product): self
+    /**
+     * خرید مستقیم از فروشگاه اصلی (بند ۸) — فقط main_price نقش دارد.
+     *
+     * $buyerOwnsAReseller — تصمیم صریح روی تناقض بند ۱۸ ↔ Rule 2/13
+     * (مستند در docs/PHASE-14-FINAL-MODEL-TESTS.md، بخش «یافته‌های
+     * نیازمند تصمیم»، مورد ۲): وقتی صاحبِ یک نماینده شخصاً از فروشگاه
+     * اصلی خرید می‌کند، Context همچنان main می‌ماند (Rule 13 — او
+     * مشتری مستقیم Main باقی می‌ماند)، اما مبلغِ کسرشده reseller_price
+     * است، نه main_price — دقیقاً همان چیزی که بند ۱۸ سند می‌خواهد.
+     * پیاده‌سازی عمداً همان‌جایی است که خودِ سند پیشنهاد داده بود: فقط
+     * همین‌جا و با یک شرط، بدون تغییر مدل Context.
+     */
+    public static function forMainStore(Product $product, bool $buyerOwnsAReseller = false): self
     {
         return new self(
             context: self::CONTEXT_MAIN,
-            mainPrice: $product->mainPrice(),
+            mainPrice: $buyerOwnsAReseller ? $product->resellerPrice() : $product->mainPrice(),
             resellerPrice: 0.0,
             customersPrice: 0.0,
         );
@@ -74,10 +85,14 @@ final class PriceSnapshot
         return new self(self::CONTEXT_MAIN, 0.0, 0.0, 0.0);
     }
 
-    public static function for(StoreContext $store, Product $product, ?float $customersPrice = null): self
-    {
+    public static function for(
+        StoreContext $store,
+        Product $product,
+        ?float $customersPrice = null,
+        bool $buyerOwnsAReseller = false,
+    ): self {
         if ($store->isMain()) {
-            return self::forMainStore($product);
+            return self::forMainStore($product, $buyerOwnsAReseller);
         }
 
         if ($customersPrice === null) {

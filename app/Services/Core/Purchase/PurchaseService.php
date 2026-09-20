@@ -131,7 +131,13 @@ class PurchaseService
             ? $product->customersPrice($store->reseller)
             : null;
 
-        $price = PriceSnapshot::for($store, $product, $customersPrice);
+        // تصمیم بند ۱۸ (docs/PHASE-14-FINAL-MODEL-TESTS.md): اگر خریدار
+        // شخصاً صاحب یک نماینده باشد و از فروشگاه اصلی بخرد، Context
+        // همچنان main است (Rule 13) ولی مبلغ reseller_price است، نه
+        // main_price.
+        $buyerOwnsAReseller = $store->isMain() && $customer->user->resellerAccount()->exists();
+
+        $price = PriceSnapshot::for($store, $product, $customersPrice, $buyerOwnsAReseller);
 
         // بقیه‌ی دروازه‌ها پیش از هر تغییر مالی (بند ۱۵ و ۲۰)
         $this->guard->assertCanPurchase($customer, $product, $store, $price);

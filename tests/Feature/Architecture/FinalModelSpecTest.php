@@ -367,10 +367,33 @@ class FinalModelSpecTest extends TestCase
     }
 
     #[Test]
-    public function open_decision_a_reseller_buying_directly_from_main_pays_which_price(): void
+    public function a_reseller_owner_buying_directly_from_main_pays_reseller_price_not_main_price(): void
     {
-        // بند ۱۸ می‌گوید خرید خودِ نماینده از Main با reseller_price است؛ Rule 2 و Rule 13 می‌گویند
-        // مشتری مستقیم Main با main_price می‌پردازد. سند دو مسیر متناقض دارد؛ کد فعلی main_price می‌گیرد.
-        $this->markTestSkipped('Open decision (بند ۱۸ ↔ Rule 2/13): نیازمند تصمیم شما — docs/PHASE-14-FINAL-MODEL-TESTS.md');
+        // تصمیم بند ۱۸ ↔ Rule 2/13 (docs/PHASE-14-FINAL-MODEL-TESTS.md،
+        // «یافته‌های نیازمند تصمیم»، مورد ۲): Context همچنان main
+        // می‌ماند (Rule 13)، ولی مبلغ reseller_price است، نه main_price.
+        $product = $this->product(mainPrice: 12, resellerPrice: 10);
+        $reseller = $this->reseller($product, 14);
+
+        $ownerMain = $this->identity->resolveCustomerAccount($reseller->user, StoreContext::main());
+        $this->wallet->credit($ownerMain, 100);
+
+        $this->purchase->purchase($ownerMain, $product, StoreContext::main(), idempotencyKey: 'spec:owner-pays-reseller-price');
+
+        $order = Order::firstOrFail();
+
+        $this->assertNull($order->reseller_id, 'خرید همچنان در Main Context ثبت می‌شود (Rule 13)');
+        $this->assertEquals(10, (float) $order->main_price, 'مبلغ = reseller_price، نه main_price');
+        $this->assertNull($order->customers_price);
+        $this->assertEquals(90, $this->balance($ownerMain));
+
+        // یک مشتری عادی (بدون نمایندگی) همچنان main_price می‌پردازد —
+        // این تصمیم فقط برای صاحبِ نماینده است.
+        $plainCustomer = $this->identity->resolveCustomerAccount(User::factory()->create(), StoreContext::main());
+        $this->wallet->credit($plainCustomer, 100);
+
+        $this->purchase->purchase($plainCustomer, $product, StoreContext::main(), idempotencyKey: 'spec:plain-customer-pays-main-price');
+
+        $this->assertEquals(88, $this->balance($plainCustomer));
     }
 }

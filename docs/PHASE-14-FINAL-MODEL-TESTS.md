@@ -46,10 +46,10 @@
 `WalletService` برای مالکِ `User` هم Context را از `users.reseller_id` می‌سازد. یعنی علی در عمل نمی‌تواند از ربات هر دو نماینده‌ی A و C خرید کند.
 رفعش یک فاز جدا است (برداشتن وابستگی کانال‌ها و پنل به `users.reseller_id` و عبور همه‌چیز از `CustomerAccount`). تست Skipped `known_gap_…` تا آن زمان نشانگر آن است.
 
-### ۲) تناقض داخل سند: بند ۱۸ ↔ Rule 2 و Rule 13
-بند ۱۸ و جمع‌بندی بند ۵۹ می‌گویند وقتی **خودِ نماینده از Main خرید کند** `reseller_price` می‌پردازد؛ Rule 2 می‌گوید هر خرید Main با `main_price` است و Rule 13 می‌گوید نماینده «مشتری مستقیم Main» می‌ماند.
-کد فعلی `main_price` می‌گیرد (نماینده‌ی خرید شخصی = مشتری عادی Main). با Wallet مشترک فاز ۱۳ این تصمیم اثر مالی مستقیم دارد.
-**نیاز به تصمیم شما:** ۱) خرید شخصی صاحب نماینده در Main با `main_price` (وضع فعلی)، یا ۲) با `reseller_price` (فقط `PriceSnapshot::forMainStore` + یک شرط «خریدار صاحب نماینده است»). بعد از تصمیم، تست Skipped `open_decision_…` به تست واقعی تبدیل می‌شود.
+### ۲) تناقض داخل سند: بند ۱۸ ↔ Rule 2 و Rule 13 — ✅ حل شد
+**تصمیم‌گیری و پیاده‌سازی در `docs/DECISION-CLAUSE-18-RESELLER-OWN-PURCHASE.md`.**
+خلاصه: Context همچنان `main` می‌ماند (Rule 13)، ولی مبلغ `reseller_price` است (بند ۱۸). تست Skipped به
+`a_reseller_owner_buying_directly_from_main_pays_reseller_price_not_main_price` تبدیل شد.
 
 ## اجرا
 Migration ندارد. `php artisan test` — انتظار: همه سبز به‌جز ۲ تست Skipped (عمدی).

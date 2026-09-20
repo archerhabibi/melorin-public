@@ -1,3 +1,45 @@
+تصمیم بند ۱۸ ↔ Rule 2/13 — خرید شخصی صاحب نماینده از Main
+
+جزئیات: docs/DECISION-CLAUSE-18-RESELLER-OWN-PURCHASE.md
+
+تصمیم: وقتی خودِ صاحبِ یک نماینده شخصاً از فروشگاه اصلی خرید می‌کند،
+Context همچنان main می‌ماند (Rule 13)، ولی مبلغ reseller_price است، نه
+main_price (بند ۱۸). یک مشتری عادی بدون تغییر همچنان main_price
+می‌پردازد.
+
+پیاده‌سازی: PriceSnapshot::forMainStore() یک پارامتر $buyerOwnsAReseller
+گرفت؛ PurchaseService::execute() و RenewalService::execute() هر دو با
+$customer->user->resellerAccount()->exists() این حالت را تشخیص می‌دهند.
+تست Skipped فاز ۱۴ (FinalModelSpecTest::open_decision_...) به تست واقعی
+a_reseller_owner_buying_directly_from_main_pays_reseller_price_not_main_price
+تبدیل شد.
+
+این همان موردی است که در «باقی‌مانده»ی فاز ۱۵ زیر به‌عنوان باز فهرست
+شده بود؛ از این پس حل‌شده محسوب می‌شود.
+
+=== اجرا ===
+    php artisan test tests/Feature/Architecture/FinalModelSpecTest.php
+    php artisan test tests/Feature/Renewal
+
+---
+
+Stage 14 (سند بند ۵۹) — Static Search Audit
+
+جزئیات: docs/STAGE-14-STATIC-SEARCH-AUDIT.md
+
+نتیجه: این مرحله از قبل کامل بود. جست‌وجوی امروز طبق بند ۵۷
+(base_price|core_price|sold_price|custom_price|corePrice|soldPrice|
+sellingPriceForReseller) روی app/resources/routes/config/tests/
+database/factories/database/seeders صفر نتیجه داد. محافظِ دائمی‌اش
+(PricingNamingAndReportsTest، از فاز ۱۲) سرِ جایش است و امروز هم رد
+شد. هیچ تغییر کدی لازم نبود — فقط این Audit برای رکورد ثبت شد.
+
+=== اجرا ===
+    php artisan test tests/Feature/Architecture/PricingNamingAndReportsTest.php
+انتظار: سبز، بدون تغییر رفتار.
+
+---
+
 Phase 15 — Rule 12 (مشتریِ چند نماینده) + حذف ستون‌های legacy جدول wallets
 
 جزئیات: docs/PHASE-15-MEMBERSHIP-AND-WALLET-CONTRACT.md

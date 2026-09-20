@@ -85,7 +85,12 @@ class RenewalService
             ? $product->customersPrice($store->reseller)
             : null;
 
-        $price = PriceSnapshot::for($store, $product, $customersPrice);
+        // همان تصمیم بند ۱۸ در PurchaseService: تمدید هم از نظر مالی
+        // یک خرید کامل است، پس همان استثنا برای صاحب نماینده‌ای که
+        // شخصاً (در Main) اکانت گرفته، اینجا هم برقرار است.
+        $buyerOwnsAReseller = $store->isMain() && $customer->user->resellerAccount()->exists();
+
+        $price = PriceSnapshot::for($store, $product, $customersPrice, $buyerOwnsAReseller);
 
         // همان دروازه‌های خرید — شامل سقف بدهی نماینده. تمدید از نظر
         // مالی یک خرید کامل است و هیچ دلیلی ندارد قوانین سست‌تری داشته
