@@ -102,7 +102,7 @@ class ResellerPurchaseFinancialTest extends TestCase
     }
 
     #[Test]
-    public function insufficient_customer_balance_blocks_purchase_without_touching_reseller_wallet(): void
+    public function insufficient_customer_balance_blocks_purchase_without_touching_the_owners_main_wallet(): void
     {
         Http::fake();
 
@@ -125,7 +125,7 @@ class ResellerPurchaseFinancialTest extends TestCase
     }
 
     #[Test]
-    public function insufficient_reseller_balance_blocks_purchase_without_touching_customer_wallet(): void
+    public function insufficient_reseller_balance_blocks_purchase_without_touching_the_customers_wallet(): void
     {
         Http::fake();
 

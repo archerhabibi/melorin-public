@@ -734,7 +734,7 @@ class ProvisioningAndRenewalTest extends TestCase
     }
 
     /**
-     * بند ۴۱ سند («Reseller Renewal → Customers_price از کیف‌پول مشتری
+     * بند ۴۱ سند («Reseller Renewal → customers_price از کیف‌پول مشتری
      * در Context نماینده + reseller_price از کیف‌پول نماینده در Main»)
      * و بند ۵۶ («Reseller Renewal» صریحاً در فهرست پوشش تست الزامی است).
      *
@@ -781,7 +781,7 @@ class ProvisioningAndRenewalTest extends TestCase
             ->renew($account, idempotencyKey: 'renew:test:reseller-double-debit');
 
         // هر دو طرف دقیقاً به‌اندازه‌ی سهم خودشان کسر شده‌اند — نه هیچ
-        // بیشتر و نه از کیف‌پول اشتباه (Rule 6: Customers_price هرگز
+        // بیشتر و نه از کیف‌پول اشتباه (Rule 6: customers_price هرگز
         // از کیف‌پول نماینده کسر نمی‌شود).
         $this->assertEquals(0, $this->wallet->getBalance($customer));
         $this->assertEquals(0, $this->wallet->getBalance($reseller));

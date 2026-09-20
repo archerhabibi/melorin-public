@@ -60,7 +60,7 @@ class RefundService
             $refunded = [];
 
             // طرف مشتری: دقیقاً همان چیزی که پرداخته — main_price در
-            // فروشگاه اصلی، Customers_price در فروشگاه نماینده.
+            // فروشگاه اصلی، customers_price در فروشگاه نماینده.
             $customerPaid = (float) ($order->customers_price ?? $order->main_price ?? 0);
 
             if ($customerPaid > 0) {

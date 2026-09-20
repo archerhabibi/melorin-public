@@ -124,7 +124,7 @@ class PurchaseService
         $this->guard->assertContextAllowed($customer, $store);
         $this->guard->assertProductAvailable($product, $store);
 
-        // Customers_price فقط در Context نمایندگی معنا دارد (بند ۶ و
+        // customers_price فقط در Context نمایندگی معنا دارد (بند ۶ و
         // Rule 7). در فروشگاه اصلی عمداً null می‌ماند تا PriceSnapshot
         // خودش main_price را بردارد.
         $customersPrice = $store->isReseller()
@@ -149,7 +149,7 @@ class PurchaseService
 
             if (! $price->isFree()) {
                 // Debit اول (بند ۱۳): از کیف‌پول مشتری در Context خودش.
-                // Main → main_price · Reseller → Customers_price
+                // Main → main_price · Reseller → customers_price
                 $this->wallet->debit(
                     $customer,
                     $price->customerDebit(),
@@ -160,7 +160,7 @@ class PurchaseService
                 );
 
                 // Debit دوم (بند ۱۳): از کیف‌پول نماینده در Main، دقیقاً
-                // به‌اندازه‌ی reseller_price — نه Customers_price
+                // به‌اندازه‌ی reseller_price — نه customers_price
                 // (Rule 6). هر دو در همین یک تراکنش، پس حالت «یکی کسر
                 // شد و دیگری نه» ممکن نیست (بند ۲۲).
                 if ($store->isReseller()) {

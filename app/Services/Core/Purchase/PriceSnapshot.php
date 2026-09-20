@@ -14,20 +14,20 @@ use App\Services\Core\Store\StoreContext;
  *
  *     main_price       قیمت فروش مستقیم Main به مشتری Main
  *     reseller_price   قیمت تأمین محصول از Main برای نماینده
- *     Customers_price  قیمت فروش نماینده به مشتریان خودش
+ *     customers_price  قیمت فروش نماینده به مشتریان خودش
  *
  * قوانین غیرقابل‌نقض بند ۲۰ که همین‌جا ساختاری اعمال می‌شوند:
  *
  *   Rule 2  خرید مستقیم Main        → Debit = main_price
- *   Rule 3  خرید مشتری از Reseller  → Customer Debit = Customers_price
+ *   Rule 3  خرید مشتری از Reseller  → Customer Debit = customers_price
  *   Rule 4  هزینه‌ی Reseller در Main → Reseller Debit = reseller_price
- *   Rule 6  Customers_price هرگز از کیف‌پول نماینده کسر نمی‌شود
+ *   Rule 6  customers_price هرگز از کیف‌پول نماینده کسر نمی‌شود
  *   Rule 7  main_price هرگز در خرید از نماینده استفاده نمی‌شود
  *   Rule 8  reseller_price هرگز قیمت فروش به مشتری نیست
  *
  * چون Snapshot در هر Context فقط قیمت‌های همان Context را پر می‌کند،
  * استفاده‌ی اشتباهی از قیمتِ Context دیگر اصلاً ممکن نیست: در خرید
- * Main مقدار reseller_price و Customers_price صفر است و برعکس.
+ * Main مقدار reseller_price و customers_price صفر است و برعکس.
  */
 final class PriceSnapshot
 {
@@ -55,7 +55,7 @@ final class PriceSnapshot
 
     /**
      * خرید مشتری از یک نماینده (بند ۹ و ۱۰) — دو قیمت مستقل:
-     * مشتری Customers_price می‌پردازد، نماینده reseller_price.
+     * مشتری customers_price می‌پردازد، نماینده reseller_price.
      * main_price اینجا عمداً صفر است (Rule 7).
      */
     public static function forResellerStore(Product $product, float $customersPrice): self
@@ -94,7 +94,7 @@ final class PriceSnapshot
 
     /**
      * مبلغی که از کیف‌پول مشتری در Context خودش کسر می‌شود.
-     * Main → main_price (Rule 2) · Reseller → Customers_price (Rule 3)
+     * Main → main_price (Rule 2) · Reseller → customers_price (Rule 3)
      */
     public function customerDebit(): float
     {

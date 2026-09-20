@@ -1,32 +1,32 @@
-Phase 13 — ساختار Wallet: Wallet = User + StoreContext
+Phase 14 — مرحله‌ی ۱۳ سند: انتقال و تکمیل Testها به مدل نهایی
 
-طبق سند معماری v2.0 (بند ۲۱–۲۸، Rule 5/6/7؛ مراحل ۳ و ۴). جزئیات کامل:
-docs/PHASE-13-WALLET-CONTEXT-STRUCTURE.md
+طبق سند معماری v2.0 (بند ۵۶، ۵۷ و ۵۹ مرحله‌ی ۱۳). جزئیات و ماتریس ردیابی:
+docs/PHASE-14-FINAL-MODEL-TESTS.md
+(«۱۴» شماره‌ی پچ پروژه است؛ محتوا همان «مرحله‌ی ۱۳ سند» است.)
 
-=== ⚠️ قبل از اعمال روی production ===
-1) بکاپ از wallets و wallet_transactions بگیرید.
-2) مجموع DB::table('wallets')->sum('balance') را قبل و بعد از migrate ثبت و مقایسه کنید (باید برابر باشد؛
-   خود Migration هم در صورت اختلاف rollback می‌کند).
-3) پیامد کسب‌وکاری: موجودی شخصی صاحب نماینده در Main و اعتبار نمایندگی‌اش «یک موجودی» می‌شوند (Rule 6 سند).
+=== تست‌های جدید ===
+tests/Feature/Architecture/FinalModelSpecTest.php:
+- سناریوی مالی خود سند با اعداد بند ۵۱ (main 12 / reseller 10 / A 14 / C 16): Main، Reseller A، Reseller C،
+  Walletهای مستقل، profit 4 و 6.
+- Debit اول و دوم قابل‌انتساب به user/wallet/context/order و زیر یک Operation (بند ۳۳–۳۴).
+- Refund از روی اسنپ‌شات (Main / مشتری نماینده / صاحب نماینده) بعد از تغییر قیمت‌ها.
+- Scope، Rule 13 (صاحب نماینده مشتری مستقیم Main)، Rule 14 (بدون User جدید، Wallet Main حفظ می‌شود).
+- نگهبان دائمی نام‌های ممنوعه‌ی Wallet (بند ۴۹).
 
-=== باگ داده‌ای که رفع شد ===
-Walletهای قدیمی کاربران (owner=User) توسط WalletService دیده نمی‌شدند؛ موجودی‌شان صفر نشان داده می‌شد.
-Migration جدید آن‌ها را به Wallet درست منتقل و ادغام می‌کند.
+=== تمیزکاری ===
+- ۵ نام تست با اصطلاح ممنوعه‌ی Wallet تغییر کرد؛ ۱۰ فایل کامنت «Customers_price» → «customers_price». بدون تغییر رفتار.
 
-=== تغییرات ===
-- جدول wallets: user_id, store_type, reseller_id, scope_key؛ UNIQUE(user_id, scope_key) (بند ۲۷ — بدون اتکا به NULL).
-- «اعتبار نماینده» Wallet جدا نیست؛ Wallet صاحب نماینده در Main است (Rule 6). کف مجاز به عملیات وابسته است.
-- WalletService::walletForContext(User, StoreContext) (بند ۲۸)؛ ساخت هم‌زمان امن؛ مهمان Wallet ندارد.
-- Migration سه‌مرحله‌ای: expand ← ادغام (مجموع‌نگهدار، idempotent) ← unique.
-- User/Reseller/CustomerAccount::wallet() → HasOne؛ پنل نماینده موجودی مشتری را از WalletService می‌خواند.
-- ARCHITECTURE.md بند ۳ بازنویسی شد.
-- تست: tests/Feature/Wallet/WalletContextStructureTest.php؛ تست ResellerPaymentApprovalTest طبق Rule 6 معکوس شد.
+=== ⚠️ دو یافته‌ی نیازمند تصمیم (پیاده نشد؛ دو تست Skipped عمدی) ===
+1) Rule 12: کانال‌های ربات/پنل هنوز به users.reseller_id تک‌مقداری وابسته‌اند؛ کاربر نمی‌تواند از ربات
+   دو نماینده‌ی مختلف خرید کند (سرویس‌ها آماده‌اند). نیاز به یک فاز جدا.
+2) تناقض سند: بند ۱۸ می‌گوید خرید خودِ نماینده از Main با reseller_price است؛ Rule 2/13 می‌گویند main_price.
+   کد فعلی main_price می‌گیرد. تصمیم شما لازم است.
 
 === اجرا ===
-    php artisan migrate
+Migration ندارد.
     php artisan test
-نکته: این پچ در محیطی بدون PHP نوشته شد و اجرا نشده است؛ ابتدا روی staging و با بکاپ اجرا کنید.
+انتظار: همه سبز به‌جز ۲ Skipped عمدی. این پچ بدون PHP نوشته شد و اجرا نشده؛ خروجی را در صورت شکست بفرستید.
 
-=== فاز بعدی (contract) ===
-حذف ستون‌های legacy owner_type/owner_id/customer_account_id همراه با حذف تست‌های Migration تاریخی.
-سپس: تکمیل پوشش تست بند ۵۶ و اجرای کامل.
+=== فاز بعدی ===
+مرحله‌ی ۱۴ سند (Static Search نهایی) عملاً با تست‌های دائمی پوشش داده شده؛ مرحله‌ی ۱۵: php artisan test کامل.
+پیشنهاد: فاز «برداشتن users.reseller_id از کانال‌ها» (Rule 12) و فاز «حذف ستون‌های legacy wallets».

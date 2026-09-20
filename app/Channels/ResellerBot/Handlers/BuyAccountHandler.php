@@ -90,7 +90,7 @@ class BuyAccountHandler
             StoreContext::fromReseller($reseller),
         );
         $product = Product::query()->where('status', 'active')->findOrFail($productId);
-        // Customers_price — قیمتی که همین نماینده برای همین محصول
+        // customers_price — قیمتی که همین نماینده برای همین محصول
         // تعیین کرده (بند ۶). null یعنی اصلاً قابل‌فروش نیست.
         $customersPrice = $product->customersPrice($reseller);
 

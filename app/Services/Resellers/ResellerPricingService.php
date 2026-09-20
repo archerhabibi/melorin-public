@@ -81,7 +81,7 @@ class ResellerPricingService
      * sellable فقط در لایه‌ی UI/Bot اعمال می‌شد — یعنی
      * sellableProducts() محصول را نشان نمی‌داد، ولی اگر کسی یک callback
      * دست‌ساز مثل «rbuy:product:123» می‌فرستاد، AccountService فقط
-     * Customers_price را چک می‌کرد که از وضعیت سبد فروش و
+     * customers_price را چک می‌کرد که از وضعیت سبد فروش و
      * فعال‌بودن نماینده بی‌خبر است. نتیجه: سبدِ بسته‌شده (چه توسط Core و
      * چه توسط خودِ نماینده) و حتی نماینده‌ی غیرفعال، همچنان قابل خرید
      * بود.
@@ -218,7 +218,7 @@ class ResellerPricingService
     {
         $rule = $reseller->min_sale_price_rule ?? [];
         // مبنای سود همیشه reseller_price است (بند ۱۴): حاشیه یعنی
-        // Customers_price − reseller_price. محاسبه‌ی آن با main_price
+        // customers_price − reseller_price. محاسبه‌ی آن با main_price
         // باعث می‌شد نماینده هیچ‌وقت نتواند در بازه‌ی سودآورِ واقعی
         // قیمت‌گذاری کند.
         $resellerPrice = $product->resellerPrice();
@@ -240,7 +240,7 @@ class ResellerPricingService
             throw new InvalidArgumentException('سود این قیمت بیشتر از سقف مجاز است.');
         }
 
-        // Rule 8: reseller_price کف مطلق Customers_price است — فروش
+        // Rule 8: reseller_price کف مطلق customers_price است — فروش
         // زیر قیمت تأمین یعنی نماینده با هر فروش ضرر کند.
         if ($customersPrice < $resellerPrice) {
             throw new InvalidArgumentException('قیمت فروش نمی‌تواند کمتر از قیمت نمایندگان (reseller_price) باشد.');

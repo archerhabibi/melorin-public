@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  *
  *     user_id, store_type, reseller_id, balance
  *
- * Wallet یک موجودیت عمومی است: نه «customer_wallet» و نه «reseller_wallet».
+ * Wallet یک موجودیت عمومی است؛ نه Wallet «مشتری» و نه Wallet «نماینده» (بند ۴۹).
  * Wallet صاحبِ نماینده برای پرداخت reseller_price همان Wallet او در
  * Main Context است (store_type=main, reseller_id=null).
  *

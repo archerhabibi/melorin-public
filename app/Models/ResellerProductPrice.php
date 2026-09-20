@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * قیمت فروش یک محصول توسط یک نماینده به مشتریان خودش — یعنی همان
- * `Customers_price` سند معماری (بند ۶).
+ * `customers_price` سند معماری (بند ۶).
  *
  * از مرحله ۵ (Pricing Migration) به بعد، ستون فیزیکی هم دقیقاً همین نام
  * را دارد — دیگر نیازی به Accessor/Attribute جداگانه برای نگاشت به یک

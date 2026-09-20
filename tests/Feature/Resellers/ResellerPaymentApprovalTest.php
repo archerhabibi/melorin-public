@@ -122,7 +122,7 @@ class ResellerPaymentApprovalTest extends TestCase
     }
 
     #[Test]
-    public function reseller_cannot_confirm_their_own_reseller_wallet_topup(): void
+    public function reseller_cannot_confirm_their_own_main_wallet_topup(): void
     {
         $reseller = Reseller::factory()->create();
         $method = PaymentMethod::factory()->create();

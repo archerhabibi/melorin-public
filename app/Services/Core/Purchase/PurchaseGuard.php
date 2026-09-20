@@ -188,7 +188,7 @@ class PurchaseGuard
 
         $reseller = $store->reseller;
         // Rule 4 و Rule 6: مبنای کسر از نماینده همیشه reseller_price
-        // است، هرگز Customers_price.
+        // است، هرگز customers_price.
         $newBalance = $this->wallet->getBalance($reseller) - $price->resellerDebit();
 
         if ($newBalance < $reseller->minimumBalance() - 0.00001) {

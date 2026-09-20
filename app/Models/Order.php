@@ -153,10 +153,10 @@ class Order extends Model
     }
 
     /**
-     * حاشیه‌ی فروش نماینده (بند ۱۴): Customers_price − reseller_price.
+     * حاشیه‌ی فروش نماینده (بند ۱۴): customers_price − reseller_price.
      *
      * صرفاً یک عدد گزارشی است. طبق بند ۱۴ و Rule 6، محاسبه‌ی حاشیه هرگز
-     * نباید باعث شود Customers_price به‌جای reseller_price از کیف‌پول
+     * نباید باعث شود customers_price به‌جای reseller_price از کیف‌پول
      * نماینده کسر شود.
      */
     public function resellerProfit(): float

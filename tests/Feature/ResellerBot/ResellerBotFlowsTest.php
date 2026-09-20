@@ -155,7 +155,7 @@ class ResellerBotFlowsTest extends TestCase
     }
 
     #[Test]
-    public function reseller_wallet_topup_menu_item_is_a_no_op_for_a_plain_customer(): void
+    public function owner_main_wallet_topup_menu_item_is_a_no_op_for_a_plain_customer(): void
     {
         $reseller = Reseller::factory()->create();
         $customer = User::factory()->create(['reseller_id' => $reseller->id, 'telegram_id' => 900002]);
@@ -171,7 +171,7 @@ class ResellerBotFlowsTest extends TestCase
     }
 
     #[Test]
-    public function customer_wallet_topup_is_reviewed_by_the_reseller_and_credits_only_the_customers_wallet(): void
+    public function customers_topup_is_reviewed_by_the_reseller_and_credits_only_the_customers_reseller_context_wallet(): void
     {
         $ownerUser = User::factory()->create(['telegram_id' => 800001]);
         $reseller = Reseller::factory()->create(['user_id' => $ownerUser->id]);
