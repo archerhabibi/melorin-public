@@ -50,12 +50,27 @@ $customer = $identity->resolveCustomerAccount($user, $store);
 
 ## ۳. کیف‌پول
 
-دو مفهوم کاملاً جدا که نباید قاطی شوند:
+```
+Wallet = User + StoreContext
+wallets(user_id, store_type, reseller_id, scope_key, balance)   UNIQUE(user_id, scope_key)
+```
 
-| کیف‌پول | مالک | می‌تواند منفی شود؟ |
+Wallet یک موجودیت عمومی است؛ نه `customer_wallet` و نه `reseller_wallet`.
+یک User در هر Context دقیقاً یک Wallet دارد و Walletهای Contextهای مختلف
+کاملاً مستقل‌اند (Main، نماینده‌ی A، نماینده‌ی B، ...).
+
+`scope_key` (`main` یا `reseller:{id}`) وجود دارد چون در MySQL دو `NULL`
+در unique با هم برابر نیستند و `UNIQUE(user_id, store_type, reseller_id)`
+هیچ‌وقت جلوی دو Main Wallet را نمی‌گرفت (`reseller_id` در Main همیشه NULL است).
+
+| مالکی که به `WalletService` می‌دهید | Wallet واقعی | کفِ مجاز |
 |---|---|---|
-| مشتری | `CustomerAccount` | خیر |
-| اعتبار نماینده | `Reseller` | تا `-debt_limit` |
+| `CustomerAccount` | (user، store) همان عضویت | ۰ |
+| `Reseller` (پرداخت `reseller_price`) | **Wallet صاحبِ نماینده در Main** | `-debt_limit` |
+
+«اعتبار نماینده» Wallet جدا نیست (Rule 6). کفِ مجاز ویژگیِ *عملیات* است،
+نه Wallet: کسر `reseller_price` تا `-debt_limit` می‌رود ولی خرید شخصیِ
+همان صاحب در Main روی همان Wallet کفِ صفر دارد.
 
 انتقال بین کیف‌پول‌ها **وجود ندارد** و عمداً هیچ API ای برایش نوشته
 نشده.

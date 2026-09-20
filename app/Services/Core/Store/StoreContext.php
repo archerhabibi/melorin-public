@@ -54,6 +54,12 @@ final class StoreContext
         return $this->reseller?->id;
     }
 
+    /** کلید یکتای Context برای Wallet و CustomerAccount: "main" یا "reseller:{id}" */
+    public function scopeKey(): string
+    {
+        return $this->isReseller() ? 'reseller:'.$this->resellerId() : 'main';
+    }
+
     /**
      * آیا این فروشگاه الان می‌تواند عملیات انجام دهد؟
      *

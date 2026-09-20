@@ -13,7 +13,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 
@@ -33,18 +32,19 @@ class User extends Authenticatable implements FilamentUser, HasName, HasTenants
         'password' => 'hashed',
     ];
 
-    public function wallet(): MorphOne
+    /**
+     * Wallet این User در Main Context (بند ۲۲). Walletهای Contextهای دیگر
+     * (نمایندگی‌ها) از این رابطه نمی‌آیند؛ برای آن‌ها WalletService.
+     */
+    public function wallet(): HasOne
     {
-        return $this->morphOne(Wallet::class, 'owner');
+        return $this->hasOne(Wallet::class)->where('scope_key', 'main');
     }
 
     /**
      * عضویت‌های این Identity در فروشگاه‌های مختلف (بند ۵ بلوپرینت).
      *
-     * توجه: wallet() بالا هنوز کیف‌پول قدیمیِ متصل به خودِ User را
-     * برمی‌گرداند. در معماری هدف، کیف‌پول به CustomerAccount تعلق دارد؛
-     * تا پایان مهاجرت هر دو در کنار هم زنده‌اند و منبع حقیقتِ هر مسیر
-     * همانی است که خودش استفاده می‌کند.
+     * هر عضویت یک Wallet مستقل در Context خودش دارد (Wallet = User + StoreContext).
      */
     public function customerAccounts(): HasMany
     {

@@ -65,7 +65,13 @@ class CustomerResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('full_name')->label('نام')->searchable(),
                 Tables\Columns\TextColumn::make('telegram_id')->label('شناسه تلگرام')->searchable(),
-                Tables\Columns\TextColumn::make('wallet.balance')->label('موجودی کیف پول')->money('IRT', divideBy: 1),
+                // Wallet مشتری در Context همین نماینده است، نه Main؛ رابطه‌ی
+                // User::wallet() فقط Main را برمی‌گرداند، پس از WalletService می‌خوانیم.
+                Tables\Columns\TextColumn::make('wallet_balance')
+                    ->label('موجودی کیف پول')
+                    ->getStateUsing(fn (User $record) => number_format(
+                        app(\App\Services\Core\WalletService::class)->balance($record)
+                    ).' تومان'),
                 Tables\Columns\TextColumn::make('orders_count')->label('تعداد سفارش‌ها')->counts('orders'),
                 Tables\Columns\TextColumn::make('created_at')->label('عضویت از')->dateTime('Y-m-d'),
             ])

@@ -1,30 +1,32 @@
-Phase 12 — هماهنگی نهایی Telegram/Filament با مدل سه‌قیمتی
+Phase 13 — ساختار Wallet: Wallet = User + StoreContext
 
-طبق ترتیب ۱۵مرحله‌ای سند معماری v2.0 (بند ۵۹، مرحله‌ی ۱۲). جزئیات کامل:
-docs/PHASE-12-UI-NAMING-AND-CLEANUP.md
+طبق سند معماری v2.0 (بند ۲۱–۲۸، Rule 5/6/7؛ مراحل ۳ و ۴). جزئیات کامل:
+docs/PHASE-13-WALLET-CONTEXT-STRUCTURE.md
 
-=== باگ واقعی ===
-صفحه‌ی «گزارشات و آمار» با هر بار باز شدن ErrorException می‌داد
-($from/$to در Reports::getSummary تعریف‌نشده بودند). رفع شد.
+=== ⚠️ قبل از اعمال روی production ===
+1) بکاپ از wallets و wallet_transactions بگیرید.
+2) مجموع DB::table('wallets')->sum('balance') را قبل و بعد از migrate ثبت و مقایسه کنید (باید برابر باشد؛
+   خود Migration هم در صورت اختلاف rollback می‌کند).
+3) پیامد کسب‌وکاری: موجودی شخصی صاحب نماینده در Main و اعتبار نمایندگی‌اش «یک موجودی» می‌شوند (Rule 6 سند).
+
+=== باگ داده‌ای که رفع شد ===
+Walletهای قدیمی کاربران (owner=User) توسط WalletService دیده نمی‌شدند؛ موجودی‌شان صفر نشان داده می‌شد.
+Migration جدید آن‌ها را به Wallet درست منتقل و ادغام می‌کند.
 
 === تغییرات ===
-- ربات اصلی: $product->main_price → $product->mainPrice() (بند ۱۳).
-- setSellingPrice → setCustomersPrice؛ selling_price → customers_price (فرم پنل نماینده و Keyboard)؛
-  base_cost/gross_margin گزارش → supply_cost/reseller_margin.
-- برچسب‌های پنل ادمین/نماینده با نام سه قیمت (main_price / reseller_price / customers_price).
-- پنل نماینده: وضعیت‌های provisioning/provision_failed برچسب و رنگ گرفتند.
-- ثابت‌های RESELLER_WALLET_* → OWNER_MAIN_WALLET_TOPUP_* (بند ۴۹ سند).
-- PaymentService::initiate فقط wallet_charge می‌پذیرد (purpose=order کد مرده بود).
-- ARCHITECTURE.md بند ۷ به سه قیمت نهایی بازنویسی شد.
-- تست دائمی «هیچ نام قیمتِ Legacy نمی‌ماند» (بند ۵۷) + تست Reports + تست purpose.
+- جدول wallets: user_id, store_type, reseller_id, scope_key؛ UNIQUE(user_id, scope_key) (بند ۲۷ — بدون اتکا به NULL).
+- «اعتبار نماینده» Wallet جدا نیست؛ Wallet صاحب نماینده در Main است (Rule 6). کف مجاز به عملیات وابسته است.
+- WalletService::walletForContext(User, StoreContext) (بند ۲۸)؛ ساخت هم‌زمان امن؛ مهمان Wallet ندارد.
+- Migration سه‌مرحله‌ای: expand ← ادغام (مجموع‌نگهدار، idempotent) ← unique.
+- User/Reseller/CustomerAccount::wallet() → HasOne؛ پنل نماینده موجودی مشتری را از WalletService می‌خواند.
+- ARCHITECTURE.md بند ۳ بازنویسی شد.
+- تست: tests/Feature/Wallet/WalletContextStructureTest.php؛ تست ResellerPaymentApprovalTest طبق Rule 6 معکوس شد.
 
 === اجرا ===
-Migration ندارد.
+    php artisan migrate
     php artisan test
-نکته: این پچ در محیطی بدون PHP نوشته شد و اجرا نشده است؛ حتماً تست‌ها را اجرا کنید.
-در صورت شکست هر تست، خروجی را بفرستید تا اصلاح شود.
+نکته: این پچ در محیطی بدون PHP نوشته شد و اجرا نشده است؛ ابتدا روی staging و با بکاپ اجرا کنید.
 
-=== فاز بعدی ===
-فاز ۱۳ سند: انتقال کامل تست‌ها به مدل نهایی (اکثر آن در این فاز و فازهای ۹–۱۰ انجام شده؛
-باید Coverage بند ۵۶ بررسی شود)، فاز ۱۴: Static Search نهایی (تست دائمی آن اضافه شد)،
-فاز ۱۵: php artisan test کامل.
+=== فاز بعدی (contract) ===
+حذف ستون‌های legacy owner_type/owner_id/customer_account_id همراه با حذف تست‌های Migration تاریخی.
+سپس: تکمیل پوشش تست بند ۵۶ و اجرای کامل.

@@ -57,7 +57,7 @@ class UserResource extends Resource
                     ->formatStateUsing(fn (string $state) => match ($state) {
                         'reseller' => '🏬 نماینده', 'admin' => '🔑 ادمین ربات', default => 'مشتری',
                     }),
-                Tables\Columns\TextColumn::make('wallet.balance')->label('موجودی کیف پول')
+                Tables\Columns\TextColumn::make('wallet.balance')->label('موجودی Main')
                     ->money('IRT', divideBy: 1)
                     ->default(0),
                 Tables\Columns\TextColumn::make('orders_count')->counts('orders')->label('تعداد سفارش'),

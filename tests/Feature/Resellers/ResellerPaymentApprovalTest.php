@@ -136,7 +136,7 @@ class ResellerPaymentApprovalTest extends TestCase
     }
 
     #[Test]
-    public function main_admin_confirming_a_reseller_topup_credits_the_reseller_wallet_not_the_owners_personal_wallet(): void
+    public function main_admin_confirming_a_reseller_topup_credits_the_owners_main_wallet(): void
     {
         $reseller = Reseller::factory()->create();
         $method = PaymentMethod::factory()->create();
@@ -152,14 +152,19 @@ class ResellerPaymentApprovalTest extends TestCase
         $this->assertEquals($admin->id, $confirmed->reviewed_by);
         $this->assertNull($confirmed->reviewed_by_reseller_id);
         $this->assertEquals(1000000, $this->wallet->balance($reseller));
-                // کیف‌پول شخصیِ owner (به‌عنوان یک مشتری عادی) دست‌نخورده مانده
-        $ownerCustomer = app(IdentityService::class)
+        // Rule 6 سند: Wallet صاحبِ نماینده برای reseller_price همان Wallet
+        // خودِ او در Main است؛ «اعتبار نماینده» Wallet جدا ندارد.
+        $ownerMain = app(IdentityService::class)
             ->resolveCustomerAccount(
                 $reseller->user,
                 StoreContext::main(),
             );
 
-        $this->assertEquals(0, $this->wallet->balance($ownerCustomer));
+        $this->assertEquals(1000000, $this->wallet->balance($ownerMain));
+        $this->assertEquals(
+            $this->wallet->walletFor($ownerMain)->id,
+            $this->wallet->getOrCreateWallet($reseller)->id,
+        );
     }
 
     #[Test]

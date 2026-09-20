@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\MorphOne;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -62,12 +62,12 @@ class CustomerAccount extends Model
     }
 
     /**
-     * کیف‌پول این عضویت. morphOne است چون جدول wallets هنوز polymorphic
-     * است و کیف‌پول نماینده (owner = Reseller) هم در همان جدول می‌ماند.
+     * Wallet این عضویت: (user_id، scope_key). scope_key به هر نمونه وابسته
+     * است، پس این رابطه فقط برای lazy-load مناسب است (نه eager-load).
      */
-    public function wallet(): MorphOne
+    public function wallet(): HasOne
     {
-        return $this->morphOne(Wallet::class, 'owner');
+        return $this->hasOne(Wallet::class, 'user_id', 'user_id')->where('scope_key', $this->scope_key);
     }
 
     public function orders(): HasMany

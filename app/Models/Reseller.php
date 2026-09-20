@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Support\Str;
 
 class Reseller extends Model implements HasName
@@ -60,9 +59,13 @@ class Reseller extends Model implements HasName
         return $this->webhook_secret;
     }
 
-    public function wallet(): MorphOne
+    /**
+     * Wallet صاحبِ نماینده در Main Context — همان Walletی که reseller_price
+     * از آن کسر می‌شود (Rule 6). Wallet جداگانه‌ای به نام «اعتبار نماینده» وجود ندارد.
+     */
+    public function wallet(): HasOne
     {
-        return $this->morphOne(Wallet::class, 'owner');
+        return $this->hasOne(Wallet::class, 'user_id', 'user_id')->where('scope_key', 'main');
     }
 
     public function user(): BelongsTo
