@@ -52,12 +52,6 @@ class Payment extends Model
         return $this->belongsTo(Reseller::class, 'reviewed_by_reseller_id');
     }
 
-    /** کیف‌پولِ واقعاً هدفِ این پرداخت — طبق wallet_owner_type */
-    public function walletOwner(): User|Reseller|null
-    {
-        return $this->wallet_owner_type === 'reseller' ? $this->reseller : $this->user;
-    }
-
     /**
      * واکشی امنِ یک پرداختِ در انتظار، برای جریان آپلود رسید/نام
      * واریزکننده در ربات (P1 گزارش امنیتی، مورد #12).

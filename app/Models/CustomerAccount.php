@@ -90,11 +90,6 @@ class CustomerAccount extends Model
         return $this->store_type === 'main';
     }
 
-    public function isResellerStore(): bool
-    {
-        return $this->store_type === 'reseller';
-    }
-
     public function isActive(): bool
     {
         return $this->status === 'active';
@@ -104,14 +99,6 @@ class CustomerAccount extends Model
     public function isGuest(): bool
     {
         return is_null($this->user_id);
-    }
-
-    /** نام فروشگاهی که این عضویت در آن است — برای نمایش در پنل و گزارش‌ها */
-    public function storeLabel(): string
-    {
-        return $this->isMainStore()
-            ? 'فروشگاه اصلی'
-            : ('نمایندگی '.($this->reseller?->slug ?? $this->reseller_id));
     }
 
     public function scopeForStore(Builder $query, string $storeType, ?int $resellerId = null): Builder

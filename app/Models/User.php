@@ -61,10 +61,6 @@ class User extends Authenticatable implements FilamentUser, HasName, HasTenants
         return $this->hasMany(User::class, 'referrer_id');
     }
 
-    // فاز ۱۵ (Rule 12): رابطه‌ی reseller() که از users.reseller_id (تک‌مقداری)
-    // می‌آمد حذف شد؛ عضویت در فروشگاه‌ها فقط از customerAccounts() می‌آید.
-    // ستون users.reseller_id عمداً هنوز در جدول هست (deprecated، بلااستفاده).
-
     public function resellerAccount(): HasOne
     {
         // if this user IS a reseller (owns a reseller record)

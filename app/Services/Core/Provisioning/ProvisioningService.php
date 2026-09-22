@@ -247,14 +247,7 @@ class ProvisioningService
             'failure_reason' => mb_substr($reason, 0, 1000),
         ]);
 
-        // زمان‌بندی تلاش بعدی با فاصله‌ی فزاینده، تا اگر پنل موقتاً
-        // پایین است، سه تلاش پشت‌سرهم در چند ثانیه هدر نرود.
-        $operation?->markFailed(
-            $reason,
-            $order->provision_attempts < self::MAX_ATTEMPTS
-                ? now()->addMinutes(2 ** $order->provision_attempts)
-                : null,
-        );
+        $operation?->markFailed($reason);
 
         Log::error('provisioning_failed', [
             'order_id' => $order->id,

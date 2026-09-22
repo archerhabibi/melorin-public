@@ -77,15 +77,15 @@ class Operation extends Model
     }
 
     /**
-     * $availableAt را وقتی بدهید که عملیات قابل تلاش مجدد است (مثلاً
-     * پنل VPN موقتاً در دسترس نیست)؛ خالی گذاشتنش یعنی شکست نهایی.
+     * زمان‌بندی تلاش مجدد روی خودِ Order نگه‌داری می‌شود
+     * (orders.next_provision_retry_at، ر.ک. ProvisioningFailureHandler)؛ Operation فقط
+     * وضعیت «یک‌بار اجرا» را ثبت می‌کند.
      */
-    public function markFailed(string $error, ?\DateTimeInterface $availableAt = null): void
+    public function markFailed(string $error): void
     {
         $this->update([
             'status' => 'failed',
             'last_error' => mb_substr($error, 0, 2000),
-            'available_at' => $availableAt,
             'processed_at' => now(),
         ]);
     }

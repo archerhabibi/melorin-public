@@ -77,12 +77,4 @@ class ConversationState
     {
         $this->find($chatId)->update(['step' => self::IDLE, 'payload' => []]);
     }
-
-    public function mergePayload(int $chatId, array $extra): TelegramConversationState
-    {
-        $state = $this->find($chatId);
-        $state->update(['payload' => array_merge($state->payload ?? [], $extra)]);
-
-        return $state;
-    }
 }

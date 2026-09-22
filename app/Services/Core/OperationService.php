@@ -102,22 +102,6 @@ class OperationService
         }
     }
 
-    /**
-     * عملیات شکست‌خورده‌ای که زمان تلاش مجددشان رسیده (بند ۲۵ — Retry).
-     * توسط Jobهای پس‌زمینه‌ی فاز D مصرف می‌شود.
-     */
-    public function dueForRetry(string $type, int $maxAttempts = 3)
-    {
-        return Operation::query()
-            ->where('type', $type)
-            ->where('status', 'failed')
-            ->where('attempts', '<', $maxAttempts)
-            ->whereNotNull('available_at')
-            ->where('available_at', '<=', now())
-            ->orderBy('available_at')
-            ->get();
-    }
-
     protected function normalizeResult(mixed $result): array
     {
         if ($result instanceof \Illuminate\Database\Eloquent\Model) {

@@ -3,7 +3,6 @@
 namespace App\Services\Resellers;
 
 use App\Exceptions\ResellerScopeViolationException;
-use App\Models\CustomerAccount;
 use App\Models\Reseller;
 use App\Models\User;
 use App\Services\Core\Store\IdentityService;
@@ -77,21 +76,5 @@ class ResellerCustomerService
     public function ownsCustomer(Reseller $reseller, User $customer): bool
     {
         return $this->identity->isActiveMember($customer, StoreContext::reseller($reseller));
-    }
-
-    /**
-     * @throws ResellerScopeViolationException اگر مشتری متعلق به این نماینده نباشد
-     */
-    public function assertOwnsCustomer(Reseller $reseller, User $customer): void
-    {
-        if (! $this->ownsCustomer($reseller, $customer)) {
-            throw new ResellerScopeViolationException('این مشتری متعلق به این نماینده نیست.');
-        }
-    }
-
-    /** عضویت فعال (اگر باشد) — برای نمایش موجودی و ... */
-    public function membership(Reseller $reseller, User $customer): ?CustomerAccount
-    {
-        return $this->identity->findCustomerAccount($customer, StoreContext::reseller($reseller));
     }
 }

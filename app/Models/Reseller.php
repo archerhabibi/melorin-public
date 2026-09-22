@@ -40,12 +40,6 @@ class Reseller extends Model implements HasName
         return -1 * $this->debtLimit();
     }
 
-    /** آیا آخرین تلاش ثبت وب‌هوک موفق بوده؟ (برای نمایش در پنل و تشخیص سریع ربات‌های از کار افتاده) */
-    public function hasWorkingWebhook(): bool
-    {
-        return $this->webhook_status === 'ok';
-    }
-
     /**
      * secret وب‌هوک این نماینده؛ اگر هنوز ساخته نشده (نماینده‌ای که
      * پیش از افزودن این ستون ایجاد شده) همان لحظه ساخته و ذخیره

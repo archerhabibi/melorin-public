@@ -49,9 +49,4 @@ class ProvisioningSetting extends Model
 
         return in_array($value, self::policies(), true) ? $value : self::POLICY_RETRY;
     }
-
-    public static function retriesAutomatically(): bool
-    {
-        return in_array(static::activePolicy(), [self::POLICY_RETRY, self::POLICY_RETRY_THEN_REFUND], true);
-    }
 }

@@ -140,6 +140,21 @@ class FailurePolicyTest extends TestCase
         ]);
     }
 
+    /**
+     * سفارش را «سررسیدشده» برای retry خودکار می‌کند.
+     *
+     * عمداً با UPDATE مستقیم روی جدول است، نه `$order->update()`: مدل درون‌حافظه‌ای
+     * تست کهنه است و Eloquent فیلد datetime را با دقت «ثانیه» با مقدار اصلیِ خودش
+     * مقایسه می‌کند؛ اگر دو فراخوانی پشت‌سرهم در همان ثانیه بیفتند مقدار «تغییرنکرده»
+     * حساب می‌شود و هیچ UPDATE ای زده نمی‌شود، در حالی که زمان‌بندی واقعی داخل DB
+     * (که handler بعد از هر شکست دوباره به آینده می‌برد) عوض نشده — نتیجه: تلاش دوم
+     * اجرا نمی‌شد و provision_attempts روی ۲ می‌ماند.
+     */
+    protected function makeDue(Order $order): void
+    {
+        Order::query()->whereKey($order->id)->update(['next_provision_retry_at' => now()->subMinute()]);
+    }
+
     #[Test]
     public function retry_policy_keeps_the_charge_and_schedules_an_automatic_retry(): void
     {
@@ -207,7 +222,7 @@ class FailurePolicyTest extends TestCase
         $this->assertEquals(0, $this->wallet->getBalance($customer));
 
         foreach ([2, 3] as $attempt) {
-            $order->update(['next_provision_retry_at' => now()->subMinute()]);
+            $this->makeDue($order);
 
 
             $this->artisan('provisioning:retry-failed')->assertExitCode(0);
@@ -223,7 +238,7 @@ class FailurePolicyTest extends TestCase
 
        foreach ([2, 3] as $attempt) {
             $order->refresh();
-            $order->update(['next_provision_retry_at' => now()->subMinute()]);
+            $this->makeDue($order);
 
 
             $this->artisan('provisioning:retry-failed')->assertExitCode(0);
@@ -246,7 +261,7 @@ class FailurePolicyTest extends TestCase
         [$customer, $order] = $this->failedPurchase();
 
         $this->panelHealthy = true;
-        $order->update(['next_provision_retry_at' => now()->subMinute()]);
+        $this->makeDue($order);
 
         $this->artisan('provisioning:retry-failed')->assertExitCode(0);
 
@@ -326,7 +341,7 @@ class FailurePolicyTest extends TestCase
         $this->assertEquals(0, $this->wallet->getBalance($customer));
 
         $this->panelHealthy = true;
-        $order->update(['next_provision_retry_at' => now()->subMinute()]);
+        $this->makeDue($order);
 
         $this->artisan('provisioning:retry-failed')->assertExitCode(0);
 
@@ -413,7 +428,7 @@ class FailurePolicyTest extends TestCase
         });
 
         $this->panelHealthy = true;
-        $order->update(['next_provision_retry_at' => now()->subMinute()]);
+        $this->makeDue($order);
 
         $this->artisan('provisioning:retry-failed')->assertExitCode(0);
 

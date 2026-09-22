@@ -1,4 +1,30 @@
-﻿Stage 15 (سند بند ۵۹) — Full Test Audit
+﻿3.1.3 — پاک‌سازی و سبک‌سازی (پیش از فازهای سند v2.1)
+
+جزئیات و Inventory کامل: docs/CLEANUP-3.1.3-INVENTORY.md
+
+تحلیل ایستای کل پروژه (متد/کلاس/ثابت/import/View/Config بلااستفاده) انجام شد؛ پروژه از قبل تمیز بود و
+فقط موارد «قطعاً بلااستفاده» حذف شد: Controller/ExampleTest/دو Factory boilerplate یا بلااستفاده، صفحه‌ی
+پیش‌فرض Laravel (با صفحه‌ی مینیمال جایگزین شد)، ۱۲ متد مرده (از جمله OperationService::dueForRetry،
+Payment::walletOwner و زمان‌بندی available_at که هیچ‌کس مصرف نمی‌کرد)، دو import، و چند کامنت منسوخ.
+README به update-git.sh اشاره می‌کند و branch منسوخ CI حذف شد. هیچ Migration ندارد.
+
+رفع باگِ تست: چهار شکست باقی‌مانده‌ی FailurePolicyTest ناشی از dirty-check دقت-ثانیه‌ی Eloquent روی مدل
+کهنه در تست بود (نه باگ retry)؛ helper makeDue() با UPDATE مستقیم.
+
+⚠️ امنیت: ZIP اشتراک‌گذاری‌شده شامل webhook.json (توکن و secret واقعی ربات)، .env و بکاپ SQL بود.
+توکن‌ها/secretها/رمزها را Rotate کنید — مراحل در بخش ۶ سند بالا.
+
+=== اجرا ===
+    php artisan test
+انتظار: همه سبز (suite «Unit» حذف شد؛ تعداد کل تست‌ها یکی کمتر می‌شود).
+این پچ بدون اجرای PHP نوشته شده؛ نتیجه‌ی php artisan test را بفرستید.
+
+=== بعد از این ===
+فازهای سند v2.1 به ترتیب اولویت: Phase 1 (Payment State Machine + تفکیک Wallet/Direct Payment)، سپس Concurrency (Sale Limit/Capacity)...
+
+---
+
+Stage 15 (سند بند ۵۹) — Full Test Audit
 
 جزئیات: docs/STAGE-15-FULL-TEST-AUDIT.md
 
@@ -31,7 +57,7 @@ main_price (بند ۱۸). یک مشتری عادی بدون تغییر همچن�
 گرفت؛ PurchaseService::execute() و RenewalService::execute() هر دو با
 $customer->user->resellerAccount()->exists() این حالت را تشخیص می‌دهند.
 تست Skipped فاز ۱۴ (FinalModelSpecTest::open_decision_...) به تست واقعی
-_reseller_owner_buying_directly_from_main_pays_reseller_price_not_main_price
+a_reseller_owner_buying_directly_from_main_pays_reseller_price_not_main_price
 تبدیل شد.
 
 این همان موردی است که در «باقی‌مانده»ی فاز ۱۵ زیر به‌عنوان باز فهرست

@@ -324,25 +324,12 @@ class PaymentService
     }
 
     /**
-     * بریج backward-compatible بین دنیای قدیمِ کیف‌پول (owner = User یا
-     * Reseller) و معماری جدید (بند ۷): کیف‌پول مشتری دیگر متعلق به User
-     * نیست، متعلق به CustomerAccount همان فروشگاه است.
-     *
-     * قبل از این متد، $payment->walletOwner() برای wallet_owner_type='user'
-     * مستقیماً خودِ User را برمی‌گرداند و WalletService یک ردیف کاملاً
-     * جدا (owner_type=User) می‌ساخت — درست همان کیف‌پولی که هیچ‌کدام از
-     * PurchaseGuard/PurchaseService/RenewalService هرگز نگاهش نمی‌کنند
-     * (آن‌ها فقط owner_type=CustomerAccount را می‌بینند). نتیجه: شارژ از
-     * طریق PaymentService روی یک حساب می‌نشست، خرید از حساب دیگری کسر
-     * می‌کرد.
-     *
-     * حالا برای wallet_owner_type='user'، بسته به این‌که پرداخت برای کدام
-     * فروشگاه بوده (reseller_id پرداخت — نه صرفاً «ربات اصلی»)، دقیقاً
-     * همان CustomerAccountی که IdentityService برای خرید/تمدید در آن
-     * فروشگاه resolve می‌کند را برمی‌گردانیم؛ یعنی شارژ و خرج همیشه از
-     * یک کیف‌پول واحد است. کیف‌پول خودِ نماینده (wallet_owner_type='reseller')
-     * دست‌نخورده می‌ماند — آن یک مفهوم کاملاً مستقل (اعتبار نماینده نزد
-     * Main) است، نه کیف‌پول یک مشتری در یک فروشگاه.
+     * مقصد شارژ یک پرداخت (Wallet = User + StoreContext):
+     *   - wallet_owner_type='reseller' → نماینده؛ WalletService آن را به Wallet صاحبِ
+     *     نماینده در Main می‌رساند.
+     *   - wallet_owner_type='user'     → CustomerAccount همان فروشگاهی که پرداخت برایش
+     *     ثبت شده (reseller_id پرداخت؛ خالی = Main)، تا شارژ و خرج همیشه از یک
+     *     Wallet واحد باشند.
      */
     protected function resolveWalletOwner(Payment $payment): Model
     {
