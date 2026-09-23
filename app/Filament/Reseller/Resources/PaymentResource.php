@@ -79,8 +79,12 @@ class PaymentResource extends Resource
                     ->visible(fn (Payment $record) => $record->status === 'pending')
                     ->requiresConfirmation()
                     ->action(function (Payment $record) {
-                        app(PaymentService::class)->confirmManualByReseller($record, static::currentReseller());
-                        Notification::make()->title('پرداخت تایید و کیف‌پول مشتری شارژ شد.')->success()->send();
+                        try {
+                            app(PaymentService::class)->confirmManualByReseller($record, static::currentReseller());
+                            Notification::make()->title('پرداخت تایید و کیف‌پول مشتری شارژ شد.')->success()->send();
+                        } catch (\Throwable $e) {
+                            Notification::make()->title('خطا: '.$e->getMessage())->danger()->send();
+                        }
                     }),
 
                 Tables\Actions\Action::make('reject')
@@ -89,8 +93,12 @@ class PaymentResource extends Resource
                     ->visible(fn (Payment $record) => $record->status === 'pending')
                     ->requiresConfirmation()
                     ->action(function (Payment $record) {
-                        app(PaymentService::class)->rejectByReseller($record, static::currentReseller());
-                        Notification::make()->title('پرداخت رد شد.')->success()->send();
+                        try {
+                            app(PaymentService::class)->rejectByReseller($record, static::currentReseller());
+                            Notification::make()->title('پرداخت رد شد.')->success()->send();
+                        } catch (\Throwable $e) {
+                            Notification::make()->title('خطا: '.$e->getMessage())->danger()->send();
+                        }
                     }),
             ]);
     }

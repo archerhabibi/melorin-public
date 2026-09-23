@@ -126,9 +126,13 @@ class PaymentResource extends Resource
                         Forms\Components\Textarea::make('reason')->label('دلیل رد کردن')->required(),
                     ])
                     ->action(function (Payment $record, array $data) {
-                        app(PaymentService::class)->reject($record, Auth::guard('admin')->user(), $data['reason']);
+                        try {
+                            app(PaymentService::class)->reject($record, Auth::guard('admin')->user(), $data['reason']);
 
-                        Notification::make()->title('پرداخت رد شد.')->warning()->send();
+                            Notification::make()->title('پرداخت رد شد.')->warning()->send();
+                        } catch (\Throwable $e) {
+                            Notification::make()->title('خطا: '.$e->getMessage())->danger()->send();
+                        }
                     }),
 
                 Tables\Actions\Action::make('refund')

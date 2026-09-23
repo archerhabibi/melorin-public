@@ -12,6 +12,9 @@ use Illuminate\Support\Facades\Http;
 use Mockery;
 use PHPUnit\Framework\Attributes\Test;
 use Telegram\Bot\Api;
+use App\Services\Core\Payments\InvalidPaymentTransitionException;
+use App\Services\Core\Payments\PaymentGatewayFactory;
+use App\Services\Core\Payments\PaymentStateMachine;
 use Telegram\Bot\Objects\Message;
 use Tests\TestCase;
 use App\Models\CustomerAccount;
@@ -219,5 +222,117 @@ class PaymentServiceTest extends TestCase
 
         $this->assertEquals('refunded', $refunded->status);
         $this->assertEquals(0.0, $this->wallet->balance($this->mainWalletOwner($user)));
+    }
+
+    // ── فاز A۱ سند v2.1 (بند ۵۳): PaymentStateMachine به‌عنوان تنها مرجع ──
+
+    #[Test]
+    public function confirming_an_already_confirmed_payment_is_rejected_and_never_double_charges(): void
+    {
+        $user = User::factory()->create();
+        $admin = Admin::factory()->create();
+        $method = PaymentMethod::factory()->create();
+
+        ['payment' => $payment] = $this->payments->initiate($user, $method, 200000, 'wallet_charge');
+        $this->payments->confirmManual($payment, $admin);
+
+        $this->expectException(InvalidPaymentTransitionException::class);
+
+        try {
+            $this->payments->confirmManual($payment->fresh(), $admin);
+        } finally {
+            $this->assertEquals(200000, $this->wallet->balance($this->mainWalletOwner($user)));
+        }
+    }
+
+    #[Test]
+    public function rejecting_an_already_confirmed_payment_is_blocked_and_the_wallet_charge_stands(): void
+    {
+        $user = User::factory()->create();
+        $admin = Admin::factory()->create();
+        $method = PaymentMethod::factory()->create();
+
+        ['payment' => $payment] = $this->payments->initiate($user, $method, 200000, 'wallet_charge');
+        $this->payments->confirmManual($payment, $admin);
+
+        // شبیه‌سازی Race: نمونه‌ی درون‌حافظه‌ای هنوز pending می‌بیند (چون قبل
+        // از confirm گرفته شده)، ولی reject() ردیف را دوباره از DB با قفل
+        // می‌خواند، پس واقعیتِ «confirmed» را می‌بیند نه این کپیِ کهنه را.
+        $this->expectException(InvalidPaymentTransitionException::class);
+
+        try {
+            $this->payments->reject($payment, $admin);
+        } finally {
+            $this->assertEquals('confirmed', $payment->fresh()->status);
+            $this->assertEquals(200000, $this->wallet->balance($this->mainWalletOwner($user)));
+        }
+    }
+
+    #[Test]
+    public function confirming_a_rejected_payment_is_blocked(): void
+    {
+        $user = User::factory()->create();
+        $admin = Admin::factory()->create();
+        $method = PaymentMethod::factory()->create();
+
+        ['payment' => $payment] = $this->payments->initiate($user, $method, 200000, 'wallet_charge');
+        $this->payments->reject($payment, $admin, 'رسید جعلی بود');
+
+        $this->expectException(InvalidPaymentTransitionException::class);
+
+        try {
+            $this->payments->confirmManual($payment->fresh(), $admin);
+        } finally {
+            $this->assertEquals(0.0, $this->wallet->balance($this->mainWalletOwner($user)));
+        }
+    }
+
+    #[Test]
+    public function refunding_the_same_payment_twice_is_blocked_and_only_debits_once(): void
+    {
+        $user = User::factory()->create();
+        $admin = Admin::factory()->create();
+        $method = PaymentMethod::factory()->create();
+
+        ['payment' => $payment] = $this->payments->initiate($user, $method, 200000, 'wallet_charge');
+        $this->payments->confirmManual($payment, $admin);
+        $this->payments->refund($payment->fresh(), $admin);
+
+        // برای این‌که تست معنا داشته باشد، اول دوباره شارژ می‌کنیم تا اگر
+        // به‌اشتباه دوباره کسر شد، منفی‌شدن موجودی/خطا آن را لو بدهد.
+        $this->wallet->credit($this->mainWalletOwner($user), 200000);
+
+        $this->expectException(InvalidPaymentTransitionException::class);
+
+        try {
+            $this->payments->refund($payment->fresh(), $admin);
+        } finally {
+            $this->assertEquals(200000, $this->wallet->balance($this->mainWalletOwner($user)));
+        }
+    }
+
+    #[Test]
+    public function a_duplicate_zarinpal_webhook_confirms_only_once_and_never_calls_verify_twice(): void
+    {
+        Http::fake([
+            '*/payment/request.json' => Http::response([
+                'data' => ['code' => 100, 'authority' => 'AUTH123'],
+            ], 200),
+            '*/payment/verify.json' => Http::response([
+                'data' => ['code' => 100, 'ref_id' => 998877],
+            ], 200),
+        ]);
+
+        $user = User::factory()->create();
+        $method = PaymentMethod::factory()->zarinpal()->create();
+
+        ['payment' => $payment] = $this->payments->initiate($user, $method, 150000, 'wallet_charge');
+
+        $first = $this->payments->handleCallback($payment, ['Authority' => 'AUTH123', 'Status' => 'OK']);
+        $second = $this->payments->handleCallback($first, ['Authority' => 'AUTH123', 'Status' => 'OK']);
+
+        $this->assertEquals('confirmed', $second->status);
+        $this->assertEquals(150000, $this->wallet->balance($this->mainWalletOwner($user)));
+        Http::assertSentCount(2); // ۱ request.json (initiate) + ۱ verify.json (فقط تلاش اول)
     }
 }

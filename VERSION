@@ -1,4 +1,48 @@
-﻿3.1.3 — پاک‌سازی و سبک‌سازی (پیش از فازهای سند v2.1)
+﻿3.1.4 — فاز A۱ سند v2.1: Payment Foundation (State Machine + Purpose + Wallet/Direct Payment)
+
+جزئیات کامل: docs/PHASE-A1-PAYMENT-FOUNDATION.md
+
+=== باگ واقعی که پیدا و رفع شد ===
+reject() و rejectByReseller() برخلاف finalize()/refund() هیچ lockForUpdate/تراکنشی
+نداشتند. اگر یک ادمین دقیقاً هم‌زمان با تاییدشدنِ یک پرداخت (مثلاً callback زرین‌پال)
+روی «رد» می‌زد، status بی‌صدا به rejected برمی‌گشت در حالی که کیف‌پول از قبل شارژ شده
+بود. رفع شد: هر دو حالا مثل finalize()/refund() قفل و تراکنش دارند.
+
+=== تغییرات ===
+- PaymentStateMachine (که از قبل وجود داشت) اکنون تنها مرجع نوشتن وضعیت پرداخت است؛
+  هر چهار متد PaymentService (finalize/reject/rejectByReseller/refund) از طریق
+  transition() عبور می‌کنند، نه $payment->update(['status'=>...]) مستقیم.
+  دو تلاش هم‌زمان روی یک پرداخت حالا با InvalidPaymentTransitionException می‌بندد.
+- refund() حالا Audit (payment.refunded) هم ثبت می‌کند (قبلاً نداشت).
+- چهار نقطه‌ی تماس (ربات نماینده، دو پنل Filament، callback زرین‌پال) با استثنای
+  جدید (RuntimeException، نه LogicException) سازگار شدند؛ دکمه‌ی «رد» در پنل ادمین
+  اصلاً try/catch نداشت — اضافه شد.
+- Purpose (order/wallet_charge) و مرز Wallet Payment در برابر Direct Payment در
+  ARCHITECTURE.md بخش ۱۰ (جدید) صریح مستند شد؛ هر دو از قبل در کد enforce بودند.
+
+=== خارج از Scope این فاز (تصمیم آگاهانه) ===
+«Direct Payment → Purchase» (پرداخت مستقیم برای یک سفارش مشخص، بدون توقف در
+Wallet) یک قابلیت جدید و مستقل است که اصلاً وجود ندارد، نه یک نقض موجود؛ ساختنش
+از پایه در این پچ نبود. جزئیات و پیش‌نیازهای تصمیم در سند بالا.
+
+=== تست ===
+جدید: tests/Feature/Payments/PaymentStateMachineTest.php (سه گذار مجاز + هشت گذار
+نامعتبر، با DataProvider). اضافه‌شده به PaymentServiceTest.php: تایید دوباره،
+رد بعد از تایید (شبیه‌سازی Race)، تایید بعد از رد، بازگشتِ دوباره‌ی وجه،
+webhook تکراری (بدون double-charge و بدون verify دوباره).
+
+=== اجرا ===
+Migration ندارد.
+    php artisan test
+این پچ بدون PHP نوشته شده؛ نتیجه‌ی واقعی php artisan test را بفرستید.
+
+=== فاز بعدی ===
+Phase A2 سند — Financial Concurrency: Sale Limit (بند ۶۱) و Capacity (بند ۶۵)
+هر دو نیازمند Reservation/Row-Lock در برابر خرید هم‌زمان.
+
+---
+
+3.1.3 — پاک‌سازی و سبک‌سازی (پیش از فازهای سند v2.1)
 
 جزئیات و Inventory کامل: docs/CLEANUP-3.1.3-INVENTORY.md
 

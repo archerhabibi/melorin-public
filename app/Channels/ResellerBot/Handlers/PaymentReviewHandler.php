@@ -3,6 +3,7 @@
 namespace App\Channels\ResellerBot\Handlers;
 
 use App\Exceptions\ResellerScopeViolationException;
+use App\Services\Core\Payments\InvalidPaymentTransitionException;
 use App\Models\Payment;
 use App\Models\Reseller;
 use App\Models\User;
@@ -38,7 +39,7 @@ class PaymentReviewHandler
 
         try {
             $this->paymentService->confirmManualByReseller($payment, $reseller);
-        } catch (ResellerScopeViolationException|\LogicException $e) {
+        } catch (ResellerScopeViolationException|InvalidPaymentTransitionException|\LogicException $e) {
             $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => "تایید ناموفق: {$e->getMessage()}"]);
 
             return;
@@ -68,7 +69,7 @@ class PaymentReviewHandler
 
         try {
             $this->paymentService->rejectByReseller($payment, $reseller);
-        } catch (ResellerScopeViolationException $e) {
+        } catch (ResellerScopeViolationException|InvalidPaymentTransitionException $e) {
             $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => "رد ناموفق: {$e->getMessage()}"]);
 
             return;

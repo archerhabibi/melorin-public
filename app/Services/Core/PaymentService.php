@@ -10,7 +10,9 @@ use App\Models\Payment;
 use App\Models\PaymentMethod;
 use App\Models\Reseller;
 use App\Models\User;
+use App\Services\Core\Payments\InvalidPaymentTransitionException;
 use App\Services\Core\Payments\PaymentGatewayFactory;
+use App\Services\Core\Payments\PaymentStateMachine;
 use App\Services\Core\Store\IdentityService;
 use App\Services\Core\Store\StoreContext;
 use Illuminate\Database\Eloquent\Model;
@@ -21,12 +23,38 @@ use Illuminate\Support\Facades\DB;
  * بازگشتِ پرداخت (بند ۱۲ سند نیازمندی). مطابق اصل معماری بند ۳۴، هیچ
  * کانالی (ربات، سایت، نماینده) نباید مستقیم با یک درگاه پرداخت صحبت کند
  * یا وضعیت payments/wallets را دستی تغییر دهد.
+ *
+ * فاز A۱ سند v2.1 (بند ۵۳): هر تغییر وضعیت پرداخت — بدون استثنا — از
+ * `PaymentStateMachine::transition()` عبور می‌کند؛ این کلاس دیگر
+ * هیچ‌جا مستقیماً `$payment->update(['status' => ...])` نمی‌زند. چهار
+ * وضعیت واقعی سیستم دقیقاً با enum ستون `payments.status` یکی است:
+ *
+ *     pending   ──→ confirmed
+ *     pending   ──→ rejected
+ *     confirmed ──→ refunded
+ *
+ * وضعیت‌های نظری «created»، «processing» و «partially_refunded» عمداً
+ * پیاده نشده‌اند: پرداخت همیشه مستقیماً pending ساخته می‌شود (نه created)،
+ * verify درگاه همگام (synchronous) انجام می‌شود (نه processing)، و
+ * بازگشت‌وجهِ جزئی هنوز پشتیبانی نمی‌شود (بند ۵۳: «در صورت نیاز»).
+ *
+ * دو لایه‌ی متفاوت وجود دارد: بررسی‌های اولیه‌ی متدهای public (مثل
+ * assertPending() پایین) صرفاً fail-fast هستند و روی داده‌ی lock‌نشده
+ * کار می‌کنند — مرجع نیستند و می‌توانند دچار Race شوند. مرجعِ واقعی و
+ * تنها منبع صحت، بررسی‌و-نوشتنِ اتمیکِ داخل تراکنش‌های پایین (finalize،
+ * reject، rejectByReseller، refund) است: هرکدام ابتدا ردیف را با
+ * lockForUpdate می‌گیرند و بعد از طریق همان StateMachine تغییر می‌دهند؛
+ * پس اگر دو عملیات هم‌زمان به یک پرداخت برسند (مثلاً یک ادمین آن را رد
+ * می‌کند درست وقتی webhook دارد تاییدش می‌کند)، دومی همیشه با
+ * `InvalidPaymentTransitionException` متوقف می‌شود، نه این‌که بی‌صدا
+ * وضعیت را از زیر عملیات اول عوض کند.
  */
 class PaymentService
 {
     public function __construct(
         protected WalletService $walletService,
         protected IdentityService $identity,
+        protected PaymentStateMachine $stateMachine,
     ) {}
 
     /**
@@ -179,21 +207,29 @@ class PaymentService
     {
         $this->assertPending($payment);
 
-        $payment->update([
-            'status' => 'rejected',
-            'reviewed_by' => $admin?->id,
-            'reviewed_at' => now(),
-        ]);
+        return DB::transaction(function () use ($payment, $admin, $reason) {
+            // قفل ردیف: بدون این، رد کردن می‌توانست دقیقاً روی همان لحظه‌ای
+            // که یک تایید (confirmManual/handleCallback) در حال commit شدن
+            // است اجرا شود و بعد از آن، status را بی‌صدا به rejected برگرداند
+            // — در حالی که کیف‌پول از قبل شارژ شده. transition() زیر با همین
+            // قفل، این حالت را با InvalidPaymentTransitionException می‌بندد.
+            $payment = Payment::query()->lockForUpdate()->findOrFail($payment->id);
 
-        app(AuditService::class)->record(
-            'payment.rejected',
-            $payment,
-            before: ['status' => 'pending'],
-            after: ['status' => 'rejected', 'reason' => $reason, 'amount' => (float) $payment->amount],
-            actor: $admin,
-        );
+            $payment = $this->stateMachine->transition($payment, 'rejected', [
+                'reviewed_by' => $admin?->id,
+                'reviewed_at' => now(),
+            ]);
 
-        return $payment;
+            app(AuditService::class)->record(
+                'payment.rejected',
+                $payment,
+                before: ['status' => 'pending'],
+                after: ['status' => 'rejected', 'reason' => $reason, 'amount' => (float) $payment->amount],
+                actor: $admin,
+            );
+
+            return $payment;
+        });
     }
 
     /**
@@ -207,21 +243,24 @@ class PaymentService
 
         $this->assertPending($payment);
 
-        $payment->update([
-            'status' => 'rejected',
-            'reviewed_by_reseller_id' => $reseller->id,
-            'reviewed_at' => now(),
-        ]);
+        return DB::transaction(function () use ($payment, $reseller, $reason) {
+            $payment = Payment::query()->lockForUpdate()->findOrFail($payment->id);
 
-        app(AuditService::class)->record(
-            'payment.rejected',
-            $payment,
-            before: ['status' => 'pending'],
-            after: ['status' => 'rejected', 'reason' => $reason, 'amount' => (float) $payment->amount],
-            actor: $reseller,
-        );
+            $payment = $this->stateMachine->transition($payment, 'rejected', [
+                'reviewed_by_reseller_id' => $reseller->id,
+                'reviewed_at' => now(),
+            ]);
 
-        return $payment;
+            app(AuditService::class)->record(
+                'payment.rejected',
+                $payment,
+                before: ['status' => 'pending'],
+                after: ['status' => 'rejected', 'reason' => $reason, 'amount' => (float) $payment->amount],
+                actor: $reseller,
+            );
+
+            return $payment;
+        });
     }
 
     /**
@@ -238,9 +277,9 @@ class PaymentService
                 ->lockForUpdate()
                 ->findOrFail($payment->id);
 
-            if ($payment->status !== 'confirmed') {
-                throw new \LogicException('فقط پرداخت‌های تایید‌شده قابل بازگشت وجه هستند.');
-            }
+            // پیش از کسر از کیف‌پول بررسی می‌شود، نه فقط قبل از نوشتنِ
+            // status، تا اگر گذار نامعتبر بود هیچ کسری هم انجام نشود.
+            $this->stateMachine->assertCanTransition($payment, 'refunded');
 
             if ($payment->purpose === 'wallet_charge') {
                 $this->walletService->adminAdjust(
@@ -251,11 +290,18 @@ class PaymentService
                 );
             }
 
-            $payment->update([
-                'status' => 'refunded',
+            $payment = $this->stateMachine->transition($payment, 'refunded', [
                 'reviewed_by' => $admin?->id ?? $payment->reviewed_by,
                 'reviewed_at' => now(),
             ]);
+
+            app(AuditService::class)->record(
+                'payment.refunded',
+                $payment,
+                before: ['status' => 'confirmed'],
+                after: ['status' => 'refunded', 'amount' => (float) $payment->amount],
+                actor: $admin,
+            );
 
             return $payment;
         });
@@ -274,12 +320,7 @@ class PaymentService
             // (confirmed) می‌بیند و رد می‌کند.
             $payment = Payment::query()->lockForUpdate()->findOrFail($payment->id);
 
-            if ($payment->status !== 'pending') {
-                throw new \LogicException("این پرداخت قبلاً پردازش شده است (وضعیت فعلی: {$payment->status}).");
-            }
-
-            $payment->update([
-                'status' => 'confirmed',
+            $payment = $this->stateMachine->transition($payment, 'confirmed', [
                 'reviewed_by' => $admin?->id,
                 'reviewed_by_reseller_id' => $reseller?->id,
                 'reviewed_at' => now(),
@@ -319,7 +360,9 @@ class PaymentService
     protected function assertPending(Payment $payment): void
     {
         if ($payment->status !== 'pending') {
-            throw new \LogicException("این پرداخت در وضعیت pending نیست (وضعیت فعلی: {$payment->status}).");
+            throw new InvalidPaymentTransitionException(
+                "گذار نامعتبر وضعیت پرداخت #{$payment->id}: وضعیت فعلی «{$payment->status}» است و پرداخت باید pending باشد."
+            );
         }
     }
 

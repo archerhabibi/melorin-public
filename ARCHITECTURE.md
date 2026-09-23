@@ -222,6 +222,71 @@ $operations->runOnce($key, Operation::TYPE_PURCHASE, fn ($op) => ...);
 
 ---
 
+## A۱۰. Payment — State Machine، Purpose و مرز با Wallet (فاز A۱ سند v2.1)
+
+### چهار وضعیت واقعی
+
+```
+pending   ──→ confirmed
+pending   ──→ rejected
+confirmed ──→ refunded
+```
+
+این چهار وضعیت دقیقاً با enum ستون `payments.status` یکی است — سه وضعیتِ نظریِ سند
+(`created`، `processing`، `partially_refunded`) عمداً پیاده نشده‌اند:
+- **created** لازم نیست چون `PaymentService::initiate()` رکورد را همیشه مستقیماً با
+  `pending` می‌سازد؛ هیچ پرداختی قبل از رسیدن به درگاه در دیتابیس وجود ندارد.
+- **processing** لازم نیست چون تایید درگاه (`verify`) همگام (synchronous) داخل همان
+  درخواست انجام می‌شود؛ بین «هنوز بررسی نشده» و «تایید/رد نهایی» یک وضعیت میانیِ
+  قابل‌مشاهده وجود ندارد.
+- **partially_refunded** هنوز پیاده نشده چون بازگشتِ جزئیِ وجه اصلاً پشتیبانی نمی‌شود
+  (هر Refund کل مبلغ را برمی‌گرداند). بند ۵۳ سند این وضعیت را «در صورت نیاز» خوانده،
+  یعنی مشروط — اگر بعداً Partial Refund لازم شد، همان‌جا اضافه می‌شود.
+
+`PaymentStateMachine` (`app/Services/Core/Payments/PaymentStateMachine.php`) تنها
+مرجع این گذارهاست. `PaymentService` — تنها سرویس مجاز به تغییر وضعیت پرداخت — هیچ‌جا
+مستقیماً `$payment->update(['status' => ...])` نمی‌زند؛ هر چهار عملیات (`finalize`
+داخلیِ تایید، `reject`، `rejectByReseller`، `refund`) ردیف را با `lockForUpdate()`
+داخل یک `DB::transaction()` می‌گیرند و بعد از طریق `PaymentStateMachine::transition()`
+تغییر می‌دهند. نتیجه: اگر دو عملیات هم‌زمان به یک پرداخت برسند — مثلاً یک ادمین آن را
+رد می‌کند درست همان لحظه‌ای که webhook درگاه دارد تاییدش می‌کند — دومی همیشه با
+`InvalidPaymentTransitionException` متوقف می‌شود، نه این‌که بی‌صدا وضعیت را از زیر
+عملیات اول عوض کند و کیف‌پول را در وضعیتی نامنطبق با `status` رها کند. همه‌ی چهار
+مسیر کالر (پنل ادمین، پنل نماینده، ربات نماینده، callback زرین‌پال) این استثنا را
+می‌گیرند و پیام خطای قابل‌فهم نشان می‌دهند، نه کرش خام.
+
+### Payment Purpose
+
+ستون `purpose` دو مقدار در enum دارد: `order` و `wallet_charge`. فقط دومی زنده است:
+`PaymentService::initiate()` هر مقدار دیگری را رد می‌کند. `order` کد مرده است — خرید
+هیچ‌وقت `Payment` نمی‌سازد؛ طبق بند ۱۶ سند مستقیماً از Wallet همان Context کسر می‌شود
+(نگاه کنید به بخش ۵ همین سند: «مرز تراکنش»). مقدار `order` فقط برای ردیف‌های تاریخیِ
+احتمالی در enum نگه داشته شده، نه به‌عنوان یک Purpose قابل‌استفاده.
+
+### Wallet Payment در برابر Direct Payment
+
+دو مسیر مالی کاملاً مستقل‌اند و کد این استقلال را enforce می‌کند، نه فقط مستند می‌کند:
+
+- **Wallet Payment** (خرید/تمدید): `PurchaseService`/`RenewalService` مستقیماً از
+  `WalletService::debit()` استفاده می‌کنند. هیچ `Payment` ساخته نمی‌شود؛ `PaymentService`
+  اصلاً درگیر نیست.
+- **Direct Payment** (شارژ کیف‌پول): `PaymentService` + یک `PaymentGatewayInterface`
+  (Zarinpal آنلاین، کارت‌به‌کارت دستی). نتیجه‌ی نهاییِ Confirm، **همیشه** شارژ Wallet
+  است (`WalletService::charge()` داخل `finalize()`) — نه تکمیل یک خرید مشخص.
+
+آنچه امروز پیاده نیست: «Direct Payment → Purchase» به این معنا که مشتری مستقیماً
+برای **یک سفارش مشخص** از درگاه پرداخت کند و بدون عبور از Wallet، Provisioning آغاز
+شود. مسیر فعلی همیشه دو مرحله‌ای است: شارژ Wallet (Direct Payment) و بعد خرید از
+همان Wallet (Wallet Payment) — در دو زمان جدا. این با «Partial Wallet + Direct
+Payment» سند (بند ۵۵/۱۳۲) که صراحتاً خارج از Scope اعلام شده فرق دارد: آن یعنی
+ترکیبِ بخشی‌از-Wallet + بخشی‌از-Direct برای یک پرداخت؛ ساختن یک «Direct Payment
+→ Purchase» تمام‌عیار (بدون ترکیب) یک قابلیت جدید و مستقل است که در این فاز پیاده
+نشد — نیازمند تصمیم صریح در مورد این‌که Order در چه لحظه‌ای ساخته شود (قبل از
+پرداخت با وضعیت pending، یا بعد از Confirm) و Provisioning چطور از نتیجه‌ی
+`PaymentConfirmed` باخبر شود.
+
+---
+
 ## ۱۰. وضعیت اتصال کانال‌ها (فاز G)
 
 `AccountService::purchase()` حالا یک پل است: به `PurchaseService` جدید
