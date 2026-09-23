@@ -1,4 +1,53 @@
-﻿3.1.4 — فاز A۱ سند v2.1: Payment Foundation (State Machine + Purpose + Wallet/Direct Payment)
+﻿3.1.5 — فاز A2 (سند v2.1 Phase 2): Financial Concurrency — Sale Limit + Capacity
+
+جزئیات کامل: docs/PHASE-A2-FINANCIAL-CONCURRENCY.md
+(از این پچ به بعد، شماره‌ی Phase خودِ سند با پیشوند A می‌آید: Phase 2 سند → فاز A2،
+تا با شماره‌گذاریِ فازهای پروژه قاطی نشود.)
+
+=== باگ‌های واقعی که پیدا و رفع شد ===
+1) Sale Limit با یک COUNT بدون قفل، پیش از شروع تراکنش چک می‌شد — دو خرید هم‌زمان
+   هر دو COUNT قدیمی را می‌دیدند و هر دو رد می‌شدند (Oversell).
+2) همان COUNT حتی مستقل از Race هم ناقص بود: وضعیت provision_failed را نمی‌شمرد —
+   سفارشی با پول‌گرفته‌شده و Provisioning‌ِ گیرکرده، سهمیه را «آزاد» نشان می‌داد.
+3) Capacity (ستون server_panels.capacity) اصلاً enforce نمی‌شد؛ ادمین تنظیمش
+   می‌کرد ولی هیچ کوئری‌ای نمی‌خواندش. active_accounts_count هم فقط بعد از ساختِ
+   موفقِ اکانت افزایش می‌یافت — دقیقاً همان پنجره‌ی Race.
+
+=== راه‌حل ===
+Atomic Counter (UPDATE شرطیِ تک‌دستور)، نه Row Lock/Cache Lock — تنها گزینه‌ای که
+در Test Suite تک‌پردازه‌ی این پروژه (SQLite :memory:، CACHE_STORE=array) واقعاً
+قابل اثبات بود. جزئیات کامل در سند بالا.
+
+=== تغییرات ===
+- Migration: products.units_sold با Backfill معنایی از سفارش‌های موجود.
+- PurchaseGuard::assertSaleLimitNotReached بازنویسی شد (رفع باگ #2 هم همین‌جا).
+- PurchaseService::execute: رزروِ اتمیک درون تراکنشِ مالی، پیش از هر Debit.
+- RefundService::execute: آزادسازی سهمیه برای سفارشِ غیرِ-تمدید.
+- ServerPanel::reserveCapacitySlot()/releaseCapacitySlot()؛ ServerSelectionStrategy
+  متدِ جدیدِ selectAndReserve() گرفت؛ select() هم حالا ظرفیت را می‌سنجد.
+- ProvisioningService::provision و AccountService (مسیر اکانت تست) هر دو به
+  select-and-reserve-قبل‌از-تماسِ-پنل منتقل شدند؛ آزادسازی فقط اگر پاک‌کردنِ
+  اکانتِ یتیم از پنل هم موفق شود.
+- اثرِ جانبی که رفع شد: PurchaseGuard::assertServerAvailable حالا manualPanel
+  می‌گیرد (وگرنه پنلِ دستی‌انتخاب‌شده می‌توانست به‌غلط رد شود).
+- اثرِ جانبیِ مهم‌تر: RenewalService این چک را با checkServerAvailability:false
+  خاموش می‌کند — وگرنه تمدید روی یک دسته‌بندیِ پر (نه خودِ سرورِ اکانت) رد می‌شد.
+- ARCHITECTURE.md بخش ۱۱ (جدید) + رفعِ یک تصادفِ شماره‌گذاریِ بخش از پچ فاز ۱.
+
+=== تست ===
+جدید: tests/Feature/Concurrency/SaleLimitConcurrencyTest.php (۶ تست)،
+tests/Feature/Concurrency/ServerCapacityConcurrencyTest.php (۸ تست).
+
+=== اجرا ===
+    php artisan migrate
+    php artisan test
+این پچ بدون PHP نوشته شده؛ نتیجه‌ی واقعی php artisan test را بفرستید.
+
+=== فاز بعدی ===
+Phase A3 سند — Provisioning Attempt Tracking (بند ۶۹): مدلِ مستقلِ ProvisioningAttempt.
+
+---
+3.1.4 — فاز A۱ سند v2.1: Payment Foundation (State Machine + Purpose + Wallet/Direct Payment)
 
 جزئیات کامل: docs/PHASE-A1-PAYMENT-FOUNDATION.md
 

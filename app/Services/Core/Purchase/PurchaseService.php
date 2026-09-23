@@ -139,8 +139,10 @@ class PurchaseService
 
         $price = PriceSnapshot::for($store, $product, $customersPrice, $buyerOwnsAReseller);
 
-        // بقیه‌ی دروازه‌ها پیش از هر تغییر مالی (بند ۱۵ و ۲۰)
-        $this->guard->assertCanPurchase($customer, $product, $store, $price);
+        // بقیه‌ی دروازه‌ها پیش از هر تغییر مالی (بند ۱۵ و ۲۰). manualPanel
+        // هم پاس داده می‌شود تا اگر پنل صریحاً انتخاب شده، ظرفیتِ همان
+        // پنل سنجیده شود، نه کلِ دسته‌بندی (بند ۶۵ سند v2.1).
+        $this->guard->assertCanPurchase($customer, $product, $store, $price, manualPanel: $manualPanel);
 
         // ── مرحله‌ی ۱: تسویه‌ی مالی، اتمیک ──────────────────────────
         $order = DB::transaction(function () use ($customer, $product, $store, $salesChannel, $price, $operation) {
@@ -152,6 +154,25 @@ class PurchaseService
                 'sales_channel' => $salesChannel,
                 'status' => Order::STATUS_PENDING,
             ]));
+
+            // رزرو اتمیکِ سهمیه‌ی فروش (بند ۶۱ سند v2.1) — مرجعِ واقعی،
+            // نه assertSaleLimitNotReached بالا که فقط یک پیش‌بررسیِ
+            // بدون قفل بود. این یک UPDATE شرطیِ تک‌دستور است، پس دو خرید
+            // هم‌زمان روی همین ردیفِ محصول سریالایز می‌شوند و مجموعشان
+            // هرگز از sale_limit عبور نمی‌کند — برخلاف یک SELECT-بعد-UPDATE
+            // که در آن دو خرید می‌توانند هر دو COUNT قدیمی را ببینند.
+            // Renewal این شمارنده را دست نمی‌زند (renews_account_id ست
+            // است، واحدِ جدیدی فروخته نمی‌شود).
+            $reserved = Product::query()
+                ->whereKey($product->id)
+                ->where(function ($q) {
+                    $q->whereNull('sale_limit')->orWhereColumn('units_sold', '<', 'sale_limit');
+                })
+                ->update(['units_sold' => DB::raw('units_sold + 1')]);
+
+            if ($reserved !== 1) {
+                throw new PurchaseNotAllowedException('ظرفیت فروش این محصول تکمیل شده است.');
+            }
 
             if (! $price->isFree()) {
                 // Debit اول (بند ۱۳): از کیف‌پول مشتری در Context خودش.

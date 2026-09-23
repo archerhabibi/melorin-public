@@ -137,11 +137,16 @@ class AccountService
             // زندگی می‌کند (بند ۱۲ و ۱۳).
             $isTest = true;
 
-            // ۱. انتخاب سرور — دستی یا خودکار بسته به تنظیمات دسته‌بندی (بند ۶)
-            $panel = $manualPanel ?? $this->serverSelection->select($product->category);
+            // ۱. انتخاب و رزروِ سرور — دستی یا خودکار بسته به تنظیمات
+            // دسته‌بندی (بند ۶؛ رزروِ ضدِ Race طبق فاز A2 سند v2.1، بند ۶۵
+            // — همان قاعده‌ی ProvisioningService، چون همین دو ستون
+            // (active_accounts_count/capacity) روی همین ServerPanel مشترک‌اند).
+            $panel = $manualPanel
+                ? ($manualPanel->reserveCapacitySlot() ? $manualPanel : null)
+                : $this->serverSelection->selectAndReserve($product->category);
 
             if (! $panel) {
-                throw new \RuntimeException('هیچ سرور فعالی برای این دسته‌بندی در دسترس نیست.');
+                throw new \RuntimeException('هیچ سرور فعال و دارای ظرفیت آزادی برای این دسته‌بندی در دسترس نیست.');
             }
 
             // ۲. ثبت سفارش با وضعیت pending
@@ -204,6 +209,9 @@ class AccountService
             $result = $driver->createAccount($panel, $panelRequest);
 
             if (! $result->success) {
+                // اکانت روی پنل ساخته نشد، پس رزروِ ظرفیت آزاد می‌شود.
+                $panel->releaseCapacitySlot();
+
                 // اکانت تست رایگان است، پس چیزی برای بازگشت وجود ندارد.
                 $order->update(['status' => 'failed']);
 
@@ -247,10 +255,14 @@ class AccountService
                 ]);
 
                 $order->update(['status' => 'account_created']);
-                $panel->increment('active_accounts_count');
+                // ظرفیت از قبل رزرو شده بود؛ اینجا فقط تثبیت می‌شود.
             } catch (\Throwable $e) {
+                $cleanedUpOnPanel = false;
+
                 try {
                     $driver->deleteAccount($panel, $username);
+                    $cleanedUpOnPanel = true;
+
                     Log::warning('orphan_account_compensated', [
                         'panel_id' => $panel->id,
                         'panel_username' => $username,
@@ -266,6 +278,12 @@ class AccountService
                         'original_error' => $e->getMessage(),
                         'cleanup_error' => $cleanupError->getMessage(),
                     ]);
+                }
+
+                // فقط وقتی رزرو را پس می‌دهیم که واقعاً از پنل پاک شده
+                // باشد؛ وگرنه اکانتِ یتیم همچنان آن ظرفیت را اشغال کرده.
+                if ($cleanedUpOnPanel) {
+                    $panel->releaseCapacitySlot();
                 }
 
                 throw $e;

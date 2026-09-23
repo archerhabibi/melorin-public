@@ -6,8 +6,8 @@ use App\Exceptions\InsufficientBalanceException;
 use App\Exceptions\ProductNotSellableException;
 use App\Exceptions\ResellerScopeViolationException;
 use App\Models\CustomerAccount;
-use App\Models\Order;
 use App\Models\Product;
+use App\Models\ServerPanel;
 use App\Services\Core\ServerSelection\ServerSelectionStrategy;
 use App\Services\Core\Store\StoreContext;
 use App\Services\Core\WalletService;
@@ -54,12 +54,22 @@ class PurchaseGuard
         StoreContext $store,
         PriceSnapshot $price,
         bool $usesWallet = true,
+        ?ServerPanel $manualPanel = null,
+        bool $checkServerAvailability = true,
     ): void {
         $this->assertStoreOperational($store);
         $this->assertCustomerAllowed($customer, $store);
         $this->assertProductAvailable($product, $store);
         $this->assertSaleLimitNotReached($product);
-        $this->assertServerAvailable($product);
+
+        // تمدید ($checkServerAvailability=false از RenewalService) روی
+        // سرورِ *موجودِ* همان اکانت انجام می‌شود، نه یک سرورِ تازه‌انتخاب‌شده؛
+        // پس اینجا معنا ندارد — از وقتی select() ظرفیت را هم می‌سنجد (بند
+        // ۶۵)، اجرای این چک برای تمدید می‌توانست یک تمدیدِ کاملاً معتبر را
+        // فقط به این دلیل که دسته‌بندی‌اش پر است رد کند.
+        if ($checkServerAvailability) {
+            $this->assertServerAvailable($product, $manualPanel);
+        }
 
         if ($usesWallet && ! $price->isFree()) {
             $this->assertCustomerCanPay($customer, $price);
@@ -128,22 +138,20 @@ class PurchaseGuard
     }
 
     /**
-     * محدودیت تعداد فروش محصول (بند ۱۵ — sale limit).
+     * محدودیت تعداد فروش محصول (بند ۱۵ بلوپرینت / بند ۶۱ سند v2.1).
      *
-     * فقط سفارش‌هایی شمرده می‌شوند که واقعاً به نتیجه رسیده‌اند؛ سفارش
-     * شکست‌خورده یا بازگشت‌خورده نباید سهمیه را بسوزاند.
+     * این فقط یک پیش‌بررسیِ سریع و بدون قفل است — همان‌طور که مقدار
+     * `units_sold` در لحظه‌ی خواندنش نشان می‌دهد، نه لحظه‌ی مصرفش؛ دو
+     * درخواست هم‌زمان می‌توانند هر دو از همین‌جا عبور کنند. مرجعِ واقعی
+     * و ضدِ Race، رزروِ اتمیکِ داخل تراکنشِ خرید است
+     * (`PurchaseService::execute` → `UPDATE products SET units_sold = units_sold + 1
+     * WHERE units_sold < sale_limit`)؛ همان‌جاست که واقعاً فروشِ بیش از
+     * ظرفیت (Oversell) غیرممکن می‌شود، نه اینجا. این چک فقط برای رد سریع
+     * و بدون لمسِ کیف‌پول است، دقیقاً مثل assertPending در PaymentService.
      */
     protected function assertSaleLimitNotReached(Product $product): void
     {
-        if (! $product->sale_limit) {
-            return;
-        }
-
-        $sold = Order::where('product_id', $product->id)
-            ->whereIn('status', [Order::STATUS_PAID, Order::STATUS_PROVISIONING, Order::STATUS_ACCOUNT_CREATED])
-            ->count();
-
-        if ($sold >= $product->sale_limit) {
+        if ($product->sale_limit !== null && $product->units_sold >= $product->sale_limit) {
             throw new PurchaseNotAllowedException('ظرفیت فروش این محصول تکمیل شده است.');
         }
     }
@@ -154,11 +162,32 @@ class PurchaseGuard
      * این چک عمداً پیش از هر کسری انجام می‌شود: اگر هیچ سروری در دسترس
      * نباشد، بدترین کار این است که اول پول مشتری کسر شود و بعد بفهمیم
      * جایی برای ساخت اکانت نیست.
+     *
+     * از فاز A2 سند v2.1 (بند ۶۵)، `select()` سرورهایی که به `capacity`
+     * رسیده‌اند را هم کنار می‌گذارد، پس این چک واقعاً «فعال و دارای
+     * ظرفیت آزاد» را می‌سنجد. با این‌حال چیزی رزرو نمی‌کند — فقط پیش‌بررسی
+     * سریع است؛ رزروِ واقعیِ ضدِ Race داخل `ProvisioningService::provision`
+     * با `selectAndReserve()`/`reserveCapacitySlot()` انجام می‌شود.
      */
-    protected function assertServerAvailable(Product $product): void
+    protected function assertServerAvailable(Product $product, ?ServerPanel $manualPanel = null): void
     {
+        // اگر پنل صریحاً انتخاب شده (ادمین/کانال)، باید همان یکی را
+        // بسنجیم، نه این‌که select() کلِ دسته‌بندی را بگردد — چون ممکن
+        // است همان پنلِ انتخاب‌شده ظرفیت آزاد داشته باشد درحالی‌که
+        // «کم‌بارترینِ» دسته‌بندی از نگاه select() پر است، یا برعکس.
+        if ($manualPanel) {
+            $hasCapacity = $manualPanel->status === 'active'
+                && ($manualPanel->capacity === null || $manualPanel->active_accounts_count < $manualPanel->capacity);
+
+            if (! $hasCapacity) {
+                throw new PurchaseNotAllowedException('پنل انتخاب‌شده فعال نیست یا به ظرفیت رسیده است.');
+            }
+
+            return;
+        }
+
         if (! $this->serverSelection->select($product->category)) {
-            throw new PurchaseNotAllowedException('در حال حاضر سرور فعالی برای این محصول در دسترس نیست.');
+            throw new PurchaseNotAllowedException('در حال حاضر سرور فعال و دارای ظرفیت آزادی برای این محصول در دسترس نیست.');
         }
     }
 

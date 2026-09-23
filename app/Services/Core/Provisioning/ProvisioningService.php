@@ -86,16 +86,27 @@ class ProvisioningService
         }
 
         $product = $order->product;
-        $panel = $manualPanel ?? $this->serverSelection->select($product->category);
+
+        // فاز A2 سند v2.1 (بند ۶۵ — Capacity): انتخاب و رزروِ ظرفیت یک
+        // قدمِ اتمیک است، نه یک select-و-بعد-increment جدا؛ پایین‌تر
+        // توضیح داده شده که چرا. پنلِ دستیِ ادمین/کانال هم از همین قاعده
+        // مستثنا نیست — انتخابِ دستی، ظرفیت واقعیِ پنل را زیاد نمی‌کند.
+        $panel = $manualPanel
+            ? ($manualPanel->reserveCapacitySlot() ? $manualPanel : null)
+            : $this->serverSelection->selectAndReserve($product->category);
 
         if (! $panel) {
             // این هم یک تلاش حساب می‌شود؛ وگرنه شمارنده صفر می‌ماند و
             // retry (یا retry_then_refund) هرگز به سقف نمی‌رسید.
             $order->update(['provision_attempts' => (int) $order->provision_attempts + 1]);
 
-            $this->recordFailure($order, 'هیچ سرور فعالی برای این دسته‌بندی در دسترس نیست.');
+            $reason = $manualPanel
+                ? 'پنل انتخاب‌شده به ظرفیت رسیده است.'
+                : 'هیچ سرور فعال و دارای ظرفیت آزادی برای این دسته‌بندی در دسترس نیست.';
 
-            throw new ProvisioningFailedException('هیچ سرور فعالی برای این دسته‌بندی در دسترس نیست.');
+            $this->recordFailure($order, $reason);
+
+            throw new ProvisioningFailedException($reason);
         }
 
         $order->update([
@@ -137,13 +148,16 @@ class ProvisioningService
         } catch (\Throwable $e) {
             // استثنای غیرمنتظره (قطعی شبکه، خطای درایور) هم دقیقاً مثل
             // پاسخ ناموفق پنل رفتار می‌کند — نباید به بیرون نشت کند و
-            // سفارش را در وضعیت provisioning معلق بگذارد.
+            // سفارش را در وضعیت provisioning معلق بگذارد. اکانتی روی پنل
+            // واقعاً ساخته نشده، پس رزرو ظرفیت آزاد می‌شود.
+            $panel->releaseCapacitySlot();
             $this->recordFailure($order, $e->getMessage(), $operation);
 
             throw new ProvisioningFailedException("خطا در ارتباط با پنل: {$e->getMessage()}", previous: $e);
         }
 
         if (! $result->success) {
+            $panel->releaseCapacitySlot();
             $this->recordFailure($order, (string) $result->errorMessage, $operation);
 
             throw new ProvisioningFailedException("ساخت اکانت روی پنل ناموفق بود: {$result->errorMessage}");
@@ -180,12 +194,21 @@ class ProvisioningService
                     'next_provision_retry_at' => null,
                 ]);
 
-                $panel->increment('active_accounts_count');
+                // ظرفیت از قبل رزرو شده بود (بالای همین متد)؛ اینجا فقط
+                // تثبیت می‌شود، دیگر افزایشی در کار نیست.
 
                 return $account;
             });
         } catch (\Throwable $e) {
-            $this->rollbackOnPanel($panel, $username);
+            // اکانت واقعاً روی پنل ساخته شده بود. اگر پاک‌کردنش از پنل
+            // موفق شود، آن واحد ظرفیت واقعاً آزاد شده و رزرو را پس
+            // می‌دهیم؛ اگر موفق نشود، اکانتِ یتیم همچنان آن ظرفیت را
+            // مصرف می‌کند — آزادکردنِ رزرو در آن حالت یعنی فروختن دوباره‌ی
+            // چیزی که فیزیکاً هنوز اشغال است.
+            if ($this->rollbackOnPanel($panel, $username)) {
+                $panel->releaseCapacitySlot();
+            }
+
             $this->recordFailure($order, "ثبت اکانت در دیتابیس شکست خورد: {$e->getMessage()}", $operation);
 
             throw new ProvisioningFailedException('ثبت اکانت ناموفق بود.', previous: $e);
@@ -263,16 +286,20 @@ class ProvisioningService
      * نقطه بهترین کاری که می‌شود کرد این است که ادمین بداند یک اکانت
      * یتیم با این نام روی این پنل هست.
      */
-    protected function rollbackOnPanel(ServerPanel $panel, string $username): void
+    protected function rollbackOnPanel(ServerPanel $panel, string $username): bool
     {
         try {
             PanelDriverFactory::make($panel->panel_type)->deleteAccount($panel, $username);
+
+            return true;
         } catch (\Throwable $e) {
             Log::critical('orphan_panel_account', [
                 'panel_id' => $panel->id,
                 'username' => $username,
                 'cleanup_error' => $e->getMessage(),
             ]);
+
+            return false;
         }
     }
 

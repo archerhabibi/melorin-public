@@ -4,6 +4,7 @@ namespace App\Services\Core\Purchase;
 
 use App\Models\Operation;
 use App\Models\Order;
+use App\Models\Product;
 use App\Services\Core\OperationService;
 use App\Services\Core\Store\StoreContext;
 use App\Services\Core\WalletService;
@@ -101,6 +102,16 @@ class RefundService
                 'failure_reason' => $reason,
                 'next_provision_retry_at' => null,
             ]);
+
+            // آزادسازی سهمیه‌ی فروش (بند ۶۱ سند v2.1) — فقط برای سفارش
+            // خرید، نه تمدید: تمدید هیچ‌وقت این شمارنده را رزرو نکرده
+            // بود (RenewalService مسیر جداست)، پس اینجا نباید کم شود.
+            if (! $order->isRenewal()) {
+                Product::query()
+                    ->where('id', $order->product_id)
+                    ->where('units_sold', '>', 0)
+                    ->decrement('units_sold');
+            }
 
             return $refunded;
         });
