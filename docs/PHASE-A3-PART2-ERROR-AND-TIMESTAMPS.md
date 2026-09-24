@@ -85,3 +85,7 @@ php artisan test tests/Feature/Provisioning/ProvisioningAttemptTrackingTest.php
 
 اقلامِ ۸ تا ۱۰: تستِ Duplicate Retry، و اطمینانِ صریح در سطحِ کیف‌پول از
 اینکه retry هیچ Debit جدیدی نمی‌سازد.
+
+**به‌روزرسانی:** این سه مورد در
+[docs/PHASE-A3-PART3-RETRY-TESTS.md](./PHASE-A3-PART3-RETRY-TESTS.md)
+اضافه شدند — فازِ A3 دیگر بخشِ باقی‌مانده ندارد.

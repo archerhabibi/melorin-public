@@ -10,22 +10,23 @@ use App\Models\ProvisioningAttempt;
 use App\Models\ServerPanel;
 use App\Models\User;
 use App\Services\Core\Provisioning\ProvisioningFailedException;
+use App\Services\Core\Provisioning\ProvisioningService;
+use App\Services\Core\Purchase\PurchaseNotAllowedException;
 use App\Services\Core\Purchase\PurchaseService;
 use App\Services\Core\Store\IdentityService;
 use App\Services\Core\Store\StoreContext;
 use App\Services\Core\WalletService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
- * فاز A3 سند v2.1 (بند ۶۹) — اقلام ۱ تا ۷: ایجاد ProvisioningAttempt،
- * ثبت operation_id/attempt_number/status، و error/started_at/finished_at.
- *
- * پوشش سناریوهای Retry/Duplicate Retry (اقلام ۸ تا ۱۰) عمداً اینجا
- * نیست؛ فقط بررسی می‌شود که خودِ رکورد تلاش، با مقادیر درست، برای هر
- * مسیر (موفق/شکست پنل/بدون ظرفیت) ساخته و به‌روزرسانی می‌شود.
+ * فاز A3 سند v2.1 (بند ۶۹) — اقلام ۱ تا ۱۰ (کاملِ فاز):
+ * ایجاد ProvisioningAttempt، ثبت operation_id/attempt_number/status،
+ * error/started_at/finished_at، تست Retry، تست Duplicate Retry، و
+ * اطمینان از عدم Debit مجدد.
  */
 class ProvisioningAttemptTrackingTest extends TestCase
 {
@@ -212,13 +213,18 @@ class ProvisioningAttemptTrackingTest extends TestCase
     }
 
     #[Test]
-    public function retrying_a_failed_order_records_a_second_attempt_with_the_next_number(): void
+    public function retrying_a_failed_order_succeeds_and_records_the_next_attempt_without_a_new_debit(): void
     {
+        Cache::flush();
+        // اقلام ۸ و ۱۰ — بند ۷۵ سند: «اگر Purchase قبلاً Debit شده باشد
+        // و Provisioning Retry شود، Customer Debit = 0 در Retry».
         $this->panelFails();
+
+        $customer = $this->buyer(500000);
 
         try {
             $this->purchase->purchase(
-                $this->buyer(),
+                $customer,
                 $this->makeProduct(),
                 StoreContext::main(),
                 idempotencyKey: 'attempt:retry:1',
@@ -230,6 +236,11 @@ class ProvisioningAttemptTrackingTest extends TestCase
 
         $order = Order::firstOrFail();
 
+        // Debit خرید (main_price=100000) قبلاً در مرحله‌ی ۱ (قبل از
+        // Provisioning) قطعی شده — چه Provisioning موفق شود چه نه.
+        $balanceAfterFailedPurchase = $this->wallet->getBalance($customer);
+        $this->assertSame(400000.0, $balanceAfterFailedPurchase);
+
         $this->panelSucceeds();
 
         try {
@@ -237,12 +248,76 @@ class ProvisioningAttemptTrackingTest extends TestCase
         } catch (ProvisioningFailedException) {
         }
 
+        // اقلام ۸ — تست Retry: تلاشِ دوم با شماره‌ی درست و نتیجه‌ی درست
+        // ثبت شده.
         $attempts = $order->provisioningAttempts()->orderBy('attempt_number')->get();
 
         $this->assertCount(2, $attempts);
         $this->assertSame(1, $attempts[0]->attempt_number);
         $this->assertSame(ProvisioningAttempt::STATUS_FAILED, $attempts[0]->status);
         $this->assertSame(2, $attempts[1]->attempt_number);
-        $this->assertSame(ProvisioningAttempt::STATUS_SUCCEEDED, $attempts[1]->status);
+        $this->assertSame(
+    ProvisioningAttempt::STATUS_SUCCEEDED,
+    $attempts[1]->status,
+    'Retry attempt failed: '.$attempts[1]->error
+);
+
+        // اقلام ۱۰ — عدم Debit مجدد: retry موفق، اما موجودی همان مقدارِ
+        // بعد از خریدِ اول است؛ هیچ کسرِ دومی رخ نداده.
+        $this->assertSame($balanceAfterFailedPurchase, $this->wallet->getBalance($customer));
+    }
+
+    #[Test]
+    public function a_concurrent_duplicate_retry_is_rejected_without_a_new_attempt_or_debit(): void
+    {
+        // اقلام ۹ — تست Duplicate Retry: claimForRetry یک UPDATE شرطی
+        // است (بند ۲۵/فاز ۱۱). این تست دقیقاً همان شرط را شبیه‌سازی
+        // می‌کند: فرآیندِ اول سفارش را برای retry «claim» کرده
+        // (status → provisioning) اما هنوز provision() را صدا نزده؛
+        // فرآیندِ دوم (retryProvisioning تکراری) باید رد شود.
+        $this->panelFails();
+
+        $customer = $this->buyer(500000);
+
+        try {
+            $this->purchase->purchase(
+                $customer,
+                $this->makeProduct(),
+                StoreContext::main(),
+                idempotencyKey: 'attempt:dup-retry:1',
+            );
+
+            $this->fail('شکست پنل باید استثنا می‌داد.');
+        } catch (ProvisioningFailedException) {
+        }
+
+        $order = Order::firstOrFail();
+        $balanceAfterFailedPurchase = $this->wallet->getBalance($customer);
+
+        // فرآیندِ اول: claim موفق (provision_failed → provisioning).
+        $this->assertTrue(app(ProvisioningService::class)->claimForRetry($order));
+
+        $this->panelSucceeds();
+
+        // فرآیندِ دوم (تکراری/هم‌زمان): سفارش دیگر provision_failed
+        // نیست، پس claim دومی رد می‌شود — نه یک ProvisioningAttempt
+        // جدید ساخته می‌شود، نه Debit جدیدی می‌خورد.
+        $this->expectException(PurchaseNotAllowedException::class);
+
+        try {
+            $this->purchase->retryProvisioning($order->fresh());
+        } finally {
+            $this->assertCount(
+                1,
+                $order->provisioningAttempts()->get(),
+                'retry تکراری نباید ProvisioningAttempt جدیدی بسازد.'
+            );
+
+            $this->assertSame(
+                $balanceAfterFailedPurchase,
+                $this->wallet->getBalance($customer),
+                'retry تکراری نباید Debit جدیدی ایجاد کند.'
+            );
+        }
     }
 }

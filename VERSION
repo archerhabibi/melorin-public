@@ -1,4 +1,37 @@
-﻿3.1.7 — فاز A3 (سند v2.1، بند ۶۹)، اقلام ۵ تا ۷: error/started_at/finished_at
+﻿3.1.8 — فاز A3 (سند v2.1، بند ۶۹) کامل شد: اقلام ۸ تا ۱۰ (Retry/Duplicate Retry/عدم Debit مجدد)
+
+جزئیات کامل: docs/PHASE-A3-PART3-RETRY-TESTS.md
+
+سه قلمِ آخرِ فازِ A3. بندِ ۷۵ (retry بدون Debit مجدد) و بندِ ۲۵/فاز ۱۱
+(claimForRetry به‌عنوان قفلِ اتمیکِ ضدِ retry تکراری) از قبل در کد
+پیاده‌سازی شده بودند؛ این پچ چیزی در منطقِ کسب‌وکار عوض نمی‌کند، فقط سه
+تستِ جدید اضافه می‌کند که آن رفتار را مستقیماً روی رکوردهایِ
+ProvisioningAttempt هم verify می‌کنند (چیزی که FailurePolicyTest، چون
+قبل از خودِ جدولِ provisioning_attempts نوشته شده بود، پوشش نمی‌داد).
+
+=== تغییرات ===
+هیچ تغییری در کدِ Production نیست — فقط تست:
+- tests/Feature/Provisioning/ProvisioningAttemptTrackingTest.php (فایلِ
+  موجود، نه جدید):
+  - retrying_a_failed_order_succeeds_and_records_the_next_attempt_without_a_new_debit
+    (اقلامِ ۸ و ۱۰): خرید با شکستِ پنل → موجودی دقیقاً main_price کم
+    می‌شود → retryProvisioning موفق → دو ProvisioningAttempt
+    (failed سپس succeeded) → موجودی بعدِ retry دقیقاً همان مقدارِ
+    قبل از retry (بدون کسرِ دوم).
+  - a_concurrent_duplicate_retry_is_rejected_without_a_new_attempt_or_debit
+    (قلمِ ۹): سفارش با claimForRetry مستقیم «claim» می‌شود (شبیه‌سازیِ
+    فرآیندِ اول)، سپس retryProvisioning تکراری روی همان سفارش
+    PurchaseNotAllowedException می‌دهد؛ نه ProvisioningAttempt جدیدی
+    ساخته می‌شود، نه موجودی تغییر می‌کند.
+
+=== اجرا ===
+    php artisan test tests/Feature/Provisioning/ProvisioningAttemptTrackingTest.php
+
+با این پچ، فازِ A3 سند v2.1 (بندِ ۶۹) کاملاً پیاده و تست شده است.
+
+---
+
+3.1.7 — فاز A3 (سند v2.1، بند ۶۹)، اقلام ۵ تا ۷: error/started_at/finished_at
 
 جزئیات کامل: docs/PHASE-A3-PART2-ERROR-AND-TIMESTAMPS.md
 
