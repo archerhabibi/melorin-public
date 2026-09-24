@@ -47,10 +47,37 @@ class ProvisioningAttemptTrackingTest extends TestCase
         $this->identity = app(IdentityService::class);
     }
 
-    protected function panelSucceeds(): void
+    /**
+     * باگ واقعی که این helper رفع می‌کند: Http::fake() در لاراول فراخوانی‌های
+     * متوالی‌اش را merge می‌کند، نه replace — و در تطبیق، اولین callback ثبت‌شده
+     * که یک پاسخ (غیر null) برمی‌گرداند برنده است، نه آخرین‌ای که فراخوانی
+     * شده. یعنی اگر یک تست ابتدا panelFails() (یک catch-all بدون شرط) و بعد
+     * panelSucceeds() را صدا بزند، همان catch-all اولی هنوز در صفِ callbackها
+     * جلوتر است و برای هر درخواستی برنده می‌ماند — panelSucceeds() عملاً
+     * بی‌اثر می‌شود. راه‌حل: فقط یک‌بار Http::fake() ثبت می‌شود؛ خودِ closure در
+     * لحظه‌ی هر درخواست، وضعیتِ فعلیِ پنل ($this->panelIsUp) را می‌خواند —
+     * panelFails()/panelSucceeds() فقط همین پرچم را عوض می‌کنند.
+     */
+    protected bool $panelIsUp = true;
+
+    protected bool $httpFaked = false;
+
+    protected function ensurePanelHttpFaked(): void
     {
+        if ($this->httpFaked) {
+            return;
+        }
+
         Http::fake(function ($request) {
             $url = $request->url();
+
+            if (! $this->panelIsUp) {
+                if ($request->method() === 'GET' && str_contains($url, '/panel/api/clients/get/')) {
+                    return Http::response(['success' => false, 'obj' => null, 'msg' => 'record not found'], 200);
+                }
+
+                return Http::response(['success' => false, 'msg' => 'panel down'], 500);
+            }
 
             if (
                 $request->method() === 'GET'
@@ -75,19 +102,20 @@ class ProvisioningAttemptTrackingTest extends TestCase
                 'obj' => ['inboundIds' => [1], 'flow' => '', 'limitIp' => 0, 'subId' => 'sub123'],
             ], 200);
         });
+
+        $this->httpFaked = true;
+    }
+
+    protected function panelSucceeds(): void
+    {
+        $this->panelIsUp = true;
+        $this->ensurePanelHttpFaked();
     }
 
     protected function panelFails(): void
     {
-        Http::fake(function ($request) {
-            $url = $request->url();
-
-            if ($request->method() === 'GET' && str_contains($url, '/panel/api/clients/get/')) {
-                return Http::response(['success' => false, 'obj' => null, 'msg' => 'record not found'], 200);
-            }
-
-            return Http::response(['success' => false, 'msg' => 'panel down'], 500);
-        });
+        $this->panelIsUp = false;
+        $this->ensurePanelHttpFaked();
     }
 
     protected function makeProduct(bool $withPanel = true): Product
@@ -189,27 +217,56 @@ class ProvisioningAttemptTrackingTest extends TestCase
     #[Test]
     public function no_available_panel_still_records_a_failed_attempt(): void
     {
-        // بدون اتصال هیچ پنلی به دسته‌بندی، selectAndReserve همیشه null
-        // برمی‌گرداند — این هم باید یک تلاشِ ثبت‌شده حساب شود (بند ۲۵).
+        // این سناریو عمداً از purchase() مستقیم با یک محصولِ بدونِ پنل
+        // اجرا نمی‌شود: PurchaseGuard::assertServerAvailable() دقیقاً
+        // برای همین حالت قبل از هر Debit سفارش را رد می‌کند (بند ۴۵/۶۳
+        // سند — «هیچ Debit قبل از Validation کامل انجام نشود»)، یعنی
+        // purchase() اصلاً به ProvisioningService نمی‌رسد و هیچ Attempt‌ی
+        // ساخته نمی‌شود — که خودش رفتار درستی است.
+        //
+        // سناریوی واقعی‌ای که «نبودِ پنل در لحظه‌ی Provisioning» را
+        // می‌سنجد retryProvisioning() است: guard دوباره صدا زده نمی‌شود
+        // (فقط claimForRetry، یک قفلِ اتمیکِ روی وضعیتِ سفارش)، پس اگر
+        // بینِ خریدِ اول و retry تنها پنلِ متصل به دسته‌بندی از دسترس خارج
+        // شود، selectAndReserve در provision() واقعاً null برمی‌گرداند و
+        // این باید یک تلاشِ ثبت‌شده‌ی FAILED باشد (بند ۶۹).
+        $this->panelFails();
+
+        $customer = $this->buyer();
+        $product = $this->makeProduct();
+
         try {
             $this->purchase->purchase(
-                $this->buyer(),
-                $this->makeProduct(withPanel: false),
+                $customer,
+                $product,
                 StoreContext::main(),
                 idempotencyKey: 'attempt:no-panel:1',
             );
+
+            $this->fail('شکست پنل باید استثنا می‌داد.');
+        } catch (ProvisioningFailedException) {
+        }
+
+        $order = Order::firstOrFail();
+
+        // پنلِ تنها-موجود را غیرفعال می‌کنیم تا در retry هیچ پنلِ واجدِ
+        // شرایطی برای دسته‌بندی باقی نماند.
+        ServerPanel::query()->update(['status' => 'inactive']);
+
+        try {
+            $this->purchase->retryProvisioning($order);
 
             $this->fail('نبودِ پنل باید استثنا می‌داد.');
         } catch (ProvisioningFailedException) {
         }
 
-        $order = Order::firstOrFail();
-        $attempts = $order->provisioningAttempts()->get();
+        $attempts = $order->provisioningAttempts()->orderBy('attempt_number')->get();
 
-        $this->assertCount(1, $attempts);
-        $this->assertSame(ProvisioningAttempt::STATUS_FAILED, $attempts->first()->status);
-        $this->assertNotNull($attempts->first()->error);
-        $this->assertNotNull($attempts->first()->finished_at);
+        $this->assertCount(2, $attempts);
+        $this->assertSame(2, $attempts[1]->attempt_number);
+        $this->assertSame(ProvisioningAttempt::STATUS_FAILED, $attempts[1]->status);
+        $this->assertNotNull($attempts[1]->error);
+        $this->assertNotNull($attempts[1]->finished_at);
     }
 
     #[Test]

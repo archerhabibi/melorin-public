@@ -112,9 +112,21 @@ class SanaeiDriver implements PanelDriverInterface, SupportsServerStatus, Suppor
             function () use ($panel, $templateUsername) {
                 $response = $this->client($panel)->get("/panel/api/clients/get/{$templateUsername}");
 
-                $obj = $response->json('obj') ?? $response->json();
+                $body = $response->json();
+                $obj = $body['obj'] ?? null;
 
-                if (! $response->successful() || empty($obj)) {
+                // باگ واقعی: قبلاً `$response->json('obj') ?? $response->json()`
+                // بود — وقتی پنل پاسخِ کاملاً معمولیِ «پیدا نشد» را می‌دهد
+                // (HTTP 200 + success=false + obj=null)، obj خالی با کل
+                // بدنه‌ی پاسخ (که خودش خالی نیست) جایگزین می‌شد و این تابع
+                // آن را «کلاینتِ نمونه‌ی معتبر با inboundIds خالی» تلقی
+                // می‌کرد. نتیجه‌ی نادرست هم ۵ دقیقه Cache می‌شد، یعنی حتی
+                // بعد از برگشتنِ پنل، اولین retry همچنان همان خطای غلط
+                // («به هیچ inbound‌ای متصل نیست») را می‌گرفت. اینجا صریحاً
+                // فلگِ success پنل هم بررسی می‌شود تا این حالت واقعاً یک
+                // Exception بدهد (و در نتیجه هرگز Cache نشود)، نه یک نتیجه‌ی
+                // «موفقِ» جعلی.
+                if (! $response->successful() || ($body['success'] ?? false) !== true || empty($obj)) {
                     throw new PanelConnectionException(
                         "کلاینت نمونه‌ی '{$templateUsername}' روی پنل سنایی '{$panel->name}' پیدا نشد. ابتدا یک کاربر با این نام و تنظیمات درست (پروتکل/inbound) دستی روی پنل بسازید."
                     );
