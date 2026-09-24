@@ -6,6 +6,7 @@ use App\DataTransferObjects\PanelAccountRequest;
 use App\Models\Account;
 use App\Models\Operation;
 use App\Models\Order;
+use App\Models\ProvisioningAttempt;
 use App\Models\ServerPanel;
 use App\Services\Core\Panels\PanelDriverFactory;
 use App\Services\Core\Panels\SupportsUsernameAvailability;
@@ -99,12 +100,13 @@ class ProvisioningService
             // این هم یک تلاش حساب می‌شود؛ وگرنه شمارنده صفر می‌ماند و
             // retry (یا retry_then_refund) هرگز به سقف نمی‌رسید.
             $order->update(['provision_attempts' => (int) $order->provision_attempts + 1]);
+            $attempt = $this->beginAttempt($order, $operation);
 
             $reason = $manualPanel
                 ? 'پنل انتخاب‌شده به ظرفیت رسیده است.'
                 : 'هیچ سرور فعال و دارای ظرفیت آزادی برای این دسته‌بندی در دسترس نیست.';
 
-            $this->recordFailure($order, $reason);
+            $this->recordFailure($order, $reason, $operation, $attempt);
 
             throw new ProvisioningFailedException($reason);
         }
@@ -113,6 +115,8 @@ class ProvisioningService
             'status' => Order::STATUS_PROVISIONING,
             'provision_attempts' => $order->provision_attempts + 1,
         ]);
+
+        $attempt = $this->beginAttempt($order, $operation);
 
         $username = $this->generateUsername(
             order: $order,
@@ -151,14 +155,14 @@ class ProvisioningService
             // سفارش را در وضعیت provisioning معلق بگذارد. اکانتی روی پنل
             // واقعاً ساخته نشده، پس رزرو ظرفیت آزاد می‌شود.
             $panel->releaseCapacitySlot();
-            $this->recordFailure($order, $e->getMessage(), $operation);
+            $this->recordFailure($order, $e->getMessage(), $operation, $attempt);
 
             throw new ProvisioningFailedException("خطا در ارتباط با پنل: {$e->getMessage()}", previous: $e);
         }
 
         if (! $result->success) {
             $panel->releaseCapacitySlot();
-            $this->recordFailure($order, (string) $result->errorMessage, $operation);
+            $this->recordFailure($order, (string) $result->errorMessage, $operation, $attempt);
 
             throw new ProvisioningFailedException("ساخت اکانت روی پنل ناموفق بود: {$result->errorMessage}");
         }
@@ -168,7 +172,7 @@ class ProvisioningService
         // همان اکانت یتیمی می‌شود که این معماری برای جلوگیری از آن
         // طراحی شده.
         try {
-            return DB::transaction(function () use ($order, $panel, $product, $username, $clientUuid, $result, $expiresAt, $trafficBytes) {
+            return DB::transaction(function () use ($order, $panel, $product, $username, $clientUuid, $result, $expiresAt, $trafficBytes, $attempt) {
                 $account = Account::create([
                     'user_id' => $order->user_id,
                     'customer_account_id' => $order->customer_account_id,
@@ -197,6 +201,8 @@ class ProvisioningService
                 // ظرفیت از قبل رزرو شده بود (بالای همین متد)؛ اینجا فقط
                 // تثبیت می‌شود، دیگر افزایشی در کار نیست.
 
+                $attempt->update(['status' => ProvisioningAttempt::STATUS_SUCCEEDED]);
+
                 return $account;
             });
         } catch (\Throwable $e) {
@@ -209,10 +215,27 @@ class ProvisioningService
                 $panel->releaseCapacitySlot();
             }
 
-            $this->recordFailure($order, "ثبت اکانت در دیتابیس شکست خورد: {$e->getMessage()}", $operation);
+            $this->recordFailure($order, "ثبت اکانت در دیتابیس شکست خورد: {$e->getMessage()}", $operation, $attempt);
 
             throw new ProvisioningFailedException('ثبت اکانت ناموفق بود.', previous: $e);
         }
+    }
+
+    /**
+     * بند ۶۹ (فاز A3) — ثبتِ شروعِ یک تلاشِ Provisioning، مستقل از
+     * شمارنده‌ی orders.provision_attempts. attempt_number از همان
+     * شمارنده خوانده می‌شود چون در این نقطه از متد، همیشه یک قدم قبل‌تر
+     * (بالای همین متد) افزایش یافته است — یعنی این تلاش، تلاش شماره‌ی
+     * آن مقدار است.
+     */
+    protected function beginAttempt(Order $order, ?Operation $operation): ProvisioningAttempt
+    {
+        return ProvisioningAttempt::create([
+            'order_id' => $order->id,
+            'operation_id' => $operation?->id,
+            'attempt_number' => (int) $order->provision_attempts,
+            'status' => ProvisioningAttempt::STATUS_STARTED,
+        ]);
     }
 
     /**
@@ -263,12 +286,27 @@ class ProvisioningService
             && $order->provision_attempts < self::MAX_ATTEMPTS;
     }
 
-    public function recordFailure(Order $order, string $reason, ?Operation $operation = null): void
-    {
+    public function recordFailure(
+        Order $order,
+        string $reason,
+        ?Operation $operation = null,
+        ?ProvisioningAttempt $attempt = null,
+    ): void {
         $order->update([
             'status' => Order::STATUS_PROVISION_FAILED,
             'failure_reason' => mb_substr($reason, 0, 1000),
         ]);
+
+        // اگر تماس‌گیرنده (مثلاً کاتچِ استثنای غیرمنتظره‌ی
+        // PurchaseService::retryProvisioning) رکورد تلاش را در دست
+        // ندارد، آخرین تلاشِ «شروع‌شده»ی همین سفارش را پیدا می‌کنیم تا
+        // بدون Attempt یتیم در وضعیت started نماند.
+        $attempt ??= $order->provisioningAttempts()
+            ->where('status', ProvisioningAttempt::STATUS_STARTED)
+            ->latest('id')
+            ->first();
+
+        $attempt?->update(['status' => ProvisioningAttempt::STATUS_FAILED]);
 
         $operation?->markFailed($reason);
 

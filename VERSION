@@ -1,4 +1,50 @@
-﻿3.1.5 — فاز A2 (سند v2.1 Phase 2): Financial Concurrency — Sale Limit + Capacity
+﻿3.1.6 — فاز A3 (سند v2.1، بند ۶۹)، اقلام ۱ تا ۴: Provisioning Attempt Tracking
+
+جزئیات کامل: docs/PHASE-A3-PROVISIONING-ATTEMPT-TRACKING.md
+
+این پچ فقط چهار قلمِ اولِ فازِ A3 را پیاده می‌کند (طبق درخواستِ فعلی):
+ایجادِ مدلِ ProvisioningAttempt و ثبتِ operation_id، attempt_number و
+status برای هر تلاش. ستون‌های error/started_at/finished_at و تست‌های
+Retry/Duplicate Retry/عدمِ Debit مجدد (اقلامِ ۵ تا ۱۰) عمداً در این پچ
+نیستند و برای فاز بعدی می‌مانند.
+
+=== تغییرات ===
+- Migration جدید: جدولِ provisioning_attempts (order_id، operation_id
+  nullable، attempt_number، status، timestamps).
+- مدلِ جدید App\Models\ProvisioningAttempt (+ Factory).
+- Order::provisioningAttempts() — رابطه‌ی hasMany جدید.
+- ProvisioningService::provision(): برای هر تلاشِ واقعی (چه موفق، چه
+  ناموفق، چه «بدون پنلِ در دسترس») یک ردیفِ ProvisioningAttempt با
+  attempt_number برابرِ orders.provision_attempts در همان لحظه، و
+  operation_id از همان Operation-ی که فراخوان (Purchase/retry) با خود
+  آورده، ساخته می‌شود. وضعیت با موفقیت/شکستِ همان تلاش به succeeded/failed
+  به‌روزرسانی می‌شود.
+- ProvisioningService::recordFailure(): پارامترِ اختیاریِ $attempt گرفت؛
+  اگر تماس‌گیرنده آن را نداشته باشد (مسیرِ کاتچِ استثنای غیرمنتظره‌ی
+  PurchaseService::retryProvisioning)، آخرین تلاشِ started همان سفارش را
+  خودش پیدا و failed می‌کند — تا هیچ تلاشی بدون نتیجه در started نماند.
+- اثرِ جانبیِ کوچک: شاخه‌ی «بدون پنلِ در دسترس» تا امروز $operation را به
+  recordFailure پاس نمی‌داد (ناهماهنگ با سه شاخه‌ی دیگر)؛ همین‌جا هم‌راستا
+  شد.
+
+=== تست ===
+جدید: tests/Feature/Provisioning/ProvisioningAttemptTrackingTest.php —
+تلاشِ موفق (succeeded + operation_id درست)، شکستِ پاسخِ پنل، نبودِ پنلِ
+در دسترس، و یک retry که تلاشِ دومِ succeeded با attempt_number=2 می‌سازد.
+
+=== اجرا ===
+    php artisan migrate
+    php artisan test
+این پچ بدون PHP نوشته شده؛ نتیجه‌ی واقعی php artisan test را بفرستید.
+
+=== فاز بعدی ===
+باقی‌مانده‌ی فاز A3: ستون‌های error/started_at/finished_at روی
+provisioning_attempts، تستِ Duplicate Retry، و اطمینانِ صریح از اینکه
+retry هیچ Debit جدیدی نمی‌سازد (اقلامِ ۵ تا ۱۰).
+
+---
+
+3.1.5 — فاز A2 (سند v2.1 Phase 2): Financial Concurrency — Sale Limit + Capacity
 
 جزئیات کامل: docs/PHASE-A2-FINANCIAL-CONCURRENCY.md
 (از این پچ به بعد، شماره‌ی Phase خودِ سند با پیشوند A می‌آید: Phase 2 سند → فاز A2،
