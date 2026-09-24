@@ -1,5 +1,9 @@
 # فاز A3 (سند v2.1) — Provisioning Attempt Tracking (اقلام ۱ تا ۴)
 
+> **به‌روزرسانی:** اقلامِ ۵ تا ۷ (error/started_at/finished_at) در پچِ
+> بعدی اضافه شدند — ر.ک.
+> [docs/PHASE-A3-PART2-ERROR-AND-TIMESTAMPS.md](./PHASE-A3-PART2-ERROR-AND-TIMESTAMPS.md).
+
 مرجع: بند ۶۹ سند («Provisioning Attempt Tracking») و «Phase A3 — Provisioning
 Tracking» در فازبندی اجرایی.
 

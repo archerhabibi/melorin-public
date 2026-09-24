@@ -1,4 +1,46 @@
-﻿3.1.6 — فاز A3 (سند v2.1، بند ۶۹)، اقلام ۱ تا ۴: Provisioning Attempt Tracking
+﻿3.1.7 — فاز A3 (سند v2.1، بند ۶۹)، اقلام ۵ تا ۷: error/started_at/finished_at
+
+جزئیات کامل: docs/PHASE-A3-PART2-ERROR-AND-TIMESTAMPS.md
+
+ادامه‌ی بی‌واسطه‌ی 3.1.6 (که فقط اقلامِ ۱ تا ۴ را پیاده کرده بود). این پچ سه
+ستونِ باقی‌مانده‌ی ProvisioningAttempt را اضافه می‌کند: error، started_at،
+finished_at. اقلامِ ۸ تا ۱۰ (تستِ Retry/Duplicate Retry و اطمینانِ صریح از
+عدمِ Debit مجدد) همچنان برای فاز بعدی می‌مانند.
+
+=== تغییرات ===
+- Migration جدیدِ ALTER (نه ویرایشِ Migration قبلی، چون آن یکی احتمالاً
+  از قبل روی سیستمِ شما اجرا شده): جدولِ provisioning_attempts سه ستونِ
+  nullable گرفت: error (text)، started_at (timestamp)، finished_at
+  (timestamp).
+- ProvisioningAttempt: سه فیلد به fillable اضافه شد؛ started_at و
+  finished_at در casts به datetime تبدیل شدند.
+- ProvisioningService::beginAttempt(): حالا started_at را هم موقعِ ساختِ
+  رکورد می‌نویسد.
+- مسیرِ موفقِ provision(): finished_at را هم‌زمان با status=succeeded
+  می‌نویسد.
+- ProvisioningService::recordFailure(): همان reason که تا امروز فقط روی
+  orders.failure_reason می‌رفت، حالا (بعد از یک mb_substr مشترک) روی
+  attempt.error هم نوشته می‌شود — چون failure_reason با هر retry جدید
+  بازنویسی می‌شود و تاریخچه‌ی شکستِ تلاش‌های قبلی را پاک می‌کند.
+  finished_at هم همان لحظه ثبت می‌شود.
+
+=== تست ===
+tests/Feature/Provisioning/ProvisioningAttemptTrackingTest.php به‌روزرسانی
+شد (نه فایلِ جدید): بررسیِ error=null و started_at/finished_at پر برای
+تلاشِ موفق؛ بررسیِ error غیرِ null و finished_at پر برای دو مسیرِ شکست.
+
+=== اجرا ===
+    php artisan migrate
+    php artisan test tests/Feature/Provisioning/ProvisioningAttemptTrackingTest.php
+این پچ هم بدون PHP نوشته شده؛ نتیجه‌ی واقعیِ php artisan test را بفرستید.
+
+=== فاز بعدی ===
+باقی‌مانده‌ی فازِ A3: تستِ Duplicate Retry و اطمینانِ صریح از عدمِ Debit
+مجدد در سطحِ کیف‌پول (اقلامِ ۸ تا ۱۰).
+
+---
+
+3.1.6 — فاز A3 (سند v2.1، بند ۶۹)، اقلام ۱ تا ۴: Provisioning Attempt Tracking
 
 جزئیات کامل: docs/PHASE-A3-PROVISIONING-ATTEMPT-TRACKING.md
 

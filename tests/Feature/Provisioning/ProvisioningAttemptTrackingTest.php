@@ -20,8 +20,8 @@ use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
- * فاز A3 سند v2.1 (بند ۶۹) — اقلام ۱ تا ۴: ایجاد ProvisioningAttempt و
- * ثبت operation_id/attempt_number/status.
+ * فاز A3 سند v2.1 (بند ۶۹) — اقلام ۱ تا ۷: ایجاد ProvisioningAttempt،
+ * ثبت operation_id/attempt_number/status، و error/started_at/finished_at.
  *
  * پوشش سناریوهای Retry/Duplicate Retry (اقلام ۸ تا ۱۰) عمداً اینجا
  * نیست؛ فقط بررسی می‌شود که خودِ رکورد تلاش، با مقادیر درست، برای هر
@@ -150,6 +150,10 @@ class ProvisioningAttemptTrackingTest extends TestCase
         $this->assertSame(1, $attempts->first()->attempt_number);
         $this->assertSame(ProvisioningAttempt::STATUS_SUCCEEDED, $attempts->first()->status);
         $this->assertSame($operation->id, $attempts->first()->operation_id);
+        $this->assertNull($attempts->first()->error);
+        $this->assertNotNull($attempts->first()->started_at);
+        $this->assertNotNull($attempts->first()->finished_at);
+        $this->assertTrue($attempts->first()->finished_at->gte($attempts->first()->started_at));
     }
 
     #[Test]
@@ -175,6 +179,10 @@ class ProvisioningAttemptTrackingTest extends TestCase
         $this->assertCount(1, $attempts);
         $this->assertSame(1, $attempts->first()->attempt_number);
         $this->assertSame(ProvisioningAttempt::STATUS_FAILED, $attempts->first()->status);
+        $this->assertNotNull($attempts->first()->error);
+        $this->assertStringContainsString('پنل', $attempts->first()->error);
+        $this->assertNotNull($attempts->first()->started_at);
+        $this->assertNotNull($attempts->first()->finished_at);
     }
 
     #[Test]
@@ -199,6 +207,8 @@ class ProvisioningAttemptTrackingTest extends TestCase
 
         $this->assertCount(1, $attempts);
         $this->assertSame(ProvisioningAttempt::STATUS_FAILED, $attempts->first()->status);
+        $this->assertNotNull($attempts->first()->error);
+        $this->assertNotNull($attempts->first()->finished_at);
     }
 
     #[Test]

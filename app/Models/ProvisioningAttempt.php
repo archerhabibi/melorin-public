@@ -11,8 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *
  * برخلاف orders.provision_attempts (که فقط یک شمارنده است)، هر ردیف
  * این جدول دقیقاً یک تلاش را نمایندگی می‌کند و به Operation (در صورت
- * وجود idempotency key) متصل است. ستون‌های error/started_at/finished_at
- * عمداً در این فاز نیستند (ر.ک. Migration).
+ * وجود idempotency key) متصل است.
  */
 class ProvisioningAttempt extends Model
 {
@@ -26,6 +25,12 @@ class ProvisioningAttempt extends Model
 
     protected $fillable = [
         'order_id', 'operation_id', 'attempt_number', 'status',
+        'error', 'started_at', 'finished_at',
+    ];
+
+    protected $casts = [
+        'started_at' => 'datetime',
+        'finished_at' => 'datetime',
     ];
 
     public function order(): BelongsTo

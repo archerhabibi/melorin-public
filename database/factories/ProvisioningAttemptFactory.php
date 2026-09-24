@@ -17,6 +17,9 @@ class ProvisioningAttemptFactory extends Factory
             'operation_id' => null,
             'attempt_number' => 1,
             'status' => ProvisioningAttempt::STATUS_STARTED,
+            'error' => null,
+            'started_at' => now(),
+            'finished_at' => null,
         ];
     }
 }

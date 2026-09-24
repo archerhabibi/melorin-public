@@ -201,7 +201,10 @@ class ProvisioningService
                 // ظرفیت از قبل رزرو شده بود (بالای همین متد)؛ اینجا فقط
                 // تثبیت می‌شود، دیگر افزایشی در کار نیست.
 
-                $attempt->update(['status' => ProvisioningAttempt::STATUS_SUCCEEDED]);
+                $attempt->update([
+                    'status' => ProvisioningAttempt::STATUS_SUCCEEDED,
+                    'finished_at' => now(),
+                ]);
 
                 return $account;
             });
@@ -235,6 +238,7 @@ class ProvisioningService
             'operation_id' => $operation?->id,
             'attempt_number' => (int) $order->provision_attempts,
             'status' => ProvisioningAttempt::STATUS_STARTED,
+            'started_at' => now(),
         ]);
     }
 
@@ -292,9 +296,11 @@ class ProvisioningService
         ?Operation $operation = null,
         ?ProvisioningAttempt $attempt = null,
     ): void {
+        $truncatedReason = mb_substr($reason, 0, 1000);
+
         $order->update([
             'status' => Order::STATUS_PROVISION_FAILED,
-            'failure_reason' => mb_substr($reason, 0, 1000),
+            'failure_reason' => $truncatedReason,
         ]);
 
         // اگر تماس‌گیرنده (مثلاً کاتچِ استثنای غیرمنتظره‌ی
@@ -306,7 +312,11 @@ class ProvisioningService
             ->latest('id')
             ->first();
 
-        $attempt?->update(['status' => ProvisioningAttempt::STATUS_FAILED]);
+        $attempt?->update([
+            'status' => ProvisioningAttempt::STATUS_FAILED,
+            'error' => $truncatedReason,
+            'finished_at' => now(),
+        ]);
 
         $operation?->markFailed($reason);
 
