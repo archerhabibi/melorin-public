@@ -23,14 +23,25 @@
         </div>
 
         {{--
-            دکمه‌ی «خرید» عمداً اینجا نیست: طبق فازبندی Roadmap (بند ۴)،
-            Checkout بدون Cart (W2 بند ۳) و WebsitePurchaseFacade هنوز
-            ساخته نشده‌اند — افزودنش الان یعنی دکمه‌ای که یا اصلاً کار
-            نمی‌کند یا مجبورمان می‌کند منطق خرید را نصفه اینجا بنویسیم؛
-            هر دو دقیقاً همان چیزی است که بند ۹۰/۹۳ منع کرده.
+            پچ 3.2.1 — W2 بند ۳: Checkout مستقیم بدون Cart، بدون
+            Guest (Guest Checkout فاز W3 است، هنوز نیست). کاربر مهمان
+            به login هدایت می‌شود؛ بعد از ورود Laravel خودش او را به
+            همین صفحه برمی‌گرداند (intended URL استاندارد).
         --}}
-        <div class="mt-6 rounded border border-dashed border-gray-300 px-4 py-3 text-sm text-gray-500">
-            خرید مستقیم از سایت در فاز بعدی (W2 ادامه) فعال می‌شود.
-        </div>
+        @auth
+            <a href="{{ $store->isReseller()
+                    ? route('website.store.checkout.show', ['slug' => $store->reseller->slug, 'product' => $product->id])
+                    : route('website.checkout.show', $product->id) }}"
+               class="mt-6 inline-block px-4 py-2 rounded text-white text-sm font-medium" style="background: var(--brand)">
+                خرید این تعرفه
+            </a>
+        @else
+            <a href="{{ $store->isReseller()
+                    ? route('website.store.login', $store->reseller->slug)
+                    : route('website.login') }}"
+               class="mt-6 inline-block px-4 py-2 rounded text-white text-sm font-medium" style="background: var(--brand)">
+                برای خرید وارد شوید
+            </a>
+        @endauth
     </div>
 @endsection

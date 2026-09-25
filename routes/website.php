@@ -4,7 +4,9 @@ use App\Channels\Website\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Channels\Website\Http\Controllers\Auth\NewPasswordController;
 use App\Channels\Website\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Channels\Website\Http\Controllers\Auth\RegisteredUserController;
+use App\Channels\Website\Http\Controllers\Shared\CheckoutController;
 use App\Channels\Website\Http\Controllers\Shared\HomeController;
+use App\Channels\Website\Http\Controllers\Shared\OrderController;
 use App\Channels\Website\Http\Controllers\Shared\ProductController;
 use Illuminate\Support\Facades\Route;
 
@@ -60,7 +62,18 @@ $registerSharedRoutes = function () {
 
     Route::middleware(['auth', 'store.customer'])->group(function () {
         Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
-        // فاز W2 به بعد: /account, /checkout, /orders, ... اینجا اضافه می‌شوند.
+
+        // --- Commerce هسته‌ای، بدون Cart (فاز W2 بند ۳) ---
+        // throttle روی POST checkout طبق تصمیم بخش ۹.۶ (Rate Limiting
+        // روی مسیرهای حساس) — یک مسیر مالی است، نباید بدون محدودیت بماند.
+        Route::get('/products/{product}/checkout', [CheckoutController::class, 'show'])->name('checkout.show');
+        Route::post('/products/{product}/checkout', [CheckoutController::class, 'store'])
+            ->middleware('throttle:10,1')
+            ->name('checkout.store');
+
+        Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
+
+        // فاز W4 به بعد: /wallet, /orders (فهرست کامل), /accounts, ... اینجا اضافه می‌شوند.
     });
 };
 

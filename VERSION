@@ -1,4 +1,42 @@
-﻿3.1.8 — فاز A3 (سند v2.1، بند ۶۹) کامل شد: اقلام ۸ تا ۱۰ (Retry/Duplicate Retry/عدم Debit مجدد)
+﻿3.2.1 — فاز W2 (بخشی): Checkout بدون Cart + Wallet Payment + نمایش سفارش
+
+جزئیات کامل: docs/PHASE-W2-COMMERCE-CORE.md
+
+ادامه‌ی بی‌واسطه‌ی 3.2.0 (W0-W1). زنجیره‌ی حداقلی قابل‌فروش را کامل
+می‌کند: Product → Checkout → Wallet Payment → Order Display. فقط
+پرداخت کیف‌پول؛ Zarinpal و Card-to-Card عمداً در این پچ نیستند (دلیل
+در سند بالا). Guest Checkout و فهرست کامل سفارش‌ها به‌ترتیب فازهای W3
+و W4 می‌مانند.
+
+=== تغییرات ===
+- WebsitePurchaseFacade (Adapter نازک روی PurchaseService::purchase،
+  هم‌الگو با WebsiteCatalogFacade/WebsiteWalletFacade).
+- CheckoutController: GET صفحه‌ی تایید (توکن Idempotency تازه هر بار)،
+  POST اجرای خرید؛ throttle:10,1 روی POST.
+- OrderController::show: نمایش تک‌سفارش + وضعیت Provisioning، با چک
+  مالکیت (customer_account_id) و Context (reseller_id).
+- Route/View جدید برای Main و Reseller (همان الگوی registerSharedRoutes
+  موجود)؛ فعال‌سازی دکمه‌ی خرید در product-show.blade.php که در ۳.۲.۰
+  عمداً placeholder بود.
+
+=== تست ===
+جدید: tests/Feature/Website/CheckoutFlowTest.php — مهمان→ریدایرکت
+login، خرید موفق کیف‌پول، Idempotency (دو بار ارسال همان توکن = یک
+خرید)، موجودی ناکافی، عدم دسترسی به سفارش کاربر دیگر.
+
+=== اجرا ===
+    php artisan route:list --name=website
+    php artisan test --filter=CheckoutFlowTest
+این پچ هم بدون PHP نوشته شده؛ نتیجه‌ی واقعی php artisan test را
+بفرستید — دقیقاً همان محدودیتی که پچ ۳.۲.۰ (W0-W1) هم داشت.
+
+=== فاز بعدی ===
+باقی‌مانده‌ی W2: Zarinpal (Direct Payment) و Card-to-Card. سپس W3
+(Guest Checkout) طبق ترتیب Roadmap.
+
+---
+
+3.1.8 — فاز A3 (سند v2.1، بند ۶۹) کامل شد: اقلام ۸ تا ۱۰ (Retry/Duplicate Retry/عدم Debit مجدد)
 
 جزئیات کامل: docs/PHASE-A3-PART3-RETRY-TESTS.md
 
