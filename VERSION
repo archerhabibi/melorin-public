@@ -1,4 +1,43 @@
-﻿3.2.1 — فاز W2 (بخشی): Checkout بدون Cart + Wallet Payment + نمایش سفارش
+﻿3.2.2 — فاز W2 (بخش دوم): شارژ کیف‌پول با Zarinpal + Card-to-Card
+
+جزئیات کامل: docs/PHASE-W2-PART2-PAYMENT-METHODS.md
+
+ادامه‌ی بی‌واسطه‌ی 3.2.1. Zarinpal/Card-to-Card فقط کیف‌پول را شارژ
+می‌کنند (PaymentService::initiate فقط purpose=wallet_charge می‌پذیرد)؛
+تکمیل خرید هم‌چنان با برگشت کاربر به Checkout انجام می‌شود، نه ادامه‌ی
+خودکار.
+
+=== تغییرات ===
+- WebsiteChargeFacade (Adapter روی PaymentService::initiate).
+- ChargeController: GET/POST /wallet/charge (انتخاب مبلغ/روش؛ Zarinpal
+  redirect، Card-to-Card به صفحه‌ی رسید).
+- ReceiptController: GET/POST /wallet/charge/{payment}/receipt، مالکیت
+  با همان Payment::findPendingForReceipt ربات.
+- تغییر کد مشترک (خارج از کانال Website): TelegramReceiptController
+  حالا هم file_id تلگرام و هم رسید آپلودشده‌ی سایت (پیشوند website:،
+  دیسک خصوصی local) را نمایش می‌دهد.
+- لینک «شارژ کیف پول» در checkout-show.blade.php جایگزین placeholder شد.
+
+=== تست ===
+جدید: tests/Feature/Website/WalletChargeFlowTest.php — ریدایرکت
+Zarinpal (Http::fake)، مسیر Card-to-Card تا آپلود رسید، عدم دسترسی به
+رسید/پرداخت کاربر دیگر.
+
+=== اجرا ===
+    php artisan route:list --name=website
+    php artisan test --filter=WalletChargeFlowTest
+    php artisan test --filter=PaymentServiceTest
+باز هم بدون PHP نوشته شده؛ نتیجه‌ی واقعی اجرا را بفرستید. علاوه بر
+این، چون TelegramReceiptController (کد مشترک) تغییر کرده، حتماً
+PaymentServiceTest و هر تست دیگری که آن Endpoint را پوشش می‌دهد هم
+اجرا و چک شود.
+
+=== فاز بعدی ===
+W2 عملاً کامل شد. قدم بعدی: W3 (Guest Checkout).
+
+---
+
+3.2.1 — فاز W2 (بخشی): Checkout بدون Cart + Wallet Payment + نمایش سفارش
 
 جزئیات کامل: docs/PHASE-W2-COMMERCE-CORE.md
 

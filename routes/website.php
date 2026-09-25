@@ -4,10 +4,12 @@ use App\Channels\Website\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Channels\Website\Http\Controllers\Auth\NewPasswordController;
 use App\Channels\Website\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Channels\Website\Http\Controllers\Auth\RegisteredUserController;
+use App\Channels\Website\Http\Controllers\Shared\ChargeController;
 use App\Channels\Website\Http\Controllers\Shared\CheckoutController;
 use App\Channels\Website\Http\Controllers\Shared\HomeController;
 use App\Channels\Website\Http\Controllers\Shared\OrderController;
 use App\Channels\Website\Http\Controllers\Shared\ProductController;
+use App\Channels\Website\Http\Controllers\Shared\ReceiptController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -73,7 +75,18 @@ $registerSharedRoutes = function () {
 
         Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
 
-        // فاز W4 به بعد: /wallet, /orders (فهرست کامل), /accounts, ... اینجا اضافه می‌شوند.
+        // --- شارژ کیف‌پول: Zarinpal + Card-to-Card (فاز W2 بند ۵، ادامه‌ی پچ 3.2.1) ---
+        Route::get('/wallet/charge', [ChargeController::class, 'show'])->name('wallet.charge.show');
+        Route::post('/wallet/charge', [ChargeController::class, 'store'])
+            ->middleware('throttle:10,1')
+            ->name('wallet.charge.store');
+
+        Route::get('/wallet/charge/{payment}/receipt', [ReceiptController::class, 'show'])->name('wallet.receipt.show');
+        Route::post('/wallet/charge/{payment}/receipt', [ReceiptController::class, 'store'])
+            ->middleware('throttle:10,1')
+            ->name('wallet.receipt.store');
+
+        // فاز W4 به بعد: /orders (فهرست کامل), /accounts, ... اینجا اضافه می‌شوند.
     });
 };
 

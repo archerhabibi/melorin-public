@@ -21,7 +21,10 @@
 
         @if($balance < $price)
             <div class="mt-4 rounded border border-amber-200 bg-amber-50 text-amber-800 px-4 py-3 text-sm">
-                موجودی کیف پول شما برای این خرید کافی نیست. افزایش موجودی (Zarinpal/Card-to-Card) در پچ بعدی فعال می‌شود.
+                موجودی کیف پول شما برای این خرید کافی نیست.
+                <a href="{{ $store->isReseller() ? route('website.store.wallet.charge.show', $store->reseller->slug) : route('website.wallet.charge.show') }}"
+                   class="underline font-medium">شارژ کیف پول</a>
+                و سپس به همین صفحه برگردید.
             </div>
         @else
             {{-- فعلاً فقط پرداخت از کیف‌پول (W2 بند ۵ — Wallet Payment). --}}
