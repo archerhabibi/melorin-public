@@ -12,21 +12,18 @@ use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * فاز W3 بند ۱ — Guest Checkout Token: بدون نیاز به login یا
- * CustomerAccount برای شروع خرید (بند ۷ زیرسند). این کنترلر عمداً
- * پشت `auth` نیست — دقیقاً برعکس CheckoutController.
+ * Guest Checkout — Master 2.7 §3 / Website Contract §5.
  *
- * مسیر پرداخت واقعی (بند ۳) در GuestPurchaseController همین پوشه است،
- * نه اینجا — جداسازی عمدی: این کنترلر فقط «شروع نشست» است.
+ * Guest فقط *شروع* Checkout است؛ خرید نهایی فقط بعد از Login/Register.
+ * جریان: Product → فرم (email* · name · phone) → GuestCheckout(pending)
+ * → Pending Page → Login/Register → ادامه‌ی همان خرید (Checkout).
  *
- * مالکیت: طبق بخش ۱۰ Roadmap («تقسیم کار بین ۵ نفر»)، این پوشه
- * (`Controllers/Guest/`) و `views/website/guest/` انحصاراً مال نفر ۱
- * است. پچ 3.2.4 این فایل را از `Controllers/Shared/` به اینجا منتقل
- * کرد (بدون تغییر رفتار) تا مرز مالکیت برای Merge نهایی روشن باشد.
+ * این کنترلر هیچ User/CustomerAccount/Wallet/Order نمی‌سازد (G3).
+ * ادامه‌ی خرید بعد از Login/Register در Auth Controllerها با
+ * GuestCheckoutContinuation انجام می‌شود (G6).
  *
- * نام Cookie عمداً بدون پیشوند Context (main/reseller) است چون هر
- * توکن خودش reseller_id دارد و findActive() آن را با Context درخواست
- * تطبیق می‌دهد.
+ * نام Cookie عمداً بدون پیشوند Context است چون هر توکن reseller_id دارد و
+ * findActive() آن را با Context درخواست تطبیق می‌دهد (G5).
  */
 class GuestCheckoutController
 {
@@ -58,10 +55,11 @@ class GuestCheckoutController
 
     public function store(Request $request, int $product, StoreContext $store): RedirectResponse
     {
+        // G2: email تنها فیلد الزامی؛ name/phone اختیاری.
         $data = $request->validate([
-            'guest_name' => ['required', 'string', 'max:100'],
-            'guest_phone' => ['required', 'string', 'max:32'],
-            'guest_email' => ['nullable', 'email', 'max:190'],
+            'guest_email' => ['required', 'string', 'email', 'max:190'],
+            'guest_name' => ['nullable', 'string', 'max:100'],
+            'guest_phone' => ['nullable', 'string', 'max:32'],
         ]);
 
         $productModel = $this->catalog->findVisibleProduct($product, $store);
@@ -73,17 +71,26 @@ class GuestCheckoutController
         $guestCheckout = $this->guest->start(
             product: $productModel,
             store: $store,
-            name: $data['guest_name'],
-            phone: $data['guest_phone'],
-            email: $data['guest_email'] ?? null,
+            email: $data['guest_email'],
+            name: $data['guest_name'] ?? null,
+            phone: $data['guest_phone'] ?? null,
         );
 
-        // Cookie از طریق EncryptCookies middleware (گروه web) به‌صورت
-        // خودکار رمزنگاری و امضا می‌شود — دقیقاً همان «Cookie امضاشده»ی
-        // بند ۹.۳، بدون نیاز به پیاده‌سازی دستی HMAC.
+        // Cookie از طریق EncryptCookies (گروه web) رمزنگاری می‌شود.
+        $cookie = cookie(self::COOKIE_NAME, $guestCheckout->token, self::COOKIE_MINUTES);
+
+        // G7: تطابق با User موجود ⇒ هدایت به Login + Audit؛ هرگز Merge یا
+        // Login خودکار. نشست Guest می‌ماند تا بعد از Login خرید ادامه یابد.
+        if ($this->guest->detectCollision($guestCheckout)) {
+            return redirect()
+                ->to($this->websiteRoute($request, 'login'))
+                ->with('status', 'برای ادامه‌ی این خرید، لطفاً وارد حساب خود شوید.')
+                ->cookie($cookie);
+        }
+
         return redirect()
             ->to($this->websiteRoute($request, 'guest-checkout.pending'))
-            ->cookie(self::COOKIE_NAME, $guestCheckout->token, self::COOKIE_MINUTES);
+            ->cookie($cookie);
     }
 
     public function pending(Request $request, StoreContext $store): View|Response

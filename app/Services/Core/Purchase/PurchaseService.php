@@ -14,6 +14,7 @@ use App\Services\Core\OperationService;
 use App\Services\Core\Provisioning\ProvisioningFailedException;
 use App\Services\Core\Provisioning\ProvisioningFailureHandler;
 use App\Services\Core\Provisioning\ProvisioningService;
+use App\Services\Core\Store\EmailVerificationGate;
 use App\Services\Core\Store\StoreContext;
 use App\Services\Core\WalletService;
 use Illuminate\Support\Facades\DB;
@@ -68,6 +69,12 @@ class PurchaseService
         ?string $customUsername = null,
         ?string $idempotencyKey = null,
     ): Account {
+        // Master 2.7 G11 (فاز ۴): Userی که Email ثبت کرده ولی Verify نکرده
+        // نمی‌تواند خرید کند. قبل از ساخت Operation تا هیچ ردی از خرید ردشده
+        // نماند. تمدید (RenewalService) و retryProvisioning (سفارش از قبل
+        // پرداخت‌شده) عمداً مشمول این Gate نیستند.
+        app(EmailVerificationGate::class)->assertVerified($customer->user);
+
         $key = $idempotencyKey ?: sprintf(
             'purchase:%d:%d:%s', $customer->id, $product->id, now()->format('YmdHis')
         );

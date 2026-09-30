@@ -3,8 +3,11 @@
 namespace App\Channels\Website\Http\Controllers\Shared;
 
 use App\Channels\Website\Services\WebsiteChargeFacade;
+use App\Channels\Website\Services\WebsiteCatalogFacade;
 use App\Channels\Website\Support\CoreErrorMapper;
+use App\Channels\Website\Support\ResolvesWebsiteRouteNames;
 use App\Models\PaymentMethod;
+use App\Services\Core\Store\EmailNotVerifiedException;
 use App\Services\Core\Store\StoreContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -27,16 +30,23 @@ use Throwable;
  */
 class ChargeController
 {
+    use ResolvesWebsiteRouteNames;
+
+    /** کلید Session برای بازگشت به Checkout بعد از شارژ (D-3؛ شکاف C13). */
+    public const RETURN_SESSION_KEY = 'charge_return_checkout_url';
+
     public function __construct(
         protected WebsiteChargeFacade $charge,
         protected CoreErrorMapper $errors,
+        protected WebsiteCatalogFacade $catalog,
     ) {}
 
-    public function show(StoreContext $store): View
+    public function show(Request $request, StoreContext $store): View
     {
         return view('website.shared.wallet-charge', [
             'methods' => PaymentMethod::query()->where('status', 'active')->get(),
             'store' => $store,
+            'returnProduct' => $request->integer('product') ?: null,
         ]);
     }
 
@@ -45,7 +55,20 @@ class ChargeController
         $data = $request->validate([
             'amount' => ['required', 'numeric', 'min:10000'],
             'payment_method_id' => ['required', 'integer', 'exists:payment_methods,id'],
+            'return_product' => ['nullable', 'integer'],
         ]);
+
+        // D-3 (شکاف C13): بعد از شارژ، کاربر باید به Checkout همان Product
+        // برگردد (خرید خودکار ممنوع). فقط شناسه‌ی Productی که در همین Store
+        // قابل‌مشاهده است پذیرفته می‌شود؛ URL از کلاینت trusted نیست.
+        $request->session()->forget(self::RETURN_SESSION_KEY);
+
+        if (! empty($data['return_product']) && $this->catalog->findVisibleProduct((int) $data['return_product'], $store)) {
+            $request->session()->put(
+                self::RETURN_SESSION_KEY,
+                $this->websiteRoute($request, 'checkout.show', ['product' => (int) $data['return_product']])
+            );
+        }
 
         $method = PaymentMethod::query()->where('status', 'active')->findOrFail($data['payment_method_id']);
 
@@ -56,6 +79,12 @@ class ChargeController
                 amount: (float) $data['amount'],
                 store: $store,
             );
+        } catch (EmailNotVerifiedException) {
+            // G11: Wallet Charge تا تأیید Email مسدود است.
+            $request->session()->put('url.intended', $this->websiteRoute($request, 'wallet.charge.show'));
+
+            return redirect()->route('verification.notice')
+                ->with('status', 'برای شارژ کیف‌پول ابتدا ایمیل خود را تأیید کنید.');
         } catch (Throwable $e) {
             $mapped = $this->errors->map($e);
 

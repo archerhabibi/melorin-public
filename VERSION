@@ -1,3 +1,10 @@
+3.3.1 - فاز ۴ (Guest Cleanup): مدل Guest جدید، Email Verification + Gate در Core، Retention ۶۰ روزه، لینک بازگشت به Checkout، اصلاح .env.example
+
+جزئیات: docs/canonical/PHASE-4-GUEST-CLEANUP.md
+⚠️ تست‌ها نوشته شدند ولی اجرا نشده‌اند؛ قبل از Tag: php artisan migrate && php artisan test
+
+---
+
 3.3.0 - Release Website (W0-W8): پاک‌سازی نهایی، Audit و رفع باگ‌های پیدا‌شده در اجرای واقعی تست‌ها
 
 جزئیات: docs/RELEASE-3.3.0-AUDIT.md

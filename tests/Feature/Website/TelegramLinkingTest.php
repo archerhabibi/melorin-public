@@ -61,7 +61,7 @@ class TelegramLinkingTest extends TestCase
             route('website.identity.telegram.callback', $this->withValidState($this->validPayload()))
         );
 
-        $response->assertRedirect(route('website.identity.complete-profile.show'));
+        $response->assertRedirect(route('website.identity.profile.show'));
         $this->assertEquals(555000111, $user->fresh()->telegram_id);
     }
 

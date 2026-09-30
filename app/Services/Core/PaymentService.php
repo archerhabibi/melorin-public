@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Services\Core\Payments\InvalidPaymentTransitionException;
 use App\Services\Core\Payments\PaymentGatewayFactory;
 use App\Services\Core\Payments\PaymentStateMachine;
+use App\Services\Core\Store\EmailVerificationGate;
 use App\Services\Core\Store\IdentityService;
 use App\Services\Core\Store\StoreContext;
 use Illuminate\Database\Eloquent\Model;
@@ -80,6 +81,10 @@ class PaymentService
         ?Reseller $reseller = null,
         string $walletOwnerType = 'user',
     ): array {
+        // Master 2.7 G11 (فاز ۴): شارژ کیف‌پول (Direct Payment و Card-to-Card)
+        // برای Userی با Email تأییدنشده مسدود است.
+        app(EmailVerificationGate::class)->assertVerified($user);
+
         if ($amount <= 0) {
             throw new \InvalidArgumentException('مبلغ باید بزرگ‌تر از صفر باشد.');
         }

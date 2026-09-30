@@ -18,17 +18,17 @@
             @csrf
             <div>
                 <label class="block text-sm mb-1">نام و نام خانوادگی</label>
-                <input type="text" name="full_name" value="{{ old('full_name') }}" required autofocus
+                <input type="text" name="full_name" value="{{ old('full_name', $guestPrefill['name'] ?? '') }}" required autofocus
                        class="w-full rounded border-gray-300 focus:border-gray-500 focus:ring-0">
             </div>
             <div>
                 <label class="block text-sm mb-1">ایمیل</label>
-                <input type="email" name="email" value="{{ old('email') }}" required
+                <input type="email" name="email" value="{{ old('email', $guestPrefill['email'] ?? '') }}" required
                        class="w-full rounded border-gray-300 focus:border-gray-500 focus:ring-0">
             </div>
             <div>
                 <label class="block text-sm mb-1">شماره تماس (اختیاری)</label>
-                <input type="text" name="phone" value="{{ old('phone') }}"
+                <input type="text" name="phone" value="{{ old('phone', $guestPrefill['phone'] ?? '') }}"
                        class="w-full rounded border-gray-300 focus:border-gray-500 focus:ring-0">
             </div>
             <div>

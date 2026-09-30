@@ -19,6 +19,10 @@
                   action="{{ $store->isReseller() ? route('website.store.wallet.charge.store', $store->reseller->slug) : route('website.wallet.charge.store') }}"
                   class="mt-6 space-y-4">
                 @csrf
+                @if(! empty($returnProduct))
+                    {{-- D-3: بعد از شارژ به Checkout همین محصول برگرد (خرید خودکار ممنوع). --}}
+                    <input type="hidden" name="return_product" value="{{ (int) $returnProduct }}">
+                @endif
                 <div>
                     <label class="block text-sm text-gray-600 mb-1">مبلغ (تومان)</label>
                     <input type="number" name="amount" min="10000" step="1000" value="{{ old('amount') }}" required

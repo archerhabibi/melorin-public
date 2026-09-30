@@ -11,6 +11,7 @@ use App\Services\Core\Provisioning\ProvisioningFailedException;
 use App\Services\Core\Purchase\PurchaseNotAllowedException;
 use App\Services\Core\Purchase\ResellerDebtLimitException;
 use App\Services\Core\Renewal\RenewalFailedException;
+use App\Services\Core\Store\EmailNotVerifiedException;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -28,6 +29,7 @@ class CoreErrorMapper
     private const MAP = [
         InsufficientBalanceException::class => 'موجودی کیف پول شما برای این خرید کافی نیست.',
         ProductNotSellableException::class => 'این تعرفه در حال حاضر از این فروشگاه قابل خرید نیست.',
+        EmailNotVerifiedException::class => 'برای خرید یا شارژ کیف‌پول ابتدا ایمیل خود را تأیید کنید.',
         PurchaseNotAllowedException::class => 'این خرید در حال حاضر امکان‌پذیر نیست.',
         ResellerDebtLimitException::class => 'سقف اعتبار این فروشگاه به پایان رسیده؛ لطفاً با پشتیبانی تماس بگیرید.',
         ResellerScopeViolationException::class => 'این عملیات برای این فروشگاه مجاز نیست.',

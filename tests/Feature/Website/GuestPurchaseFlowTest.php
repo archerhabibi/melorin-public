@@ -2,122 +2,187 @@
 
 namespace Tests\Feature\Website;
 
-use App\Models\Category;
+use App\Models\CustomerAccount;
 use App\Models\GuestCheckout;
-use App\Models\Product;
+use App\Models\Order;
 use App\Models\User;
+use App\Services\Core\Store\IdentityService;
+use App\Services\Core\Store\StoreContext;
+use App\Services\Core\WalletService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Concerns\InteractsWithWebsiteFixtures;
 use Tests\TestCase;
 
 /**
- * پچ 3.2.4 — فاز W3 بند ۳، ۴، ۵ (نسخه‌ی محدود).
- * مرجع: docs/PHASE-W3-PART2-GUEST-PURCHASE.md
+ * فاز ۴ — Master 2.7 §3: G3–G7 (Pending → Login/Register → ادامه‌ی همان خرید،
+ * بدون User/CustomerAccount/Purchase تکراری، بدون Merge/Login خودکار).
+ * جایگزین نسخه‌ی قدیمی این فایل (که ساخت User از Guest را تأیید می‌کرد).
  */
 class GuestPurchaseFlowTest extends TestCase
 {
-    use RefreshDatabase;
+    use InteractsWithWebsiteFixtures, RefreshDatabase;
 
-    protected function makeProduct(): Product
+    protected function startGuest($product, string $email = 'newbie@example.test', array $extra = []): GuestCheckout
     {
-        $category = Category::factory()->create(['status' => 'active']);
+        $this->post(route('website.guest-checkout.store', $product->id), ['guest_email' => $email] + $extra);
 
-        return Product::factory()->create([
-            'category_id' => $category->id,
-            'main_price' => 120000,
-            'status' => 'active',
-        ]);
-    }
-
-    protected function startGuest(Product $product, string $phone = '09120000001', ?string $email = null): void
-    {
-        $this->post(route('website.guest-checkout.store', $product->id), [
-            'guest_name' => 'علی رضایی',
-            'guest_phone' => $phone,
-            'guest_email' => $email,
-        ]);
+        return GuestCheckout::query()->latest('id')->firstOrFail();
     }
 
     #[Test]
-    public function a_new_guest_is_logged_in_and_sent_straight_to_checkout(): void
+    public function the_pending_page_offers_login_and_register_not_a_purchase_button(): void
     {
-        $product = $this->makeProduct();
-        $this->startGuest($product);
-        $guest = GuestCheckout::query()->firstOrFail();
+        $product = $this->makeSellableProduct();
+        $guest = $this->startGuest($product);
 
-        $response = $this->withCookie('guest_checkout_token', $guest->token)
-            ->post(route('website.guest-checkout.purchase'));
-
-        $response->assertRedirect(route('website.checkout.show', $product->id));
-
-        $user = User::query()->where('phone', '09120000001')->firstOrFail();
-        $this->assertAuthenticatedAs($user);
-        $this->assertNull($user->password);
-        $this->assertEquals('website_guest_checkout', $user->joined_from);
-
-        $this->assertEquals('consumed', $guest->fresh()->status);
-
-        // مسیر بعدی همان Checkout تست‌شده‌ی موجود است.
-        $this->get(route('website.checkout.show', $product->id))->assertOk();
+        $this->withCookie('guest_checkout_token', $guest->token)
+            ->get(route('website.guest-checkout.pending'))
+            ->assertOk()
+            ->assertSee(route('website.login'), false)
+            ->assertSee(route('website.register'), false)
+            ->assertDontSee('تکمیل پرداخت');
     }
 
     #[Test]
-    public function a_guest_whose_phone_already_belongs_to_a_real_user_is_sent_to_login_not_auto_merged(): void
+    public function the_pending_page_hides_name_and_phone_when_not_provided(): void
     {
-        $product = $this->makeProduct();
-        User::factory()->create(['phone' => '09120000002']);
+        $product = $this->makeSellableProduct();
+        $guest = $this->startGuest($product);
 
-        $this->startGuest($product, phone: '09120000002');
-        $guest = GuestCheckout::query()->firstOrFail();
+        $this->withCookie('guest_checkout_token', $guest->token)
+            ->get(route('website.guest-checkout.pending'))
+            ->assertOk()
+            ->assertDontSee('شماره تماس')
+            ->assertDontSee('>نام<', false);
+    }
 
-        $response = $this->withCookie('guest_checkout_token', $guest->token)
-            ->post(route('website.guest-checkout.purchase'));
+    #[Test]
+    public function login_after_pending_continues_the_same_purchase(): void
+    {
+        $product = $this->makeSellableProduct();
+        User::factory()->create([
+            'telegram_id' => null, 'email' => 'member@example.test', 'password' => 'a-strong-password',
+            'email_verified_at' => now(),
+        ]);
 
-        $response->assertRedirect(route('website.login'));
-        $this->assertGuest();
+        // ایمیل Guest با ایمیل حساب فرق دارد ⇒ تصادم نیست؛ کاربر با حساب خودش وارد می‌شود.
+        $guest = $this->startGuest($product, 'other-guest@example.test');
 
-        // هیچ User جدیدی برای این شماره ساخته نشده — فقط همان قبلی وجود دارد.
-        $this->assertEquals(1, User::query()->where('phone', '09120000002')->count());
+        $this->withCookie('guest_checkout_token', $guest->token)
+            ->post(route('website.login.store'), ['email' => 'member@example.test', 'password' => 'a-strong-password'])
+            ->assertRedirect(route('website.checkout.show', $product->id));
+
+        $this->assertEquals('pending', $guest->fresh()->status); // تا خرید واقعی مصرف نمی‌شود
+    }
+
+    #[Test]
+    public function register_after_pending_prefills_the_form_and_returns_to_the_same_checkout_after_verification(): void
+    {
+        Notification::fake();
+        $product = $this->makeSellableProduct();
+        $guest = $this->startGuest($product, 'fresh@example.test', ['guest_name' => 'Mina', 'guest_phone' => '09121230000']);
+
+        $this->withCookie('guest_checkout_token', $guest->token)
+            ->get(route('website.register'))
+            ->assertOk()
+            ->assertSee('fresh@example.test')
+            ->assertSee('Mina')
+            ->assertSee('09121230000');
+
+        $usersBefore = User::query()->count();
+
+        $this->withCookie('guest_checkout_token', $guest->token)
+            ->post(route('website.register.store'), [
+                'full_name' => 'Mina', 'email' => 'fresh@example.test', 'phone' => '09121230000',
+                'password' => 'a-strong-password', 'password_confirmation' => 'a-strong-password',
+            ])
+            ->assertRedirect(route('verification.notice'))
+            ->assertSessionHas('url.intended', route('website.checkout.show', $product->id));
+
+        // دقیقاً یک User (از Register)، نه از Guest؛ هیچ CustomerAccount/Order ای هنوز نیست.
+        $this->assertEquals($usersBefore + 1, User::query()->count());
+        $this->assertEquals(0, CustomerAccount::query()->count());
+        $this->assertDatabaseCount('orders', 0);
         $this->assertEquals('pending', $guest->fresh()->status);
     }
 
     #[Test]
-    public function reusing_a_consumed_guest_token_is_rejected(): void
+    public function a_guest_email_matching_an_existing_user_is_sent_to_login_with_audit_and_no_merge(): void
     {
-        $product = $this->makeProduct();
-        $this->startGuest($product);
-        $guest = GuestCheckout::query()->firstOrFail();
+        $product = $this->makeSellableProduct();
+        $existing = User::factory()->create(['telegram_id' => null, 'email' => 'taken@example.test', 'password' => 'a-strong-password']);
+        $usersBefore = User::query()->count();
 
-        $this->withCookie('guest_checkout_token', $guest->token)->post(route('website.guest-checkout.purchase'));
+        $response = $this->post(route('website.guest-checkout.store', $product->id), ['guest_email' => 'taken@example.test']);
 
-        \Illuminate\Support\Facades\Auth::logout();
-
-        $this->withCookie('guest_checkout_token', $guest->token)
-            ->post(route('website.guest-checkout.purchase'))
-            ->assertNotFound();
-
-        $this->assertEquals(1, User::query()->where('phone', '09120000001')->count());
+        $response->assertRedirect(route('website.login'));
+        $response->assertCookie('guest_checkout_token');
+        $this->assertGuest();
+        $this->assertEquals($usersBefore, User::query()->count());
+        $this->assertDatabaseHas('audit_logs', [
+            'action' => 'identity.guest_collision_detected',
+            'target_type' => $existing->getMorphClass(),
+            'target_id' => $existing->id,
+        ]);
     }
 
     #[Test]
-    public function a_guest_originated_user_can_set_a_password_from_the_order_page(): void
+    public function a_colliding_phone_is_also_detected_when_provided(): void
     {
-        $product = $this->makeProduct();
-        $this->startGuest($product);
-        $guest = GuestCheckout::query()->firstOrFail();
+        $product = $this->makeSellableProduct();
+        User::factory()->create(['telegram_id' => null, 'phone' => '09125550009']);
 
-        $this->withCookie('guest_checkout_token', $guest->token)->post(route('website.guest-checkout.purchase'));
-        $user = User::query()->where('phone', '09120000001')->firstOrFail();
+        $this->post(route('website.guest-checkout.store', $product->id), [
+            'guest_email' => 'someone-else@example.test', 'guest_phone' => '09125550009',
+        ])->assertRedirect(route('website.login'));
 
-        $this->actingAs($user)
-            ->get(route('website.identity.complete-profile.show'))
-            ->assertOk();
+        $this->assertGuest();
+    }
 
-        $this->actingAs($user)->post(route('website.identity.complete-profile.store'), [
-            'password' => 'a-strong-password',
-            'password_confirmation' => 'a-strong-password',
-        ])->assertRedirect(route('website.home'));
+    #[Test]
+    public function after_a_collision_login_continues_the_same_purchase(): void
+    {
+        $product = $this->makeSellableProduct();
+        User::factory()->create([
+            'telegram_id' => null, 'email' => 'taken@example.test', 'password' => 'a-strong-password',
+            'email_verified_at' => now(),
+        ]);
 
-        $this->assertTrue(\Illuminate\Support\Facades\Hash::check('a-strong-password', $user->fresh()->password));
+        $response = $this->post(route('website.guest-checkout.store', $product->id), ['guest_email' => 'taken@example.test']);
+        $token = GuestCheckout::query()->firstOrFail()->token;
+
+        $this->withCookie('guest_checkout_token', $token)
+            ->post(route('website.login.store'), ['email' => 'taken@example.test', 'password' => 'a-strong-password'])
+            ->assertRedirect(route('website.checkout.show', $product->id));
+    }
+
+    #[Test]
+    public function completing_the_purchase_consumes_the_guest_session_and_creates_no_duplicates(): void
+    {
+        $this->fakeSanaeiPanel();
+        $product = $this->makeSellableProduct(mainPrice: 80000);
+        $user = User::factory()->create([
+            'telegram_id' => null, 'email' => 'buyer@example.test', 'password' => 'a-strong-password',
+            'email_verified_at' => now(),
+        ]);
+        $guest = $this->startGuest($product, 'other@example.test');
+
+        $customer = app(IdentityService::class)->resolveCustomerAccount($user, StoreContext::main());
+        app(WalletService::class)->credit($customer, 200000);
+
+        $this->actingAs($user)->withCookie('guest_checkout_token', $guest->token)
+            ->post(route('website.checkout.store', $product->id), ['idempotency_token' => 'guest-consume-1'])
+            ->assertRedirect();
+
+        $this->assertEquals('consumed', $guest->fresh()->status);
+        $this->assertEquals(1, Order::query()->where('customer_account_id', $customer->id)->count());
+        $this->assertEquals(1, CustomerAccount::query()->where('user_id', $user->id)->count());
+
+        // توکن مصرف‌شده دیگر قابل‌استفاده نیست.
+        $this->withCookie('guest_checkout_token', $guest->token)
+            ->get(route('website.guest-checkout.pending'))
+            ->assertNotFound();
     }
 }

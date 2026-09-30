@@ -22,7 +22,7 @@
         @if($balance < $price)
             <div class="mt-4 rounded border border-amber-200 bg-amber-50 text-amber-800 px-4 py-3 text-sm">
                 موجودی کیف پول شما برای این خرید کافی نیست.
-                <a href="{{ $store->isReseller() ? route('website.store.wallet.charge.show', $store->reseller->slug) : route('website.wallet.charge.show') }}"
+                <a href="{{ $store->isReseller() ? route('website.store.wallet.charge.show', ['slug' => $store->reseller->slug, 'product' => $product->id]) : route('website.wallet.charge.show', ['product' => $product->id]) }}"
                    class="underline font-medium">شارژ کیف پول</a>
                 و سپس به همین صفحه برگردید.
             </div>

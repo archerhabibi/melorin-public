@@ -2,10 +2,16 @@
 
 namespace App\Channels\Website\Http\Controllers\Shared;
 
+use App\Channels\Website\Http\Controllers\Guest\GuestCheckoutController;
 use App\Channels\Website\Services\WebsiteCatalogFacade;
+use App\Channels\Website\Services\WebsiteGuestCheckoutFacade;
 use App\Channels\Website\Services\WebsitePurchaseFacade;
 use App\Channels\Website\Services\WebsiteWalletFacade;
 use App\Channels\Website\Support\CoreErrorMapper;
+use App\Channels\Website\Support\GuestCheckoutContinuation;
+use App\Channels\Website\Support\ResolvesWebsiteRouteNames;
+use App\Services\Core\Store\EmailNotVerifiedException;
+use App\Services\Core\Store\EmailVerificationGate;
 use App\Services\Core\Store\IdentityService;
 use App\Services\Core\Store\StoreContext;
 use Illuminate\Http\RedirectResponse;
@@ -30,12 +36,17 @@ use Throwable;
  */
 class CheckoutController
 {
+    use ResolvesWebsiteRouteNames;
+
     public function __construct(
         protected WebsiteCatalogFacade $catalog,
         protected WebsiteWalletFacade $wallet,
         protected WebsitePurchaseFacade $purchase,
         protected CoreErrorMapper $errors,
         protected IdentityService $identity,
+        protected EmailVerificationGate $emailGate,
+        protected GuestCheckoutContinuation $guestContinuation,
+        protected WebsiteGuestCheckoutFacade $guest,
     ) {}
 
     /**
@@ -76,6 +87,15 @@ class CheckoutController
             abort(404);
         }
 
+        // Master G11 (فاز ۴): Email تأییدنشده ⇒ هدایت به صفحه‌ی تأیید، *قبل* از
+        // ساخت CustomerAccount. Enforcement اصلی داخل PurchaseService است؛
+        // این فقط UX + جلوگیری از ساخت عضویت بی‌مصرف است.
+        try {
+            $this->emailGate->assertVerified($request->user());
+        } catch (EmailNotVerifiedException) {
+            return $this->redirectToVerification($request, $productModel->id);
+        }
+
         // پچ ۳.۲.۱۷: از این‌جا به بعد CustomerAccount فقط در همین لحظه
         // (یک خرید واقعی) ساخته می‌شود — نه زودتر توسط میان‌افزار روی
         // صرفِ یک GET. این تنها نقطه‌ای‌ست که مجاز است آن را بسازد.
@@ -88,10 +108,19 @@ class CheckoutController
                 store: $store,
                 idempotencyKey: 'website:'.$request->string('idempotency_token'),
             );
+        } catch (EmailNotVerifiedException) {
+            return $this->redirectToVerification($request, $productModel->id);
         } catch (Throwable $e) {
             $mapped = $this->errors->map($e);
 
             return back()->withErrors(['checkout' => $mapped['message'].' (کد پیگیری: '.$mapped['reference'].')']);
+        }
+
+        // G6/G9 (فاز ۴): همان خرید Pending تکمیل شد ⇒ نشست Guest مصرف می‌شود.
+        $guest = $this->guestContinuation->activeFor($request, $store);
+
+        if ($guest && $guest->product_id === $productModel->id) {
+            $this->guest->consume($guest);
         }
 
         $routeName = $store->isReseller() ? 'website.store.orders.show' : 'website.orders.show';
@@ -100,6 +129,16 @@ class CheckoutController
             : ['order' => $account->order_id];
 
         return redirect()->route($routeName, $routeParams)
-            ->with('status', 'خرید با موفقیت ثبت شد.');
+            ->with('status', 'خرید با موفقیت ثبت شد.')
+            ->withoutCookie(GuestCheckoutController::COOKIE_NAME);
+    }
+
+    /** بعد از تأیید Email، کاربر به همین Checkout برمی‌گردد (url.intended). */
+    protected function redirectToVerification(Request $request, int $productId): RedirectResponse
+    {
+        $request->session()->put('url.intended', $this->websiteRoute($request, 'checkout.show', ['product' => $productId]));
+
+        return redirect()->route('verification.notice')
+            ->with('status', 'برای خرید ابتدا ایمیل خود را تأیید کنید.');
     }
 }

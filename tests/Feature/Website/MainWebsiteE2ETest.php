@@ -41,7 +41,17 @@ class MainWebsiteE2ETest extends TestCase
         $user = User::query()->where('email', 'sara@example.test')->firstOrFail();
         $this->assertAuthenticatedAs($user);
 
+        // فاز ۴ (Master G11): تا Verify نشدن Email خرید مسدود است؛ بقیه‌ی سایت آزاد.
         $this->get(route('website.products.show', $product->id))->assertOk();
+        $this->get(route('website.wallet.show'))->assertOk();
+        $this->post(route('website.checkout.store', $product->id), ['idempotency_token' => 'e2e-main-blocked'])
+            ->assertRedirect(route('verification.notice'));
+
+        $this->get(\Illuminate\Support\Facades\URL::temporarySignedRoute(
+            'verification.verify', now()->addMinutes(60),
+            ['id' => $user->id, 'hash' => sha1($user->getEmailForVerification())]
+        ));
+        $this->assertTrue($user->fresh()->hasVerifiedEmail());
 
         $customer = app(IdentityService::class)->resolveCustomerAccount($user, StoreContext::main());
         app(WalletService::class)->credit($customer, 200000);

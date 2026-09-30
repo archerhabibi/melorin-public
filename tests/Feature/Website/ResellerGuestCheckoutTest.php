@@ -52,11 +52,11 @@ class ResellerGuestCheckoutTest extends TestCase
         return [$product, $reseller];
     }
 
-    protected function startGuest(Product $product, Reseller $reseller, string $phone = '09125550001'): GuestCheckout
+    protected function startGuest(Product $product, Reseller $reseller, string $email = 'guest-r@example.test'): GuestCheckout
     {
         $this->post(route('website.store.guest-checkout.store', [$reseller->slug, $product->id]), [
+            'guest_email' => $email,
             'guest_name' => 'Guest Reseller',
-            'guest_phone' => $phone,
         ]);
 
         return GuestCheckout::query()->latest('id')->firstOrFail();
@@ -90,8 +90,7 @@ class ResellerGuestCheckoutTest extends TestCase
         [$product, $reseller] = $this->resellerProduct();
 
         $response = $this->post(route('website.store.guest-checkout.store', [$reseller->slug, $product->id]), [
-            'guest_name' => 'Guest Reseller',
-            'guest_phone' => '09125550002',
+            'guest_email' => 'scoped@example.test',
         ]);
 
         $response->assertRedirect(route('website.store.guest-checkout.pending', $reseller->slug));
@@ -132,59 +131,62 @@ class ResellerGuestCheckoutTest extends TestCase
         $this->get(route('website.store.guest-checkout.show', [$other->slug, $product->id]))->assertNotFound();
 
         $this->post(route('website.store.guest-checkout.store', [$other->slug, $product->id]), [
-            'guest_name' => 'X', 'guest_phone' => '09125550003',
+            'guest_email' => 'x@example.test',
         ])->assertNotFound();
 
         $this->assertEquals(0, GuestCheckout::query()->count());
     }
 
     #[Test]
-    public function a_colliding_phone_is_sent_to_the_store_login_not_the_main_login(): void
+    public function a_colliding_email_is_sent_to_the_store_login_not_the_main_login(): void
     {
         [$product, $reseller] = $this->resellerProduct();
-        User::factory()->create(['phone' => '09125550004']);
+        User::factory()->create(['telegram_id' => null, 'email' => 'taken-r@example.test', 'password' => 'a-strong-password']);
 
-        $guest = $this->startGuest($product, $reseller, '09125550004');
-
-        $response = $this->withCookie('guest_checkout_token', $guest->token)
-            ->post(route('website.store.guest-checkout.purchase', $reseller->slug));
+        $response = $this->post(route('website.store.guest-checkout.store', [$reseller->slug, $product->id]), [
+            'guest_email' => 'taken-r@example.test',
+        ]);
 
         $response->assertRedirect(route('website.store.login', $reseller->slug));
         $this->assertGuest();
-        $this->assertEquals('pending', $guest->fresh()->status);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'identity.guest_collision_detected']);
     }
 
     #[Test]
-    public function a_reseller_guest_completes_a_full_purchase_with_both_wallets_and_a_scoped_order(): void
+    public function a_reseller_guest_logs_in_and_completes_a_full_purchase_with_both_wallets_and_a_scoped_order(): void
     {
         [$product, $reseller] = $this->resellerProduct(customersPrice: 130000);
-        $guest = $this->startGuest($product, $reseller, '09125550005');
 
-        $purchase = $this->withCookie('guest_checkout_token', $guest->token)
-            ->post(route('website.store.guest-checkout.purchase', $reseller->slug));
+        $user = User::factory()->create([
+            'telegram_id' => null, 'email' => 'buyer-r@example.test', 'password' => 'a-strong-password',
+            'email_verified_at' => now(),
+        ]);
+        $guest = $this->startGuest($product, $reseller, 'other-r@example.test');
 
-        $purchase->assertRedirect(route('website.store.checkout.show', [$reseller->slug, $product->id]));
+        // Login داخل همان فروشگاه، همان خرید Pending را ادامه می‌دهد.
+        $this->withCookie('guest_checkout_token', $guest->token)
+            ->post(route('website.store.login.store', $reseller->slug), [
+                'email' => 'buyer-r@example.test', 'password' => 'a-strong-password',
+            ])
+            ->assertRedirect(route('website.store.checkout.show', [$reseller->slug, $product->id]));
 
-        $user = User::query()->where('phone', '09125550005')->firstOrFail();
         $this->assertAuthenticatedAs($user);
-        $this->assertEquals('consumed', $guest->fresh()->status);
+        $this->assertEquals('pending', $guest->fresh()->status);
 
-        // Checkout زیر همان فروشگاه در دسترس است. طبق پچ 3.2.17 (Lazy)،
-        // GET هیچ CustomerAccount نمی‌سازد؛ فقط لحظه‌ی خرید (POST) می‌سازد.
+        // طبق پچ 3.2.17 (Lazy)، GET هیچ CustomerAccount نمی‌سازد.
         $this->get(route('website.store.checkout.show', [$reseller->slug, $product->id]))->assertOk();
         $this->assertNull(app(IdentityService::class)->findCustomerAccount($user, StoreContext::reseller($reseller)));
 
-        // برای شارژ کیف‌پول در تست، حساب را صریحاً می‌سازیم (معادل تاییدیه‌ی درگاه).
         $customer = app(IdentityService::class)->resolveCustomerAccount($user, StoreContext::reseller($reseller));
         $this->assertEquals($reseller->id, $customer->reseller_id);
 
-        // معادل «بعد از تایید موفق درگاه»؛ زنجیره‌ی درگاه جای دیگر تست شده.
         app(WalletService::class)->credit($customer, 200000);
         app(WalletService::class)->credit($reseller, 500000);
 
-        $response = $this->post(route('website.store.checkout.store', [$reseller->slug, $product->id]), [
-            'idempotency_token' => 'reseller-guest-1',
-        ]);
+        $response = $this->withCookie('guest_checkout_token', $guest->token)
+            ->post(route('website.store.checkout.store', [$reseller->slug, $product->id]), [
+                'idempotency_token' => 'reseller-guest-1',
+            ]);
 
         $order = Order::query()->where('customer_account_id', $customer->id)->firstOrFail();
         $response->assertRedirect(route('website.store.orders.show', [$reseller->slug, $order->id]));
@@ -192,8 +194,6 @@ class ResellerGuestCheckoutTest extends TestCase
         $this->assertEquals($reseller->id, $order->reseller_id);
         $this->assertEquals(130000, (float) $order->customers_price);
         $this->assertEquals(70000, app(WalletService::class)->getBalance($customer));
-
-        // مسیر Claim هم زیر همان فروشگاه کار می‌کند.
-        $this->get(route('website.store.identity.complete-profile.show', $reseller->slug))->assertOk();
+        $this->assertEquals('consumed', $guest->fresh()->status);
     }
 }

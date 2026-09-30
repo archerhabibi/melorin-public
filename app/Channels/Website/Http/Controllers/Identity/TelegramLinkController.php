@@ -18,7 +18,7 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
  * عمداً پشت `auth` است. طبق متن دقیق Roadmap («Guest-to-Telegram
  * linking ... یک قابلیت اختیاریِ بعدی برای همین CustomerAccount، نه
  * پیش‌نیاز خرید»)، این فقط «وصل‌کردن» تلگرام به یک حساب از‌قبل‌موجود
- * است (معمولاً همان User ناقصی که GuestPurchaseController ساخته)، نه
+ * است (User احراز‌شده با Register/Login؛ فاز ۴: مسیر ساخت User از Guest حذف شد)، نه
  * یک مسیر ثبت‌نام/ورود جدید.
  *
  * فقط Main Context — دلیل در «خارج از Scope» مستند پچ (نبود ستون
@@ -37,7 +37,7 @@ class TelegramLinkController
     public function callback(Request $request): RedirectResponse
     {
         $botToken = config('telegram.bots.main.token');
-        $back = $this->websiteRoute($request, 'identity.complete-profile.show');
+        $back = $this->websiteRoute($request, 'identity.profile.show');
 
         if (! $botToken) {
             return redirect($back)->withErrors(['telegram' => 'اتصال تلگرام در حال حاضر پیکربندی نشده است.']);

@@ -14,6 +14,8 @@
         .fail { color: #f87171; }
         p { line-height: 2; }
         .amount { margin-top: 1rem; font-size: .9rem; color: #94a3b8; }
+        .back { display: inline-block; margin-top: 1.25rem; padding: .6rem 1.2rem; border-radius: .5rem;
+                background: #4ade80; color: #0f172a; text-decoration: none; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -23,6 +25,15 @@
         @isset($amount)
             <div class="amount">مبلغ: {{ number_format((float) $amount) }} تومان</div>
         @endisset
+
+        {{--
+            D-3 / Master 7.2 (شکاف C13): بعد از شارژ موفق، کاربر خودش به Checkout
+            برمی‌گردد؛ خرید به‌صورت خودکار انجام نمی‌شود. آدرس فقط از Session
+            سمت سرور می‌آید (ChargeController) و بیرون از سایت نیست.
+        --}}
+        @if($success && session('charge_return_checkout_url'))
+            <a class="back" href="{{ session('charge_return_checkout_url') }}">بازگشت به تکمیل خرید</a>
+        @endif
     </div>
 </body>
 </html>

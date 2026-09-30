@@ -5,13 +5,13 @@ use App\Channels\Website\Http\Controllers\Account\OrdersController;
 use App\Channels\Website\Http\Controllers\Account\ReferralController;
 use App\Channels\Website\Http\Controllers\Account\WalletController;
 use App\Channels\Website\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Channels\Website\Http\Controllers\Auth\EmailVerificationController;
 use App\Channels\Website\Http\Controllers\Auth\NewPasswordController;
 use App\Channels\Website\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Channels\Website\Http\Controllers\Auth\RegisteredUserController;
 use App\Channels\Website\Http\Controllers\Guest\GuestCheckoutController;
 use App\Channels\Website\Http\Controllers\Reseller\ManageController;
-use App\Channels\Website\Http\Controllers\Guest\GuestPurchaseController;
-use App\Channels\Website\Http\Controllers\Identity\CompleteProfileController;
+use App\Channels\Website\Http\Controllers\Identity\ProfileController;
 use App\Channels\Website\Http\Controllers\Identity\TelegramLinkController;
 use App\Channels\Website\Http\Controllers\Shared\ChargeController;
 use App\Channels\Website\Http\Controllers\Shared\CheckoutController;
@@ -46,7 +46,10 @@ $registerSharedRoutes = function () {
     Route::get('/', [HomeController::class, 'index'])->name('home');
     Route::get('/products/{product}', [ProductController::class, 'show'])->name('products.show');
 
-    // --- Guest Checkout Token (فاز W3 بند ۱، پچ 3.2.3) — عمداً بدون auth ---
+    // --- Guest Checkout (Master 2.7 §3؛ فاز ۴) — عمداً بدون auth ---
+    // Guest فقط «شروع» Checkout است: فرم (email*) → Pending → Login/Register →
+    // ادامه‌ی همان خرید. مسیر قدیمی POST /guest-checkout/purchase (ساخت User و
+    // Auth::login خودکار) DEPRECATED و حذف شد (X4).
     Route::get('/products/{product}/guest-checkout', [GuestCheckoutController::class, 'show'])
         ->name('guest-checkout.show');
     Route::post('/products/{product}/guest-checkout', [GuestCheckoutController::class, 'store'])
@@ -54,9 +57,6 @@ $registerSharedRoutes = function () {
         ->name('guest-checkout.store');
     Route::get('/guest-checkout/pending', [GuestCheckoutController::class, 'pending'])
         ->name('guest-checkout.pending');
-    Route::post('/guest-checkout/purchase', [GuestPurchaseController::class, 'store'])
-        ->middleware('throttle:10,1')
-        ->name('guest-checkout.purchase');
 
     // --- Auth (فاز W1) ---
     Route::middleware('guest')->group(function () {
@@ -103,9 +103,8 @@ $registerSharedRoutes = function () {
 
         Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
 
-        // --- Guest Claiming (بند ۵ فاز W3، نسخه‌ی محدود، پچ 3.2.4) ---
-        Route::get('/complete-profile', [CompleteProfileController::class, 'show'])->name('identity.complete-profile.show');
-        Route::post('/complete-profile', [CompleteProfileController::class, 'store'])->name('identity.complete-profile.store');
+        // --- Profile / اتصال Telegram (Master G10؛ فاز ۴ — جایگزین /complete-profile) ---
+        Route::get('/profile', [ProfileController::class, 'show'])->name('identity.profile.show');
 
         // --- Telegram-linking (بند ۵ فاز W3، نیمه‌ی دوم، پچ 3.2.5) ---
         // throttle: هر تلاش یک درخواست HMAC-verify است؛ محدودیت جلوی
@@ -170,6 +169,22 @@ $registerResellerManagementRoutes = function () {
         Route::post('/branding', [ManageController::class, 'updateBranding'])->name('branding.update');
     });
 };
+
+/*
+ * Email Verification (Master 2.7 G11، شکاف C10). فقط Context اصلی (لینک Email
+ * از Queue ارسال می‌شود و StoreContext ندارد)؛ نام‌های استاندارد Laravel.
+ * Rate Limit: ۶/دقیقه (RATE-LIMIT در Website Contract §22).
+ */
+Route::middleware(['web', 'store.context', 'website.csp', 'auth'])->group(function () {
+    Route::get('/email/verify', [EmailVerificationController::class, 'notice'])
+        ->name('verification.notice');
+    Route::get('/email/verify/{id}/{hash}', [EmailVerificationController::class, 'verify'])
+        ->middleware(['signed', 'throttle:6,1'])
+        ->name('verification.verify');
+    Route::post('/email/verification-notification', [EmailVerificationController::class, 'send'])
+        ->middleware('throttle:6,1')
+        ->name('verification.send');
+});
 
 // فاز W6 بند ۲ (مالکیت نفر ۴): CSP فقط اینجا، روی هر دو گروه Website،
 // اضافه شده — نه سراسری روی 'web' (پنل ادمین این گروه global را جدا

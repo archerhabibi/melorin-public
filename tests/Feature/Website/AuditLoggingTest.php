@@ -4,7 +4,6 @@ namespace Tests\Feature\Website;
 
 use App\Models\AuditLog;
 use App\Models\Category;
-use App\Models\GuestCheckout;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -39,48 +38,22 @@ class AuditLoggingTest extends TestCase
     }
 
     #[Test]
-    public function creating_an_account_from_guest_checkout_is_audited_with_the_correct_actor(): void
+    public function a_guest_email_collision_is_audited_at_the_guest_form_step(): void
     {
-        $product = $this->makeProduct();
-        $this->post(route('website.guest-checkout.store', $product->id), [
-            'guest_name' => 'Ali',
-            'guest_phone' => '09121234567',
-        ]);
-        $guest = GuestCheckout::query()->firstOrFail();
-
-        $this->withCookie('guest_checkout_token', $guest->token)
-            ->post(route('website.guest-checkout.purchase'));
-
-        $user = User::query()->where('phone', '09121234567')->firstOrFail();
-
-        $this->assertDatabaseHas('audit_logs', [
-            'action' => 'identity.guest_account_created',
-            'actor_type' => 'customer',
-            'actor_id' => $user->id,
-            'target_type' => $user->getMorphClass(),
-            'target_id' => $user->id,
-        ]);
-    }
-
-    #[Test]
-    public function a_guest_collision_is_audited(): void
-    {
-        $existing = User::factory()->create(['phone' => '09121234599']);
+        // فاز ۴: مسیر «ساخت User از Guest» (identity.guest_account_created) حذف شد؛
+        // تنها رویداد Audit مربوط به Guest، تشخیص تصادم با User موجود است (G7).
+        $existing = User::factory()->create(['telegram_id' => null, 'email' => 'someone@example.test']);
         $product = $this->makeProduct();
 
         $this->post(route('website.guest-checkout.store', $product->id), [
-            'guest_name' => 'Someone',
-            'guest_phone' => '09121234599',
+            'guest_email' => 'someone@example.test',
         ]);
-        $guest = GuestCheckout::query()->firstOrFail();
-
-        $this->withCookie('guest_checkout_token', $guest->token)
-            ->post(route('website.guest-checkout.purchase'));
 
         $this->assertDatabaseHas('audit_logs', [
             'action' => 'identity.guest_collision_detected',
             'target_id' => $existing->id,
         ]);
+        $this->assertDatabaseMissing('audit_logs', ['action' => 'identity.guest_account_created']);
     }
 
     protected function validTelegramPayload(): array

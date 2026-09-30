@@ -3,11 +3,14 @@
 namespace App\Channels\Website\Http\Controllers\Auth;
 
 use App\Channels\Website\Http\Requests\Auth\RegisterRequest;
+use App\Channels\Website\Support\GuestCheckoutContinuation;
 use App\Channels\Website\Support\ResolvesWebsiteRouteNames;
 use App\Models\User;
+use App\Services\Core\Store\StoreContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 
@@ -30,12 +33,21 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
  * لحظه‌ی ساخت User واقعی، فقط اگر به یک User موجود اشاره کند مصرف
  * می‌شود — عدد نامعتبر بی‌صدا نادیده گرفته می‌شود، نه خطا (تجربه‌ی
  * ثبت‌نام کسی نباید به‌خاطر یک لینک معرفی خراب بشکند).
+ *
+ * فاز ۴ (Master 2.7 G6، G7، G11):
+ *  - اگر نشست Guest فعال باشد، فرم با email/name/phone آن پیش‌پر می‌شود
+ *    (فقط برای راحتی؛ Proof نیست — R9).
+ *  - بعد از ثبت‌نام Email Verification ارسال می‌شود و کاربر به صفحه‌ی
+ *    «تأیید Email» می‌رود؛ خرید Pending پس از تأیید (url.intended) ادامه
+ *    می‌یابد. هیچ User/CustomerAccount/Purchase ای از Guest ساخته نمی‌شود.
  */
 class RegisteredUserController
 {
     use ResolvesWebsiteRouteNames;
 
-    public function create(Request $request): View
+    public function __construct(protected GuestCheckoutContinuation $guestContinuation) {}
+
+    public function create(Request $request, StoreContext $store): View
     {
         $ref = $request->integer('ref');
 
@@ -43,10 +55,18 @@ class RegisteredUserController
             $request->session()->put('referrer_id_candidate', $ref);
         }
 
-        return view('website.auth.register');
+        $guest = $this->guestContinuation->activeFor($request, $store);
+
+        return view('website.auth.register', [
+            'guestPrefill' => $guest ? [
+                'email' => $guest->guest_email,
+                'name' => $guest->guest_name,
+                'phone' => $guest->guest_phone,
+            ] : [],
+        ]);
     }
 
-    public function store(RegisterRequest $request): RedirectResponse
+    public function store(RegisterRequest $request, StoreContext $store): RedirectResponse
     {
         $validated = $request->validated();
 
@@ -66,6 +86,21 @@ class RegisteredUserController
 
         $request->session()->regenerate();
 
-        return redirect()->intended($this->websiteRoute($request, 'home'));
+        // G11: ارسال لینک تأیید Email. شکست ارسال (Mail/Queue) نباید ثبت‌نام
+        // را بشکند؛ کاربر می‌تواند از صفحه‌ی تأیید «ارسال مجدد» بزند.
+        try {
+            $user->sendEmailVerificationNotification();
+        } catch (\Throwable $e) {
+            Log::warning('website_verification_email_failed', ['user_id' => $user->id, 'error' => $e->getMessage()]);
+        }
+
+        // G6: خرید Pending بعد از تأیید Email ادامه می‌یابد.
+        $checkoutUrl = $this->guestContinuation->checkoutUrl($request, $store);
+
+        if ($checkoutUrl) {
+            $request->session()->put('url.intended', $checkoutUrl);
+        }
+
+        return redirect()->route('verification.notice');
     }
 }

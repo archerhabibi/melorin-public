@@ -3,7 +3,9 @@
 namespace App\Channels\Website\Http\Controllers\Auth;
 
 use App\Channels\Website\Http\Requests\Auth\LoginRequest;
+use App\Channels\Website\Support\GuestCheckoutContinuation;
 use App\Channels\Website\Support\ResolvesWebsiteRouteNames;
+use App\Services\Core\Store\StoreContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
@@ -16,18 +18,27 @@ class AuthenticatedSessionController
 {
     use ResolvesWebsiteRouteNames;
 
+    public function __construct(protected GuestCheckoutContinuation $guestContinuation) {}
+
     public function create(): View
     {
         return view('website.auth.login');
     }
 
-    public function store(LoginRequest $request): RedirectResponse
+    public function store(LoginRequest $request, StoreContext $store): RedirectResponse
     {
+        // G6 (فاز ۴): اگر نشست Guest فعال است و مقصد دیگری (url.intended) در
+        // کار نیست، Login همان خرید Pending را ادامه می‌دهد. Login خودکار /
+        // ساخت User در هیچ مسیری وجود ندارد؛ فقط credential واقعی.
+        $guestCheckoutUrl = $request->session()->has('url.intended')
+            ? null
+            : $this->guestContinuation->checkoutUrl($request, $store);
+
         $request->authenticate();
 
         $request->session()->regenerate();
 
-        return redirect()->intended($this->websiteRoute($request, 'home'));
+        return redirect()->intended($guestCheckoutUrl ?? $this->websiteRoute($request, 'home'));
     }
 
     public function destroy(Request $request): RedirectResponse
