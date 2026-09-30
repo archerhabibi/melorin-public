@@ -78,3 +78,8 @@ Staging واقعی وجود ندارد (فاز W8، مستند جدا:
 (همه‌ی ردیف‌های TESTED بالا). در این اجرا چند باگ واقعی پیدا و رفع شد؛ فهرست در `VERSION` و
 `docs/RELEASE-3.3.0-AUDIT.md`. هنوز: `php artisan test` **کامل** (کل پروژه)، Staging،
 Zarinpal Sandbox و Review امنیتی مستقل انجام نشده؛ پس هیچ ردیفی PRODUCTION VERIFIED نیست.
+
+## به‌روزرسانی ۳.۳.۰
+
+اجرای واقعی کل پروژه (`php artisan test`): **۴۱۶ تست، ۱۳۹۸ assertion، همه سبز**. هیچ ردیفی هنوز
+PRODUCTION VERIFIED نیست؛ مرحله‌ی بعد Staging است (`docs/STAGING-RUNBOOK.md`).

@@ -23,9 +23,20 @@ use Illuminate\Support\Facades\Http;
  */
 class ZarinpalGateway implements PaymentGatewayInterface
 {
+    /**
+     * sandbox: اولویت با payment_methods.settings.sandbox (برای هر روش
+     * پرداخت)، و در نبودِ آن ZARINPAL_SANDBOX (config/services.php).
+     * قبلاً ZARINPAL_SANDBOX تعریف شده بود ولی هیچ‌جا خوانده نمی‌شد.
+     */
+    protected function isSandbox(Payment $payment): bool
+    {
+        return (bool) ($payment->paymentMethod->settings['sandbox']
+            ?? config('services.zarinpal.sandbox', false));
+    }
+
     protected function baseUrl(Payment $payment): string
     {
-        $sandbox = $payment->paymentMethod->settings['sandbox'] ?? false;
+        $sandbox = $this->isSandbox($payment);
 
         return $sandbox
             ? 'https://sandbox.zarinpal.com/pg/v4/payment'
@@ -34,7 +45,7 @@ class ZarinpalGateway implements PaymentGatewayInterface
 
     protected function startPayUrl(Payment $payment, string $authority): string
     {
-        $sandbox = $payment->paymentMethod->settings['sandbox'] ?? false;
+        $sandbox = $this->isSandbox($payment);
         $host = $sandbox ? 'sandbox.zarinpal.com' : 'www.zarinpal.com';
 
         return "https://{$host}/pg/StartPay/{$authority}";

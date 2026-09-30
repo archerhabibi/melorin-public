@@ -2,10 +2,20 @@
 
 جزئیات: docs/RELEASE-3.3.0-AUDIT.md
 
-نسخه‌ی پایدارسازی است؛ قابلیت جدیدی اضافه نشد. اجرای واقعی php artisan test --filter=Website:
-۹۹ تست، ۳۴۶ assertion، همه سبز.
+نسخه‌ی پایدارسازی است؛ قابلیت جدیدی اضافه نشد. اجرای واقعی php artisan test (کل پروژه):
+۴۱۶ تست، ۱۳۹۸ assertion، همه سبز (۹۹ تست Website).
 
 === باگ‌های واقعی که رفع شد ===
+- تداخل مسیرهای پنل نماینده (Filament با path('')) و سایت: GET /login و POST /logout هر دو
+  دو بار ثبت می‌شدند؛ لاراول مسیر دوم را با کلید method+uri بی‌صدا جایگزین اولی می‌کند و نام
+  route از جدول نام‌ها می‌افتاد → Route [filament.reseller.auth.login/logout] not defined
+  (۵۰۰ روی پنل نماینده). ورود پنل نماینده به /panel/login و خروج سایت به /sign-out
+  (نام route: website.logout بدون تغییر) منتقل شد.
+- ZARINPAL_SANDBOX در config/services.php تعریف شده بود ولی هیچ‌جا خوانده نمی‌شد؛ حالا
+  ZarinpalGateway در نبودِ settings.sandbox روش پرداخت، از آن می‌خواند (تست: ZarinpalSandboxConfigTest).
+- update-git.sh بعد از git pull هیچ‌وقت npm run build نمی‌زد (public/build در .gitignore است) →
+  assetهای جدید ساخته نمی‌شدند و نبودِ manifest هر صفحه‌ی Website را می‌شکست. مرحله‌ی build اضافه شد.
+- ExampleTest بدون RefreshDatabase بود (جدول categories وجود نداشت).
 - ResolveStoreContext: پارامتر {slug} در route می‌ماند و چون لاراول پارامترها را «به‌ترتیب»
   به کنترلر می‌دهد، جلوتر از {product}/{order} می‌نشست → TypeError/500 روی همه‌ی مسیرهای
   /store/{slug}/... که آرگومان عددی دارند (خرید، صفحه‌ی محصول، مدیریت قیمت). حالا بعد از
@@ -23,9 +33,10 @@
 - ReceiptSecurityTest: UploadedFile::fake نوع فایل را از نام می‌گیرد؛ فایل واقعی ساخته می‌شود.
 - ResellerGuestCheckoutTest: GET checkout طبق پچ 3.2.17 حساب نمی‌سازد؛ تست همین را تایید می‌کند.
 
-=== هنوز انجام نشده (باید قبل از Production) ===
-php artisan test کامل (نه فقط Website) · npm run build · Migration روی Staging با کپی دیتابیس ·
-Zarinpal Sandbox واقعی · Review امنیتی مستقل · تست Backup/Rollback.
+=== هنوز انجام نشده (نیاز به محیط/شخص واقعی؛ با کد قابل بستن نیست) ===
+npm ci && npm run build روی ماشین شما · Migration روی Staging با کپی دیتابیس ·
+Zarinpal Sandbox واقعی (ZARINPAL_SANDBOX=true) · Review امنیتی مستقل · تست Backup/Rollback.
+راهنمای قدم‌به‌قدم: docs/STAGING-RUNBOOK.md
 
 ---
 

@@ -631,6 +631,35 @@ echo "    Composer OK ✅"
 echo ""
 
 # ============================================================================
+# 20.5 Frontend build (Vite)
+# ============================================================================
+# public/build در .gitignore است؛ بدون این مرحله بعد از git pull، assetهای
+# جدید ساخته نمی‌شوند و اگر manifest.json وجود نداشته باشد هر صفحه‌ی Website
+# با ViteManifestNotFoundException می‌شکند (layout از @vite استفاده می‌کند).
+
+echo "==> ساخت assetهای فرانت‌اند (npm run build)"
+
+if [[ -f "$APP_DIR/package.json" ]]; then
+    if command -v npm >/dev/null 2>&1; then
+        if [[ -f "$APP_DIR/package-lock.json" ]]; then
+            npm ci --no-audit --no-fund
+        else
+            npm install --no-audit --no-fund
+        fi
+        npm run build
+        echo "    Build OK ✅"
+    elif [[ -f "$APP_DIR/public/build/manifest.json" ]]; then
+        echo "    ⚠️ npm نصب نیست؛ build قبلی (public/build) استفاده می‌شود."
+    else
+        echo "❌ npm نصب نیست و public/build/manifest.json هم وجود ندارد؛ سایت بدون build کار نمی‌کند."
+        exit 1
+    fi
+else
+    echo "    package.json وجود ندارد؛ رد شد."
+fi
+echo ""
+
+# ============================================================================
 # 21. Migration
 # ============================================================================
 
