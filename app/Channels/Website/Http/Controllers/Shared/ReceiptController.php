@@ -50,8 +50,14 @@ class ReceiptController
 
     public function store(int $payment, Request $request, StoreContext $store): Response
     {
+        // بند ۹.۶: «حداکثر ۵ مگابایت، فقط jpg/png/webp/pdf، اعتبارسنجی
+        // واقعی محتوا نه فقط پسوند». `mimes:` در Laravel از finfo
+        // (بررسی واقعی بایت‌های فایل) استفاده می‌کند، نه فقط پسوند نام
+        // فایل — پس این خط همان الزام «محتوای واقعی» را برآورده می‌کند.
+        // پچ ۳.۲.۸ (نفر ۴): قبلاً pdf از قلم افتاده بود و سقف ۴ مگابایت
+        // (کمتر از عدد سند) بود.
         $data = $request->validate([
-            'receipt' => ['required', 'file', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+            'receipt' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
             'depositor_name' => ['required', 'string', 'min:2', 'max:100'],
         ]);
 

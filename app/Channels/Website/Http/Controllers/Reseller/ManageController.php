@@ -1,0 +1,230 @@
+<?php
+
+namespace App\Channels\Website\Http\Controllers\Reseller;
+
+use App\Models\Product;
+use App\Models\Reseller;
+use App\Models\ResellerProductPrice;
+use App\Models\ResellerWebsiteSetting;
+use App\Services\Core\Store\StoreContext;
+use App\Services\Core\WalletService;
+use App\Services\Resellers\ResellerCustomerService;
+use App\Services\Resellers\ResellerPricingService;
+use App\Services\Resellers\ResellerService;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\View\View;
+use InvalidArgumentException;
+
+/**
+ * فاز W5 (نفر ۳) — بند ۴۹ زیرسند: «Reseller Management سبک روی وب:
+ * مشاهده‌ی Customerها/Walletها، Enable/Disable Product، مدیریت
+ * Pricingهای مجاز» + بند ۴۶ (ویرایش Branding).
+ *
+ * طبق جمله‌ی پایانیِ همان بند («enforcement کامل از Core؛ Website فقط
+ * UI است»)، این کنترلر هیچ Business Rule خودش ندارد — دقیقاً همان
+ * `ResellerPricingService`/`ResellerCustomerService`/`WalletService`ی
+ * را صدا می‌زند که پنل Filament نماینده هم استفاده می‌کند (همان الگوی
+ * تکرارشده در کل این فاز: Core یکی است، فقط UI عوض می‌شود).
+ *
+ * این کنترلر عمداً پشتِ `store.customer` نیست: خودِ نماینده لازم نیست
+ * «مشتریِ» فروشگاهِ خودش باشد تا بتواند مدیریتش کند؛ فقط `auth` +
+ * عضویتِ او در `reseller_admins` (هر Role، نه فقط owner — دقیقاً همان
+ * دروازه‌ای که `ResellerPanelProvider::canAccessTenant` هم استفاده
+ * می‌کند) لازم است.
+ */
+class ManageController
+{
+    public function __construct(
+        protected ResellerPricingService $pricing,
+        protected ResellerCustomerService $customerService,
+        protected ResellerService $resellers,
+        protected WalletService $wallet,
+    ) {}
+
+    /**
+     * دروازه‌ی مشترکِ همه‌ی متدهای این کنترلر. جدا از Middleware نوشته
+     * شده چون این چک به‌طور ذاتی وابسته به «نماینده‌ی همین Request» است
+     * (از StoreContext تزریق‌شده)، نه یک قانونِ عمومیِ قابل‌استفاده‌ی
+     * مجدد در جای دیگر — یک Middleware اختصاصی برای یک کنترلر، سربار
+     * بی‌دلیل اضافه می‌کرد.
+     */
+    protected function authorize(StoreContext $store): Reseller
+    {
+        abort_unless($store->isReseller(), 404);
+
+        $reseller = $store->reseller;
+
+        abort_unless(
+            auth()->check() && $this->resellers->isAdminOf($reseller, auth()->user()),
+            403,
+            'شما به مدیریت این فروشگاه دسترسی ندارید.'
+        );
+
+        return $reseller;
+    }
+
+    public function index(StoreContext $store): RedirectResponse
+    {
+        $this->authorize($store);
+
+        return redirect()->route('website.store.manage.customers', $store->reseller->slug);
+    }
+
+    /** بند ۴۹: «مشاهده‌ی Customerها/Walletها» — فقط نمایش، بدون هیچ اقدامِ تغییردهنده. */
+    public function customers(StoreContext $store): View
+    {
+        $reseller = $this->authorize($store);
+
+        $customers = $this->customerService->customersQuery($reseller)
+            ->orderBy('full_name')
+            ->paginate(20);
+
+        $customers->getCollection()->each(function ($user) use ($store) {
+            $user->websiteWalletBalance = $this->wallet->balanceIn($user, $store);
+        });
+
+        return view('website.reseller.manage.customers', [
+            'store' => $store,
+            'reseller' => $reseller,
+            'customers' => $customers,
+        ]);
+    }
+
+    /** بند ۴۹: «Enable/Disable Product» + «مدیریت Pricingهای مجاز». */
+    public function products(StoreContext $store): View
+    {
+        $reseller = $this->authorize($store);
+
+        // قیمتِ «ذخیره‌شده» صرف‌نظر از فعال/غیرفعال بودن (نه
+        // Product::customersPrice که برای ردیفِ غیرفعال null برمی‌گرداند):
+        // بدون این، محصولی که نماینده موقتاً غیرفعال کرده قیمتِ قبلی‌اش را
+        // در فرم نشان نمی‌داد و دکمه‌ی «فعال کردن» هرگز ظاهر نمی‌شد.
+        $storedPrices = ResellerProductPrice::query()
+            ->where('reseller_id', $reseller->id)
+            ->pluck('customers_price', 'product_id');
+
+        $products = Product::query()
+            ->where('status', 'active')
+            ->whereHas('category', fn ($q) => $q->where('available_to_resellers', true))
+            ->with('category')
+            ->orderBy('name')
+            ->get()
+            ->map(function (Product $product) use ($reseller, $storedPrices) {
+                return [
+                    'product' => $product,
+                    'is_enabled' => $this->pricing->isSellable($reseller, $product),
+                    'customers_price' => $storedPrices->has($product->id) ? (float) $storedPrices[$product->id] : null,
+                    'reseller_price' => $product->resellerPrice(),
+                    // بند ۴۳: حاشیه‌ی سود صرفاً نمایشی است (customers_price - reseller_price)،
+                    // نه یک عدد ذخیره‌شده‌ی جدا — دقیقاً طبق قرارداد Core.
+                ];
+            });
+
+        return view('website.reseller.manage.products', [
+            'store' => $store,
+            'reseller' => $reseller,
+            'rows' => $products,
+        ]);
+    }
+
+    public function setPrice(Request $request, Product $product, StoreContext $store): RedirectResponse
+    {
+        $reseller = $this->authorize($store);
+
+        $data = $request->validate([
+            'customers_price' => ['required', 'numeric', 'min:0'],
+        ]);
+
+        try {
+            $this->pricing->setCustomersPrice($reseller, $product, (float) $data['customers_price']);
+        } catch (InvalidArgumentException $e) {
+            // پیامِ این استثنا خودش از قبل یک قاعده‌ی تجاریِ قابل‌نمایش
+            // به کاربر است (نه یک خطای داخلی) — دقیقاً همان چیزی که
+            // پنل Filament نماینده هم مستقیم نشان می‌دهد، نه از طریق
+            // CoreErrorMapper (که برای خطاهای عمومی‌تر است).
+            return back()->withErrors(['customers_price' => $e->getMessage()])->withInput();
+        }
+
+        return back()->with('status', 'قیمت ثبت و محصول فعال شد.');
+    }
+
+    public function enable(Product $product, StoreContext $store): RedirectResponse
+    {
+        $reseller = $this->authorize($store);
+
+        $price = $product->resellerPrices()->where('reseller_id', $reseller->id)->first()?->customers_price;
+
+        if ($price === null) {
+            return back()->withErrors(['product' => 'ابتدا برای این محصول یک قیمت تعیین کنید.']);
+        }
+
+        try {
+            $this->pricing->setCustomersPrice($reseller, $product, (float) $price);
+        } catch (InvalidArgumentException $e) {
+            // قیمتِ قبلاً ذخیره‌شده ممکن است با قوانینِ مرکزیِ امروز دیگر
+            // مجاز نباشد (مثلاً ادمین سقف را تغییر داده)؛ فعال‌سازیِ
+            // بی‌سروصدا با یک قیمتِ نامعتبر درست نیست.
+            return back()->withErrors(['product' => 'قیمت قبلی دیگر مجاز نیست: '.$e->getMessage().' لطفاً قیمت جدیدی وارد کنید.']);
+        }
+
+        return back()->with('status', 'محصول برای فروشگاه شما فعال شد.');
+    }
+
+    public function disable(Product $product, StoreContext $store): RedirectResponse
+    {
+        $reseller = $this->authorize($store);
+
+        $this->pricing->disable($reseller, $product);
+
+        return back()->with('status', 'محصول برای فروشگاه شما غیرفعال شد.');
+    }
+
+    /** بند ۴۶: مشاهده/ویرایشِ Branding (نام نمایشی، لوگو، رنگ، اطلاعات تماس). */
+    public function branding(StoreContext $store): View
+    {
+        $reseller = $this->authorize($store);
+
+        return view('website.reseller.manage.branding', [
+            'store' => $store,
+            'reseller' => $reseller,
+            'branding' => ResellerWebsiteSetting::brandingFor($reseller),
+            'setting' => ResellerWebsiteSetting::forReseller($reseller),
+        ]);
+    }
+
+    public function updateBranding(Request $request, StoreContext $store): RedirectResponse
+    {
+        $reseller = $this->authorize($store);
+
+        $data = $request->validate([
+            'display_name' => ['nullable', 'string', 'max:100'],
+            'brand_color' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'contact_phone' => ['nullable', 'string', 'max:30'],
+            'contact_email' => ['nullable', 'email', 'max:190'],
+            'about_text' => ['nullable', 'string', 'max:2000'],
+            'logo' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp', 'max:1024'],
+        ]);
+
+        $setting = ResellerWebsiteSetting::forReseller($reseller);
+
+        if ($request->hasFile('logo')) {
+            // لوگوی قبلی (اگر بود) پاک می‌شود تا دیسکِ عمومی انباشته نشود.
+            if ($setting?->logo_path) {
+                Storage::disk('public')->delete($setting->logo_path);
+            }
+
+            $data['logo_path'] = $request->file('logo')->store('reseller-logos/'.$reseller->id, 'public');
+        }
+
+        unset($data['logo']);
+
+        ResellerWebsiteSetting::query()->updateOrCreate(
+            ['reseller_id' => $reseller->id],
+            $data,
+        );
+
+        return back()->with('status', 'اطلاعات فروشگاه به‌روزرسانی شد.');
+    }
+}

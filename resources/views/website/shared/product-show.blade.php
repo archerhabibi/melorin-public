@@ -42,6 +42,9 @@
                class="mt-6 inline-block px-4 py-2 rounded text-white text-sm font-medium" style="background: var(--brand)">
                 برای خرید وارد شوید
             </a>
+            <span class="mt-6 mr-2 inline-block">
+                @include('website.guest.entry-link', ['product' => $product, 'store' => $store])
+            </span>
         @endauth
     </div>
 @endsection

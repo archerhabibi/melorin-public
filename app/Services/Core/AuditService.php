@@ -5,6 +5,7 @@ namespace App\Services\Core;
 use App\Models\Admin;
 use App\Models\AuditLog;
 use App\Models\Reseller;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -17,6 +18,16 @@ use Illuminate\Support\Facades\Request;
  * چیزی در آن نمی‌نوشت — یعنی بند ۳۱ سند نیازمندی («تمام عملیات حساس
  * باید دارای لاگ و سابقه باشند») عملاً پیاده نشده بود. این سرویس تنها
  * نقطه‌ی نوشتن در آن است.
+ *
+ * پچ ۳.۲.۹ (نفر ۴، فاز W6 بند ۴): نوع `$actor` به `User` (guard
+ * 'web'، یعنی مشتری‌های Website) گسترش یافت. قبل از این پچ،
+ * `resolveActor()` فقط Admin/Reseller را می‌شناخت — یعنی هر Audit Log
+ * ای که از یک اقدام مشتری روی Website می‌آمد (مثل Identity Linking،
+ * بند ۴ فاز W6) به‌غلط actor_type='system' ثبت می‌شد، چون هیچ Admin/
+ * Reseller ای لاگین نبود. این خودش یک نقص در داده‌ی Audit بود — سابقه‌ای
+ * که نمی‌گوید «چه کسی» کاری کرده، عملاً بی‌فایده است. طبق همان اصل
+ * «Website چیزی جدید ثبت نمی‌کند» (بند ۴ Roadmap)، راه‌حل درست گسترش
+ * همین یک نقطه‌ی مشترک بود، نه ساختن یک AuditService دوم برای Website.
  *
  * طراحی عمدی: ثبت لاگ هرگز نباید عملیات اصلی را بشکند. اگر نوشتن لاگ
  * به هر دلیلی شکست بخورد (مثلاً جدول هنوز migrate نشده)، خطا فقط در
@@ -34,7 +45,7 @@ class AuditService
         ?Model $target = null,
         array $before = [],
         array $after = [],
-        Admin|Reseller|null $actor = null,
+        Admin|Reseller|User|null $actor = null,
     ): void {
         try {
             [$actorType, $actorId] = $this->resolveActor($actor);
@@ -64,7 +75,7 @@ class AuditService
      *
      * @return array{0: string, 1: int}
      */
-    protected function resolveActor(Admin|Reseller|null $actor): array
+    protected function resolveActor(Admin|Reseller|User|null $actor): array
     {
         if ($actor instanceof Admin) {
             return ['admin', $actor->id];
@@ -74,8 +85,16 @@ class AuditService
             return ['reseller', $actor->id];
         }
 
+        if ($actor instanceof User) {
+            return ['customer', $actor->id];
+        }
+
         if ($admin = Auth::guard('admin')->user()) {
             return ['admin', $admin->id];
+        }
+
+        if ($customer = Auth::guard('web')->user()) {
+            return ['customer', $customer->id];
         }
 
         return ['system', 0];

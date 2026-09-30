@@ -50,7 +50,14 @@ class ResellerPanelProvider extends PanelProvider
         return $panel
             ->id('reseller')
             ->path('')
+            // مسیر ورود پنل نماینده عمداً '/panel/login' است نه '/login':
+            // چون path('') است، '/login' پیش‌فرض Filament دقیقاً با
+            // GET /login سایت فروش (website.login) یکسان می‌شد و Laravel
+            // در RouteCollection مسیر دوم را بی‌صدا جایگزین اولی می‌کرد
+            // (کلید method+uri) → Route [filament.reseller.auth.login]
+            // not defined. '/panel/login' هنوز شامل '/login' است.
             ->login()
+            ->loginRouteSlug('panel/login')
             ->authGuard('reseller')
             // ownershipRelationship صریح لازم است: Filament پیش‌فرض دنبال
             // User::reseller() می‌گردد (از نام کلاس تننت مشتق می‌شود)،

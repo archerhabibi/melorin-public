@@ -13,6 +13,7 @@ use App\Services\Core\WalletService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Concerns\InteractsWithWebsiteFixtures;
 use Tests\TestCase;
 
 /**
@@ -25,7 +26,7 @@ use Tests\TestCase;
  */
 class CheckoutFlowTest extends TestCase
 {
-    use RefreshDatabase;
+    use InteractsWithWebsiteFixtures, RefreshDatabase;
 
     protected IdentityService $identity;
 
@@ -37,11 +38,7 @@ class CheckoutFlowTest extends TestCase
         $this->identity = app(IdentityService::class);
         $this->wallet = app(WalletService::class);
 
-        Http::fake(fn () => Http::response([
-            'success' => true,
-            'obj' => ['inboundIds' => [1], 'flow' => '', 'limitIp' => 0],
-            'subscription_url' => 'https://sub.example.test/abc',
-        ], 200));
+        $this->fakeSanaeiPanel();
     }
 
     protected function makeProduct(float $mainPrice = 120000): Product

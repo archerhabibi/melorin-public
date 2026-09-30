@@ -51,6 +51,16 @@ class ResolveStoreContext
 
         app()->instance(StoreContext::class, $context);
 
+        // {slug} فقط برای تشخیص فروشگاه است. Laravel پارامترهای route را
+        // «به‌ترتیب» به آرگومان‌های Controller می‌دهد (نه با نام)، پس اگر
+        // slug در route بماند، جلوتر از {product}/{order}/... قرار می‌گیرد و
+        // به‌جای آن‌ها در آرگومان `int $product` می‌نشیند → TypeError / 500.
+        // بعد از ساخت StoreContext دیگر لازم نیست؛ هر کس slug می‌خواهد از
+        // StoreContext می‌گیرد.
+        if ($slug !== null) {
+            $request->route()?->forgetParameter('slug');
+        }
+
         // برای استفاده‌ی مستقیم و صریح در View‌ها (بند ۴۶: Branding نماینده)
         // بدون این‌که View مجبور شود خودش app(StoreContext::class) بزند.
         view()->share('storeContext', $context);

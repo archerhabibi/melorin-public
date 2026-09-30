@@ -32,9 +32,37 @@ use Telegram\Bot\Api;
  * https://api.telegram.org/file/bot<TOKEN>/<path> انجام شود.
  *
  * محافظت‌شده با میدل‌ور auth:admin (در routes/admin.php ثبت شده).
+ *
+ * پچ 3.2.8 (نفر ۴، فاز W6 بند ۳): دو لایه‌ی دفاعی اضافه شد که مستقل از
+ * اعتبارسنجی آپلود (بند `mimes:` در ReceiptController) عمل می‌کند —
+ * چون هیچ اعتبارسنجی‌ای ۱۰۰٪ غیرقابل‌دور‌زدن نیست:
+ * (۱) `Content-Type` واقعاً واکشی‌شده فقط اگر در فهرست مجاز
+ *     (image/jpeg, image/png, image/webp, application/pdf) باشد
+ *     مستقیم استفاده می‌شود، وگرنه `application/octet-stream` (مرورگر
+ *     مجبور به دانلود می‌شود، نه اجرا/رندر).
+ * (۲) هدر `X-Content-Type-Options: nosniff` — مرورگر را از حدس‌زدن
+ *     نوع محتوا بر اساس بایت‌های فایل منع می‌کند (دفاع در برابر
+ *     Stored XSS از طریق یک فایل «تصویر» که واقعاً HTML/JS است).
  */
 class TelegramReceiptController
 {
+    /** هر Content-Type دیگری، حتی اگر finfo آن را تشخیص بدهد، force-download می‌شود. */
+    protected const ALLOWED_CONTENT_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+
+    protected function safeHeaders(?string $detectedType): array
+    {
+        $normalized = $detectedType ? trim(explode(';', $detectedType)[0]) : null;
+
+        $type = in_array($normalized, self::ALLOWED_CONTENT_TYPES, true)
+            ? $normalized
+            : 'application/octet-stream';
+
+        return [
+            'Content-Type' => $type,
+            'X-Content-Type-Options' => 'nosniff',
+        ];
+    }
+
     public function __invoke(Payment $payment, Api $telegram): Response
     {
         abort_if(! $payment->receipt_image, 404);
@@ -47,7 +75,7 @@ class TelegramReceiptController
             return response(
                 Storage::disk('local')->get($path),
                 200,
-                ['Content-Type' => Storage::disk('local')->mimeType($path) ?: 'image/jpeg']
+                $this->safeHeaders(Storage::disk('local')->mimeType($path))
             );
         }
 
@@ -66,7 +94,7 @@ class TelegramReceiptController
         return response(
             $response->body(),
             200,
-            ['Content-Type' => $response->header('Content-Type') ?: 'image/jpeg']
+            $this->safeHeaders($response->header('Content-Type'))
         );
     }
 }

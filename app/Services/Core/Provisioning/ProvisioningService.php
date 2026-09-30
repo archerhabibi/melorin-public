@@ -513,30 +513,28 @@ class ProvisioningService
                 }
             }
 
-            $number = 2;
-
-            while (true) {
+            // سقف: اگر پنل/دیتابیس برای همه‌ی کاندیدها «موجود است» بگوید، نباید
+            // تا بی‌نهایت (و پرشدن حافظه) ادامه دهیم.
+            for ($number = 2; $number <= 1000; $number++) {
                 $candidate = "{$base}_{$number}";
 
                 if (! $this->usernameExists($candidate, $panel, $driver)) {
                     return $candidate;
                 }
-
-                $number++;
             }
+
+            throw new \RuntimeException('نام کاربری آزاد پیدا نشد: بیش از ۱۰۰۰ کاندید امتحان شد؛ پاسخ پنل یا داده‌ها را بررسی کنید.');
         }
 
-        $number = 1;
-
-        while (true) {
+        for ($number = 1; $number <= 1000; $number++) {
             $candidate = "{$base}_{$number}";
 
             if (! $this->usernameExists($candidate, $panel, $driver)) {
                 return $candidate;
             }
-
-            $number++;
         }
+
+        throw new \RuntimeException('نام کاربری آزاد پیدا نشد: بیش از ۱۰۰۰ کاندید امتحان شد؛ پاسخ پنل یا داده‌ها را بررسی کنید.');
     }
 
     /**

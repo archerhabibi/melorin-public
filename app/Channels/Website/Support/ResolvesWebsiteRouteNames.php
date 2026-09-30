@@ -17,10 +17,12 @@ trait ResolvesWebsiteRouteNames
 {
     protected function websiteRoute(Request $request, string $name, array $params = []): string
     {
-        $slug = $request->route('slug');
+        // slug بعد از ResolveStoreContext از route حذف می‌شود؛ منبع حقیقت
+        // StoreContext است.
+        $store = app(\App\Services\Core\Store\StoreContext::class);
 
-        if ($slug) {
-            return route('website.store.'.$name, ['slug' => $slug, ...$params]);
+        if ($store->isReseller()) {
+            return route('website.store.'.$name, ['slug' => $store->reseller->slug, ...$params]);
         }
 
         return route('website.'.$name, $params);

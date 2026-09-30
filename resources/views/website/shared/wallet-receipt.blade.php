@@ -38,7 +38,7 @@
                 </div>
                 <div>
                     <label class="block text-sm text-gray-600 mb-1">تصویر رسید</label>
-                    <input type="file" name="receipt" accept="image/jpeg,image/png,image/webp" required class="w-full text-sm">
+                    <input type="file" name="receipt" accept="image/jpeg,image/png,image/webp,application/pdf" required class="w-full text-sm">
                 </div>
                 <button type="submit" class="px-4 py-2 rounded text-white text-sm font-medium" style="background: var(--brand)">
                     ثبت رسید

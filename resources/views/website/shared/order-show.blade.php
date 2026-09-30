@@ -35,5 +35,20 @@
                 سفارش شما در حال پردازش است.
             </div>
         @endif
+
+        {{--
+            فاز W3 بند ۵ (نسخه‌ی محدود) — اگر این حساب از خرید مهمان
+            ساخته شده و هنوز رمز عبور ندارد، همین‌جا پیشنهاد «تکمیل
+            حساب» را نشان می‌دهیم؛ نه اجباری، فقط یک CTA.
+        --}}
+        @auth
+            @if(! auth()->user()->password)
+                <div class="mt-4 rounded border border-blue-200 bg-blue-50 text-blue-800 px-4 py-3 text-sm flex items-center justify-between">
+                    <span>برای ورود آسان‌تر دفعه‌ی بعد، رمز عبور تنظیم کنید.</span>
+                    <a href="{{ $store->isReseller() ? route('website.store.identity.complete-profile.show', $store->reseller->slug) : route('website.identity.complete-profile.show') }}"
+                       class="underline font-medium whitespace-nowrap mr-2">تکمیل حساب</a>
+                </div>
+            @endif
+        @endauth
     </div>
 @endsection

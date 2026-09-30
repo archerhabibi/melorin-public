@@ -1,12 +1,18 @@
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 {{--
-    نکته‌ی پیاده‌سازی: تصمیم ۹.۴ (Branding contract: Name/Logo/رنگ اصلی)
-    هنوز روی جدول resellers migrate نشده — این یک TODO مستقل و کوچک
-    برای بعد از W2 است (bخش ۹.۴)، نه چیزی که این Layout بتواند همین
-    الان مصرف کند. تا آن زمان فقط از StoreContext::label() (که از قبل
-    در Core هست) برای نمایش نام فروشگاه استفاده می‌شود.
+    فاز W5 (نفر ۳) — بند ۴۶ و ۴۷ زیرسند: Branding (نام نمایشی/لوگو/رنگ/تماس)
+    و منوی اختصاصی نماینده. برندینگِ Main همیشه پیش‌فرض‌های ثابت است؛
+    برای نماینده از ResellerWebsiteSetting::brandingFor() می‌آید که خودش
+    fallback امن دارد (نمایندهٔ بدون تنظیمات هم به همان شکلِ قبلی دیده
+    می‌شود).
 --}}
+@php
+    $branding = \App\Models\ResellerWebsiteSetting::brandingFor($storeContext->isReseller() ? $storeContext->reseller : null);
+    $canManageStore = $storeContext->isReseller()
+        && auth()->check()
+        && app(\App\Services\Resellers\ResellerService::class)->isAdminOf($storeContext->reseller, auth()->user());
+@endphp
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -17,21 +23,31 @@
         <meta name="robots" content="noindex, nofollow">
     @endif
 
-    <title>@yield('title', isset($storeContext) && $storeContext->isReseller() ? $storeContext->label() : 'Melorin')</title>
+    <title>@yield('title', isset($storeContext) && $storeContext->isReseller() ? $branding['name'] : 'Melorin')</title>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    <style>:root { --brand: #4f46e5; }</style>
+    <style>:root { --brand: {{ $branding['color'] }}; }</style>
 </head>
 <body class="bg-gray-50 text-gray-900 font-sans antialiased min-h-screen flex flex-col">
 
     <header class="border-b bg-white">
         <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
             <a href="{{ $storeContext->isReseller() ? route('website.store.home', $storeContext->reseller->slug) : route('website.home') }}"
-               class="font-bold text-lg" style="color: var(--brand)">
-                {{ $storeContext->isReseller() ? $storeContext->label() : 'Melorin' }}
+               class="font-bold text-lg flex items-center gap-2" style="color: var(--brand)">
+                @if($storeContext->isReseller() && $branding['logo_url'])
+                    <img src="{{ $branding['logo_url'] }}" alt="{{ $branding['name'] }}" class="h-8 w-8 rounded object-contain">
+                @endif
+                {{ $storeContext->isReseller() ? $branding['name'] : 'Melorin' }}
             </a>
 
             <nav class="flex items-center gap-4 text-sm">
+                {{-- بند ۴۷: منوی اختصاصی نماینده — فقط برای ادمین/مالکِ همین فروشگاه --}}
+                @if($canManageStore)
+                    <a href="{{ route('website.store.manage.customers', $storeContext->reseller->slug) }}" class="text-gray-500 hover:text-gray-900">مشتریان</a>
+                    <a href="{{ route('website.store.manage.products', $storeContext->reseller->slug) }}" class="text-gray-500 hover:text-gray-900">محصولات</a>
+                    <a href="{{ route('website.store.manage.branding', $storeContext->reseller->slug) }}" class="text-gray-500 hover:text-gray-900">تنظیمات فروشگاه</a>
+                @endif
+
                 @auth
                     <span class="text-gray-500">{{ auth()->user()->full_name }}</span>
                     <form method="POST" action="{{ $storeContext->isReseller() ? route('website.store.logout', $storeContext->reseller->slug) : route('website.logout') }}">
@@ -58,7 +74,16 @@
     </main>
 
     <footer class="border-t bg-white py-6 text-center text-xs text-gray-400">
-        © {{ now()->format('Y') }} {{ $storeContext->isReseller() ? $storeContext->label() : 'Melorin' }}
+        <div>© {{ now()->format('Y') }} {{ $storeContext->isReseller() ? $branding['name'] : 'Melorin' }}</div>
+
+        {{-- بند ۴۶: اطلاعات تماس نماینده، فقط اگر خودش ثبت کرده باشد --}}
+        @if($storeContext->isReseller() && ($branding['phone'] || $branding['email']))
+            <div class="mt-1">
+                @if($branding['phone']) <span>{{ $branding['phone'] }}</span> @endif
+                @if($branding['phone'] && $branding['email']) <span class="mx-1">·</span> @endif
+                @if($branding['email']) <span>{{ $branding['email'] }}</span> @endif
+            </div>
+        @endif
     </footer>
 </body>
 </html>

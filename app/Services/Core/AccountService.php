@@ -451,9 +451,7 @@ class AccountService
                 return $base;
             }
 
-            $n = 1;
-
-            while (true) {
+            for ($n = 1; $n <= 1000; $n++) {
                 $candidate = "{$base}_{$n}";
 
                 if (
@@ -464,9 +462,9 @@ class AccountService
                 ) {
                     return $candidate;
                 }
-
-                $n++;
             }
+
+            throw new \RuntimeException('نام کاربری آزاد پیدا نشد: بیش از ۱۰۰۰ کاندید امتحان شد؛ پاسخ پنل یا داده‌ها را بررسی کنید.');
         }
 
         /*
@@ -485,9 +483,7 @@ class AccountService
         *   vip1_20_2a
         *   ...
         */
-        $sequence = 1;
-
-        while (true) {
+        for ($sequence = 1; $sequence <= 1000; $sequence++) {
             $numberCandidate = "{$base}_{$sequence}";
 
             if (
@@ -511,9 +507,9 @@ class AccountService
                     return $candidate;
                 }
             }
-
-            $sequence++;
         }
+
+        throw new \RuntimeException('نام کاربری آزاد پیدا نشد: بیش از ۱۰۰۰ کاندید امتحان شد؛ پاسخ پنل یا داده‌ها را بررسی کنید.');
     }
 
     protected function usernameExistsOnPanel(

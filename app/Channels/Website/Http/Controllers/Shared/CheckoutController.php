@@ -6,7 +6,7 @@ use App\Channels\Website\Services\WebsiteCatalogFacade;
 use App\Channels\Website\Services\WebsitePurchaseFacade;
 use App\Channels\Website\Services\WebsiteWalletFacade;
 use App\Channels\Website\Support\CoreErrorMapper;
-use App\Models\CustomerAccount;
+use App\Services\Core\Store\IdentityService;
 use App\Services\Core\Store\StoreContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -35,6 +35,7 @@ class CheckoutController
         protected WebsiteWalletFacade $wallet,
         protected WebsitePurchaseFacade $purchase,
         protected CoreErrorMapper $errors,
+        protected IdentityService $identity,
     ) {}
 
     /**
@@ -75,8 +76,10 @@ class CheckoutController
             abort(404);
         }
 
-        /** @var CustomerAccount $customer */
-        $customer = $request->attributes->get('customerAccount');
+        // پچ ۳.۲.۱۷: از این‌جا به بعد CustomerAccount فقط در همین لحظه
+        // (یک خرید واقعی) ساخته می‌شود — نه زودتر توسط میان‌افزار روی
+        // صرفِ یک GET. این تنها نقطه‌ای‌ست که مجاز است آن را بسازد.
+        $customer = $this->identity->resolveCustomerAccount($request->user(), $store);
 
         try {
             $account = $this->purchase->purchaseWithWallet(

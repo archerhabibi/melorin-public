@@ -1,4 +1,422 @@
-﻿3.2.2 — فاز W2 (بخش دوم): شارژ کیف‌پول با Zarinpal + Card-to-Card
+3.3.0 - Release Website (W0-W8): پاک‌سازی نهایی، Audit و رفع باگ‌های پیدا‌شده در اجرای واقعی تست‌ها
+
+جزئیات: docs/RELEASE-3.3.0-AUDIT.md
+
+نسخه‌ی پایدارسازی است؛ قابلیت جدیدی اضافه نشد. اجرای واقعی php artisan test --filter=Website:
+۹۹ تست، ۳۴۶ assertion، همه سبز.
+
+=== باگ‌های واقعی که رفع شد ===
+- ResolveStoreContext: پارامتر {slug} در route می‌ماند و چون لاراول پارامترها را «به‌ترتیب»
+  به کنترلر می‌دهد، جلوتر از {product}/{order} می‌نشست → TypeError/500 روی همه‌ی مسیرهای
+  /store/{slug}/... که آرگومان عددی دارند (خرید، صفحه‌ی محصول، مدیریت قیمت). حالا بعد از
+  ساخت StoreContext، slug از route حذف می‌شود؛ ResolvesWebsiteRouteNames هم از StoreContext می‌خواند.
+- ProvisioningService/AccountService: چهار حلقه‌ی while(true) برای تولید username آزاد؛ اگر پنل
+  همیشه «موجود است» می‌گفت تا پرشدن حافظه ادامه می‌یافت. حالا سقف ۱۰۰۰ تلاش + Exception.
+- PasswordResetLinkController: برای ایمیل ثبت‌نشده خطای جدا نشان می‌داد (User Enumeration).
+  حالا پاسخ همیشه یکسان است؛ فقط محدودیت ۳/ساعت به‌ازای ایمیل خطا می‌دهد.
+- routes/website.php: throttle:3,60 روی IP قبل از محدودیت به‌ازای ایمیل، با ۴۲۹ می‌بُرید؛ به 30,60 تغییر کرد.
+
+=== اصلاح تست‌ها (نه باگ محصول) ===
+- InteractsWithWebsiteFixtures::fakeSanaeiPanel: کلاینت نمونه 't' پیدا می‌شود، هر username دیگر «ناموجود»
+  (همان الگوی PurchaseFlowTest). CheckoutFlowTest و ResellerCommerceFlowTest هم از آن استفاده می‌کنند.
+- LazyCustomerAccountCreationTest: forceDelete به‌جای delete (SoftDeletes + unique index).
+- ReceiptSecurityTest: UploadedFile::fake نوع فایل را از نام می‌گیرد؛ فایل واقعی ساخته می‌شود.
+- ResellerGuestCheckoutTest: GET checkout طبق پچ 3.2.17 حساب نمی‌سازد؛ تست همین را تایید می‌کند.
+
+=== هنوز انجام نشده (باید قبل از Production) ===
+php artisan test کامل (نه فقط Website) · npm run build · Migration روی Staging با کپی دیتابیس ·
+Zarinpal Sandbox واقعی · Review امنیتی مستقل · تست Backup/Rollback.
+
+---
+
+3.2.17 - تصمیم صاحب پروژه: CustomerAccount فقط در لحظه‌ی خرید (override تحلیل نفر 3)
+
+جزئیات: docs/PHASE-W5-PART3-LAZY-CUSTOMER-ACCOUNT.md
+
+EnsureCustomerAccountResolved از resolveCustomerAccount (ساخت) به
+findCustomerAccount (فقط خواندن، nullable) تغییر کرد. CheckoutController::store
+حالا صریحا resolveCustomerAccount را در لحظه‌ی خرید صدا می‌زند.
+AccountsController::renew نیازی به تغییر نداشت (Account از‌قبل‌موجود
+همیشه یعنی CustomerAccount هم از قبل هست). بقیه‌ی کنترلرها (Orders،
+Accounts index/show، Referral) از قبل null-safe بودند، نیازی به تغییر
+نداشتند. هیچ تست موجودی نشکست (همه از قبل CustomerAccount خودشان را
+صریح می‌ساختند).
+
+=== تست ===
+جدید: tests/Feature/Website/LazyCustomerAccountCreationTest.php
+
+=== اجرا ===
+    php artisan test --filter=LazyCustomerAccountCreationTest
+    php artisan test --filter=CheckoutFlowTest
+    php artisan test --filter=AccountPanelTest
+    php artisan test --filter=ResellerCommerceFlowTest
+    php artisan test --filter=ResellerManagementTest
+
+بدون PHP نوشته شده؛ نتیجه‌ی واقعی را بفرستید.
+
+---
+
+3.2.16 - فاز W5 (بخش دوم): Audit تکمیلی نفر 3 + یادداشت (سوال امنیتی بعدا توسط شما override شد - ببینید 3.2.17)
+
+جزئیات: docs/PHASE-W5-PART2-COMPLETION-AND-SECURITY-NOTE.md
+
+Audit کامل 5 بند W5 + 9 بند DoD: همه از قبل پیاده بود، کد جدیدی لازم نشد.
+سوال باز «عضویت خودکار با بازدید» توسط نفر 3 تحلیل و «نیازی به تغییر نیست»
+نتیجه‌گیری شد - اما این نتیجه‌گیری در پچ 3.2.17 توسط تصمیم صریح شما override شد.
+
+یادداشت ادغام: به‌عنوان 3.2.5 روی مبنای 3.2.4 نوشته شده بود؛ شماره به 3.2.16 تغییر کرد.
+
+---
+
+3.2.15 - فاز W5 (بخش دوم): Guest Checkout نماینده (نفر 1، به درخواست شما)
+
+جزئیات: docs/PHASE-W5-PART2-RESELLER-GUEST-CHECKOUT.md
+
+بررسی زنجیره‌ی کامل کد نشان داد مسیرهای Guest (Shared) از قبل زیر /store/{slug}
+درست کار می‌کنند (قیمت customers_price، توکن Reseller-scoped، Redirect به
+website.store.*، Debit دوگانه از PurchaseService)؛ پس کد جدیدی اضافه نشد و فقط
+تست اضافه شد: tests/Feature/Website/ResellerGuestCheckoutTest.php (7 تست).
+
+اجرا: php artisan test --filter=ResellerGuestCheckoutTest
+بدون PHP نوشته شده؛ نتیجه‌ی واقعی را بفرستید.
+
+---
+
+3.2.14 - فاز W5 (نفر 3) بخش اول: Reseller Website - Branding + منوی نماینده + Reseller Management + تست Commerce نماینده
+
+جزئیات: docs/PHASE-W5-PART1-RESELLER-STORE.md
+
+- Branding (بند 46): جدول reseller_website_settings + ResellerWebsiteSetting::brandingFor؛ Layout: --brand پویا،
+  لوگو، نام نمایشی، اطلاعات تماس. نماینده‌ی بدون تنظیمات دقیقا مثل قبل دیده می‌شود.
+- منوی اختصاصی نماینده (بند 47): فقط برای ادمین همان فروشگاه.
+- Reseller Management سبک (بند 49): /store/{slug}/manage/{customers,products,branding} - بدون Business Rule
+  در کنترلر؛ همه از ResellerPricingService/ResellerCustomerService/WalletService.
+- باگ رفع‌شده هنگام ساخت: Product::customersPrice برای محصول غیرفعال null است.
+- تست: ResellerCommerceFlowTest، ResellerBrandingTest، ResellerManagementTest.
+- خارج از این پچ: Guest Checkout نماینده؛ یادداشت Review امنیتی درباره‌ی EnsureCustomerAccountResolved.
+
+=== یادداشت ادغام ===
+این پچ به‌عنوان 3.2.4 روی مبنای 3.2.3 نوشته شده بود؛ شماره به 3.2.14 تغییر کرد.
+VERSION و routes/website.php دستی ادغام شدند (routes: گروه manage فقط زیر
+website.store.*، و روی همان گروهی که website.csp دارد).
+
+اجرا: php artisan migrate && php artisan test
+
+---
+
+3.2.13 - فاز W7 + W8: تست، Verification Matrix، Deploy Checklist (نفر 5)
+
+جزئیات کامل: docs/PHASE-W7-W8-TESTING-DEPLOY.md
+
+اسکلت تست مشترک (tests/Concerns/InteractsWithWebsiteFixtures.php، دیر
+رسید ولی مستند شد). سه از چهار E2E صریح Roadmap: MainWebsiteE2ETest،
+GuestE2ETest، GuestPostPurchaseE2ETest (Reseller E2E مسدود - منتظر
+نفر 3). یک گپ واقعی رفع شد: RegisteredUserController حالا ?ref= را
+می‌خواند (نکته‌ی باز پچ 3.2.12). Verification Matrix کامل
+(docs/VERIFICATION-MATRIX.md) و چک‌لیست Deploy کامل
+(docs/PHASE-W8-DEPLOY-CHECKLIST.md).
+
+نتیجه‌ی صادقانه: هیچ ردیفی هنوز TESTED واقعی یا PRODUCTION VERIFIED
+نیست - همه منتظر اجرای واقعی php artisan test روی محیط شما هستند.
+
+=== تست ===
+جدید: MainWebsiteE2ETest، GuestE2ETest، GuestPostPurchaseE2ETest،
+ReferralRegistrationTest.
+
+=== اجرا ===
+    php artisan test
+(کل مجموعه)
+
+---
+
+3.2.12 - فاز W4 (بخش دوم): Renewal + Referral/Commission (Refund/Retry: Admin-only، بدون تغییر) (نفر 2)
+
+جزئیات کامل: docs/PHASE-W4-PART2-RENEWAL-REFERRAL.md
+
+طبق تصمیم صریح: «همه دقیقا همانند Core و ربات تلگرام». بررسی شد که
+هیچ ربات (اصلی/نمایندگی) هرگز دکمه‌ی Refund/Retry به مشتری نشان
+نداده؛ پس آن دو Admin-only می‌مانند و همان برچسب وضعیت پچ قبلی
+(«نیازمند رسیدگی»/«بازگشت‌شده») برایشان کافی است - هیچ Route/دکمه‌ی
+جدیدی برای آن دو اضافه نشد.
+
+در مقابل Renewal یک اکشن واقعی است، چون ربات هم دقیقا همین‌طور است:
+Account\AccountsController::renew() سطر‌به‌سطر همان سه بخش
+AccountsHandler::renew() ربات (پیش‌بررسی موجودی، صدا زدن
+RenewalService، نگاشت سه‌گانه‌ی خطا با همان متن‌های دقیق) را با HTTP
+redirect تکرار می‌کند.
+
+Referral/Commission هم اضافه شد: لینک دعوت + تعداد زیرمجموعه (سطح
+User)، و فهرست کمیسیون‌های پرداخت‌شده که Context-scoped است
+(referrer_customer_account_id).
+
+نکته‌ی باز (خارج از مالکیت این پچ): ثبت‌نام سایت هنوز ?ref= را نمی‌خواند.
+
+=== تست ===
+جدید: tests/Feature/Website/AccountPanelPart2Test.php - تمدید موفق
+(کسر کیف‌پول + تمدید انقضا)، پیام دقیقا هم‌متن با ربات برای موجودی
+ناکافی (بدون تماس با پنل)، مالکیت (404 برای اکانت دیگری)، لینک/تعداد
+زیرمجموعه، ایزولاسیون Context در فهرست کمیسیون.
+
+=== اجرا ===
+    php artisan test --filter=AccountPanelPart2Test
+
+بدون Migration جدید.
+
+=== یادداشت ادغام ===
+این پچ اصلا به‌عنوان نسخه‌ی 3.2.5 روی مبنای 3.2.4 (نسخه‌ی اول نفر 2)
+نوشته شده بود. چون پچ‌های 3.2.5 تا 3.2.11 قبلا توسط من (نفر 1، نفر 4،
+و ادغام قبلی نفر 2) گرفته شده بودند، شماره به 3.2.12 تغییر کرد. فقط
+VERSION و routes/website.php نیاز به ادغام دستی داشتند.
+
+---
+
+3.2.11 - فاز W4 (بخش اول): پنل کاربری - Wallet + Orders + Accounts (نفر 2)
+
+جزئیات کامل: docs/PHASE-W4-PART1-ACCOUNT-PANEL.md
+
+فقط آیتم‌های 1 تا 3 از هفت‌بند فاز W4 (نفر 2: پنل کاربری). صفحه‌ی
+Wallet (موجودی + گردش حساب + لینک شارژ موجود)، فهرست کامل سفارش‌ها،
+فهرست و جزئیات اکانت‌های VPN - همه Context-isolated و صرفا نمایشی.
+
+Renewal، Referral/Commission، Refund UI، Retry UI (آیتم‌های 4 تا 7)
+عمدا در این پچ نیستند: هرکدام به یک تصمیم معماری صریح نیاز دارند
+(نگاشت خطا، یا اینکه اصلا کاربر عادی حق درخواست Refund/Retry دارد یا
+نه). جزئیات در مستند بالا.
+
+=== ادغام با کار نفر 1 و نفر 4 (Merge Note) ===
+این پچ اصلا به‌عنوان "3.2.4" روی نسخه‌ی 3.2.3 نوشته شده بود (قبل از
+اینکه پچ‌های 3.2.4 تا 3.2.10 من (نفر 1: هویت مهمان + نفر 4: امنیت)
+منتشر شوند)، پس شماره‌ی نسخه به 3.2.11 (شماره‌ی واقعی بعدی در توالی)
+تغییر کرد. محتوای کد بدون تغییر منطقی اعمال شد؛ تنها دو فایل نیاز به
+ادغام دستی داشتند (VERSION همین‌جا، و routes/website.php - چون هر دو
+فایل مشترکی هستند که چند نفر به آن‌ها append می‌کنند). هیچ تداخل
+واقعی‌ای در منطق برنامه پیدا نشد: پوشه‌ی Controllers/Account/ کاملا
+جدا از Controllers/Guest/ و Controllers/Identity/ (نفر 1) و
+Http/Middleware/ (نفر 4) است.
+
+=== تست ===
+جدید: tests/Feature/Website/AccountPanelTest.php - دسترسی
+guest->login، موجودی/گردش‌حساب صحیح و ایزوله، فهرست سفارش‌ها ایزوله
+بین Main و Reseller Context، فهرست و جزئیات اکانت با 404 برای مالکیت
+نادرست.
+
+=== اجرا ===
+    php artisan test --filter=AccountPanelTest
+
+بدون Migration جدید.
+
+---
+
+3.2.10 - فاز W6 (بخش پنجم): Review امنیتی Telegram-linking (نفر 4، W6 کامل شد)
+
+جزئیات کامل: docs/PHASE-W6-PART5-TELEGRAM-REVIEW.md
+
+Self-audit روی پچ 3.2.5 (با محدودیت صادقانه: من هم سازنده هم مرورگرم،
+Review واقعا مستقل نیست). یافته‌ی اصلی: Login/Link CSRF - یک مهاجم
+می‌توانست callback معتبر خودش را برای قربانی بفرستد و تلگرام خودش را
+به حساب قربانی وصل کند. رفع شد با یک state یک‌بارمصرف Session-bound.
+بقیه‌ی چک‌لیست (HMAC واقعی، hash_equals، auth_date، بدون fallback
+ناامن، بدون merge خودکار، rate limit، پشت auth) تایید شد بدون مشکل.
+
+=== تست ===
+tests/Feature/Website/TelegramLinkingTest.php: 3 تست جدید (بدون state،
+state نامنطبق، replay) + تست‌های قبلی به‌روز شدند.
+
+=== اجرا ===
+    php artisan test --filter=TelegramLinkingTest
+    php artisan test --filter=AuditLoggingTest
+بدون PHP نوشته شده؛ نتیجه واقعی را بفرستید. توصیه: یک Review واقعا
+مستقل قبل از Production.
+
+=== وضعیت فاز W6 ===
+با این پچ، پنج بند فاز W6 (Rate Limiting، CSP، Receipt Storage، Audit،
+Telegram Review) کامل شد. نقش نفر 4 طبق بخش 10 تمام شد.
+
+---
+
+3.2.9 - فاز W6 (بخش چهارم): Audit (نفر 4)
+
+جزئیات کامل: docs/PHASE-W6-PART4-AUDIT.md
+
+Payment Confirmation از قبل رایگان پوشش داده شده بود (PaymentService
+از قبل AuditService را صدا می‌زند). Refund request: N/A (Website هنوز
+Refund ندارد). گپ واقعی: AuditService::resolveActor فقط Admin/Reseller
+می‌شناخت. اضافه شد: User (guard web) -> actor_type='customer'. Migration
+جدید: audit_logs.actor_type از ENUM به string. سه نقطه‌ی Audit جدید:
+identity.telegram_linked، identity.telegram_link_rejected_owned_by_other،
+identity.guest_account_created، identity.guest_collision_detected.
+
+=== تست ===
+جدید: tests/Feature/Website/AuditLoggingTest.php
+
+=== اجرا ===
+    php artisan migrate
+    php artisan test --filter=AuditLoggingTest
+    php artisan test --filter=PaymentServiceTest
+بدون PHP نوشته شده؛ نتیجه واقعی را بفرستید.
+
+---
+
+3.2.8 - فاز W6 (بخش سوم): Receipt Upload Security (نفر 4)
+
+جزئیات کامل: docs/PHASE-W6-PART3-RECEIPT-SECURITY.md
+
+Storage خصوصی + سرو کنترل‌شده از پچ 3.2.2 از قبل درست بود. این پچ:
+سقف حجم 4MB به 5MB، pdf اضافه شد (طبق بخش 9.6)، و دو لایه‌ی دفاعی
+جدید در TelegramReceiptController: Content-Type allow-list +
+X-Content-Type-Options: nosniff (دفاع در برابر Stored XSS).
+
+=== تست ===
+جدید: tests/Feature/Website/ReceiptSecurityTest.php
+
+=== اجرا ===
+    php artisan test --filter=ReceiptSecurityTest
+    php artisan test --filter=WalletChargeFlowTest
+بدون PHP نوشته شده؛ نتیجه واقعی را بفرستید.
+
+---
+
+3.2.7 - فاز W6 (بخش دوم): Rate Limiting (نفر 4)
+
+جزئیات کامل: docs/PHASE-W6-PART2-RATE-LIMITING.md
+
+Audit نشان داد Login و Checkout از قبل درست بودند (throttleKey موجود،
+throttle:10,1 موجود). فقط دو مورد اصلاح شد: Upload رسید از 10/دقیقه
+به 5/دقیقه (طبق بخش 9.6)، و Reset رمز حالا واقعا per-email است (قبلا
+فقط per-IP بود که طبق سند اشتباه بود).
+
+=== تست ===
+جدید: tests/Feature/Website/RateLimitingTest.php
+
+=== اجرا ===
+    php artisan test --filter=RateLimitingTest
+بدون PHP نوشته شده؛ نتیجه واقعی را بفرستید.
+
+---
+
+3.2.6 — فاز W6 (بخش اول): CSP Header (نفر ۴)
+
+جزئیات کامل: docs/PHASE-W6-PART1-CSP.md
+
+از این پچ نقش نفر ۴ (امنیت و سخت‌سازی) را ایفا می‌کنم. طبق توصیه‌ی
+Roadmap، هر بند W6 پچ جدا: این یکی فقط CSP.
+
+=== تغییرات ===
+- SetContentSecurityPolicyHeader middleware (alias website.csp، ثبت در
+  bootstrap/app.php).
+- فقط روی دو گروه Route Website (Main+Reseller) در routes/website.php،
+  نه سراسری روی 'web' (پنل ادمین/نماینده دست‌نخورده می‌ماند).
+- سازش آگاهانه: style-src 'unsafe-inline' چون Viewهای موجود از
+  style="..." inline برای رنگ Brand استفاده می‌کنند؛ حذفش نیاز به
+  هماهنگی با نفرات ۱-۳ دارد، کار آینده.
+
+=== تست ===
+جدید: tests/Feature/Website/ContentSecurityPolicyTest.php
+
+=== اجرا ===
+    php artisan test --filter=ContentSecurityPolicyTest
+بدون PHP نوشته شده؛ نتیجه‌ی واقعی را بفرستید.
+
+---
+
+3.2.5 — فاز W3 (بخش سوم): Telegram-linking واقعی (نفر ۱، W3 کامل شد)
+
+جزئیات کامل: docs/PHASE-W3-PART3-TELEGRAM-LINKING.md
+
+HMAC واقعی طبق الگوریتم رسمی Telegram Login Widget (نه HMAC جعلی مثل
+VPNMarket): secret واقعی از bot_token، hash_equals ثابت‌زمانی، چک
+auth_date (max 24h). عمداً «Linking» است نه «Login» — پشت auth، طبق
+متن دقیق Roadmap. حتی با امضای معتبر، اگر آن تلگرام قبلاً به کاربر
+دیگری وصل است، merge خودکار نمی‌شود (بند ۸۷ سند مادر).
+
+=== تغییرات ===
+- TelegramLoginVerifier (Support/) — منطق HMAC خالص.
+- TelegramLinkController (Controllers/Identity/) — GET
+  /identity/telegram/callback، پشت auth+store.customer، throttle:20,1.
+- ویجت رسمی تلگرام در complete-profile.blade.php (فقط Main Context —
+  نمایندگان نیاز به ستون bot_username دارند که هنوز نیست).
+
+=== تست ===
+جدید: tests/Feature/Website/TelegramLinkingTest.php — لینک موفق، hash
+دستکاری‌شده، auth_date منقضی، تلگرام متعلق به کاربر دیگر، رد دسترسی مهمان.
+
+=== اجرا ===
+    php artisan test --filter=TelegramLinkingTest
+باز هم بدون PHP نوشته شده؛ نتیجه‌ی واقعی اجرا را بفرستید.
+
+=== وضعیت فاز W3 ===
+با این پچ، شش‌بند فاز W3 (طبق Roadmap) کامل شد. طبق بخش ۱۰، قدم بعدی
+نفر ۴ (Review امنیتی Telegram-linking) است، نه من — مگر دستور دیگری
+بدهید.
+
+---
+
+3.2.4 — فاز W3 (بخش دوم): تکمیل خرید مهمان + مالکیت پوشه‌ها (نفر ۱)
+
+جزئیات کامل: docs/PHASE-W3-PART2-GUEST-PURCHASE.md
+
+از این پچ به بعد طبق بخش ۱۰ Roadmap («تقسیم کار بین ۵ نفر») کار می‌کنم:
+نفر ۱ (هویت مهمان + اتصال تلگرام)، فقط مالک Controllers/Guest/،
+Controllers/Identity/، views/website/guest/، views/website/identity/.
+
+=== تغییرات ===
+- Refactor بدون تغییر رفتار: GuestCheckoutController و ویوهایش از
+  Controllers/Shared به Controllers/Guest منتقل شدند.
+- views/website/guest/entry-link.blade.php — Partial قابل‌استفاده‌ی
+  مجدد برای نفر ۳ (طبق وابستگی بند ۱۷ Roadmap)، منتشر شده زود.
+- GuestPurchaseController (بند ۳ W3): مهمان → User ناقص (بدون رمز
+  عبور) → Auth::login → همان CheckoutController/ChargeController
+  تست‌شده‌ی پچ ۳.۲.۱/۳.۲.۲. تصمیم کامل و جایگزین‌های بررسی‌شده در سند.
+- Identity Resolution (بند ۴): پیش از خرید، فقط رد یا هدایت به Login —
+  هرگز merge خودکار (بند ۸۷ سند مادر).
+- CompleteProfileController (بند ۵، نسخه‌ی محدود): تنظیم رمز عبور برای
+  User ناقصِ برآمده از خرید مهمان. لینکش در order-show.blade.php.
+
+=== تست ===
+جدید: tests/Feature/Website/GuestPurchaseFlowTest.php.
+
+=== اجرا ===
+    php artisan test --filter=GuestPurchaseFlowTest
+    php artisan test --filter=GuestCheckoutTokenTest
+    php artisan test --filter=CheckoutFlowTest
+باز هم بدون PHP نوشته شده؛ نتیجه‌ی واقعی اجرا را بفرستید.
+
+=== فاز بعدی ===
+پچ ۳.۲.۵: Telegram-linking واقعی (HMAC معتبر) — عمداً پچ جدا، چون
+Security-critical است و نمونه‌ی مرجع در همین بخش ناامن بود.
+
+---
+
+3.2.3 — فاز W3 (بخش اول): Guest Checkout Token
+
+جزئیات کامل: docs/PHASE-W3-PART1-GUEST-CHECKOUT-TOKEN.md
+
+فقط بند ۱ از شش‌بند فاز W3 (بخش ۹.۳). جدول guest_checkouts +
+GuestCheckoutService (در Core، نه کانال Website) + Endpoint عمومی
+(بدون auth) برای شروع خرید مهمان با نام/تلفن/ایمیل، توکن در Cookie
+امضاشده (EncryptCookies، بدون HMAC دستی)، TTL=۴۵ دقیقه.
+
+تکمیل پرداخت/سفارش واقعی برای Guest عمداً در این پچ نیست: نیاز به یک
+تصمیم معماری صریح دارد چون PurchaseService::purchase() امروز
+CustomerAccount الزامی می‌گیرد. جزئیات در مستند بالا.
+
+=== تست ===
+جدید: tests/Feature/Website/GuestCheckoutTokenTest.php — شروع بدون
+auth، الزامی‌بودن نام/تلفن، خواندن Cookie، توکن نامعتبر/منقضی، ایزوله
+Main/Reseller.
+
+=== اجرا ===
+    php artisan migrate
+    php artisan test --filter=GuestCheckoutTokenTest
+باز هم بدون PHP نوشته شده؛ نتیجه‌ی واقعی اجرا را بفرستید.
+
+=== فاز بعدی ===
+بند ۳ فاز W3: تصمیم اتصال Guest به PurchaseService + تکمیل Flow تا
+Provisioning.
+
+---
+
+3.2.2 — فاز W2 (بخش دوم): شارژ کیف‌پول با Zarinpal + Card-to-Card
 
 جزئیات کامل: docs/PHASE-W2-PART2-PAYMENT-METHODS.md
 

@@ -2,9 +2,12 @@
 
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+/*
+ * عمداً Route::get('/') اینجا تعریف نمی‌شود: مسیر «/» متعلق به
+ * website.home است (routes/website.php). Laravel کلیدِ allRoutes را از
+ * «متد + URI» می‌سازد؛ یک Route دیگر روی GET / باعث می‌شد website.home
+ * بی‌صدا از فهرست نام‌ها حذف شود (RouteNotFoundException در Layout).
+ */
 
 /*
  * بازگشت از درگاه پرداخت آنلاین (P2 گزارش امنیتی، مورد #17).

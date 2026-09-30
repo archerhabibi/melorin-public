@@ -18,6 +18,24 @@ class WalletTransaction extends Model
         'balance_after' => 'decimal:2',
     ];
 
+    /**
+     * فقط برای نمایش (بند ۵۶ زیرسند وب: ترجمه‌ی نمایشی، نه منطق
+     * تجاری) — دقیقاً هم‌الگو با Order::statusLabels() موجود.
+     *
+     * @return array<string, string>
+     */
+    public static function typeLabels(): array
+    {
+        return [
+            'charge' => 'شارژ کیف‌پول',
+            'purchase' => 'خرید',
+            'refund' => 'بازگشت وجه',
+            'commission' => 'کمیسیون',
+            'referral_bonus' => 'پاداش معرفی',
+            'admin_adjust' => 'اصلاح توسط مدیر',
+        ];
+    }
+
     public function wallet(): BelongsTo
     {
         return $this->belongsTo(Wallet::class);

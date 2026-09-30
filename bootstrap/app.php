@@ -24,6 +24,15 @@ return Application::configure(basePath: dirname(__DIR__))
                 ? route('website.store.login', $slug)
                 : route('website.login');
         });
+
+        // فاز W6 بند ۲ (Roadmap، مالکیت نفر ۴): CSP فقط با نام مستعار
+        // ثبت می‌شود، نه به‌صورت سراسری روی گروه 'web' اضافه می‌شود —
+        // فقط routes/website.php آن را به گروه‌های خودش اضافه می‌کند تا
+        // پنل ادمین/نماینده (Filament) که به این گروه global متکی است
+        // دست‌نخورده بماند.
+        $middleware->alias([
+            'website.csp' => \App\Http\Middleware\SetContentSecurityPolicyHeader::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
