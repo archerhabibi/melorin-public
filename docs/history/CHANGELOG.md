@@ -5,6 +5,12 @@
 
 ---
 
+3.3.5 - تکمیل فاز ۷: (۱) Baseline Squash: ۸۲ Migration → یک Baseline (`2026_10_03_000001_create_baseline_schema.php`)، بدون Backfill/Merge و بدون ستون‌های قدیمی (`users.reseller_id`)؛ اسکیما روی MariaDB با اسکیمای قبلی مقایسه شد (تنها تفاوت: حذف `users.reseller_id`). (۲) Redis واقعی در تست (Cache/Lock/RateLimiter/Queue) با flag قفل‌دار و در CI. (۳) skipهای MariaDB برطرف شد. SQLite و MariaDB+Redis: ۴۸۲ تست سبز.
+
+جزئیات: docs/history/PHASE-7-TEST-ENVIRONMENT.md (بخش «تکمیل فاز ۷»)
+
+---
+
 3.3.4 - فاز ۷ (Full Test Environment): suite روی MariaDB 10.11 هم اجرا شد (۴۷۶ سبز + ۹ skip) و SQLite ۴۸۵ سبز. باگ `resellers.bot_token` (varchar برای مقدار encrypted) در Migration اصلی به text اصلاح شد؛ guard برای همه‌ی ستون‌های encrypted؛ job `tests-mariadb` در CI.
 
 جزئیات: docs/history/PHASE-7-TEST-ENVIRONMENT.md

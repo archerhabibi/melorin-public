@@ -29,6 +29,15 @@ jobs:
         with:
           dependency-versions: locked
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Build frontend assets
+        run: npm ci && npm run build
+
       - name: Prepare Laravel application
         run: |
           cp .env.example .env
@@ -44,6 +53,16 @@ jobs:
     runs-on: ubuntu-latest
 
     services:
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
       mariadb:
         image: mariadb:10.11
         env:
@@ -59,6 +78,9 @@ jobs:
 
     env:
       MELORIN_TEST_ALLOW_MYSQL: '1'
+      MELORIN_TEST_REDIS: '1'
+      REDIS_HOST: 127.0.0.1
+      REDIS_CLIENT: phpredis
       DB_CONNECTION: mysql
       DB_HOST: 127.0.0.1
       DB_PORT: 3306
@@ -74,13 +96,22 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
-          extensions: mbstring, xml, ctype, iconv, intl, pdo, pdo_mysql
+          extensions: mbstring, xml, ctype, iconv, intl, pdo, pdo_mysql, redis
           coverage: none
 
       - name: Install Composer dependencies
         uses: ramsey/composer-install@v3
         with:
           dependency-versions: locked
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Build frontend assets
+        run: npm ci && npm run build
 
       - name: Prepare Laravel application
         run: |
@@ -90,5 +121,5 @@ jobs:
       - name: Fresh migrate on MariaDB
         run: php artisan migrate:fresh --force
 
-      - name: Run tests on MariaDB
+      - name: Run tests on MariaDB + Redis
         run: php artisan test

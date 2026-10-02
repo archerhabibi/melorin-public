@@ -12,9 +12,7 @@ use App\Services\Core\Store\StoreContext;
 use App\Services\Core\WalletService;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -168,9 +166,9 @@ class WalletContextStructureTest extends TestCase
     #[Test]
     public function a_bare_user_owner_always_means_the_main_wallet(): void
     {
-        // Rule 12: Context هرگز از users.reseller_id حدس زده نمی‌شود
+        // Rule 12: Context هرگز از User حدس زده نمی‌شود (ستون users.reseller_id در Baseline حذف شده)
         $reseller = Reseller::factory()->create();
-        $user = User::factory()->create(['reseller_id' => $reseller->id]); // ستون deprecated
+        $user = User::factory()->create();
 
         $this->identity->resolveCustomerAccount($user, StoreContext::reseller($reseller));
 
@@ -187,110 +185,5 @@ class WalletContextStructureTest extends TestCase
 
         $this->expectException(\InvalidArgumentException::class);
         $this->wallet->getOrCreateWallet($guest);
-    }
-
-    #[Test]
-    public function legacy_wallets_are_merged_by_context_without_changing_the_total(): void
-    {
-        $this->restoreLegacyWalletColumns();
-
-        $reseller = Reseller::factory()->create();
-        $owner = $reseller->user;
-        $ali = User::factory()->create();
-
-        $ownerMain = $this->identity->resolveCustomerAccount($owner, StoreContext::main());
-        $aliInStore = $this->identity->resolveCustomerAccount($ali, StoreContext::reseller($reseller));
-
-        $now = now();
-        $insert = fn (array $row) => DB::table('wallets')->insertGetId($row + ['created_at' => $now, 'updated_at' => $now]);
-
-        // شخصیِ مالک در Main (شکل جدید-قدیمی) + اعتبار نماینده (owner=Reseller)
-        $w1 = $insert(['owner_type' => CustomerAccount::class, 'owner_id' => $ownerMain->id, 'balance' => 300]);
-        $w2 = $insert(['owner_type' => Reseller::class, 'owner_id' => $reseller->id, 'balance' => 1000]);
-        // (مبالغ صحیح؛ مدل پولی integer است و ستون legacy روی MySQL کسر را گرد می‌کند)
-        // Wallet قدیمیِ User (owner=User) + Walletی که بعداً برای همان CustomerAccount ساخته شده
-        $w3 = $insert(['owner_type' => User::class, 'owner_id' => $ali->id, 'customer_account_id' => $aliInStore->id, 'balance' => 45]);
-        $w4 = $insert(['owner_type' => CustomerAccount::class, 'owner_id' => $aliInStore->id, 'balance' => 5]);
-        // غیرقابل‌نگاشت: نماینده‌ای که وجود ندارد
-        $w5 = $insert(['owner_type' => Reseller::class, 'owner_id' => 999999, 'balance' => 7]);
-
-        foreach ([[$w1, 300], [$w2, 1000]] as [$walletId, $amount]) {
-            DB::table('wallet_transactions')->insert([
-                'wallet_id' => $walletId, 'type' => 'charge', 'amount' => $amount,
-                'balance_after' => $amount, 'created_at' => $now, 'updated_at' => $now,
-            ]);
-        }
-
-        $before = (int) DB::table('wallets')->sum('balance');
-
-        $this->runMerge();
-
-        $this->assertEquals($before, (int) DB::table('wallets')->sum('balance'));
-        $this->assertEquals(3, DB::table('wallets')->count());
-
-        $mainWallet = Wallet::where('user_id', $owner->id)->where('scope_key', 'main')->firstOrFail();
-        $this->assertEquals($w1, $mainWallet->id);
-        $this->assertEquals(1300, (int) $mainWallet->balance);
-        $this->assertNull($mainWallet->owner_type);
-        $this->assertNull($mainWallet->customer_account_id);
-
-        // تراکنش‌ها منتقل شده‌اند و نشانگر ادغام، balance آخرین ردیف را با موجودی یکی می‌کند
-        $this->assertEquals(3, $mainWallet->transactions()->count());
-        $marker = $mainWallet->transactions()->latest('id')->first();
-        $this->assertEquals('admin_adjust', $marker->type);
-        $this->assertEquals(1000, (int) $marker->amount);
-        $this->assertEquals(1300, (int) $marker->balance_after);
-
-        $aliWallet = Wallet::where('user_id', $ali->id)->firstOrFail();
-        $this->assertEquals('reseller', $aliWallet->store_type);
-        $this->assertEquals($reseller->id, $aliWallet->reseller_id);
-        $this->assertEquals(50, (int) $aliWallet->balance);
-
-        // WalletService حالا همان موجودی‌ها را می‌بیند (قبلاً Wallet قدیمی «صفر» دیده می‌شد)
-        $this->assertEquals(1300, $this->wallet->balance($ownerMain));
-        $this->assertEquals(50, $this->wallet->balance($aliInStore));
-
-        // غیرقابل‌نگاشت دست‌نخورده می‌ماند
-        $this->assertEquals(7, (int) DB::table('wallets')->where('id', $w5)->value('balance'));
-    }
-
-    #[Test]
-    public function the_merge_is_idempotent(): void
-    {
-        $this->restoreLegacyWalletColumns();
-
-        $reseller = Reseller::factory()->create();
-        $ownerMain = $this->identity->resolveCustomerAccount($reseller->user, StoreContext::main());
-        $now = now();
-
-        DB::table('wallets')->insert(['owner_type' => CustomerAccount::class, 'owner_id' => $ownerMain->id, 'balance' => 10, 'created_at' => $now, 'updated_at' => $now]);
-        DB::table('wallets')->insert(['owner_type' => Reseller::class, 'owner_id' => $reseller->id, 'balance' => 20, 'created_at' => $now, 'updated_at' => $now]);
-
-        $this->runMerge();
-        $this->runMerge();
-
-        $this->assertEquals(1, DB::table('wallets')->count());
-        $this->assertEquals(30, (int) DB::table('wallets')->value('balance'));
-        $this->assertEquals(1, DB::table('wallet_transactions')->count());
-    }
-
-    /**
-     * ستون‌های legacy در فاز ۱۵ از جدول حذف شدند؛ Migration ادغام (فاز ۱۳) هنوز
-     * روی دیتابیس‌های قدیمی اجرا می‌شود، پس برای تستش «شکلِ پیش از حذف» را
-     * (فقط در همین تست؛ با rollback تراکنش تست) دوباره می‌سازیم.
-     */
-    protected function restoreLegacyWalletColumns(): void
-    {
-        Schema::table('wallets', function (Blueprint $table) {
-            $table->string('owner_type')->nullable();
-            $table->unsignedBigInteger('owner_id')->nullable();
-            $table->unsignedBigInteger('customer_account_id')->nullable();
-        });
-    }
-
-    protected function runMerge(): void
-    {
-        $migration = require database_path('migrations/2026_09_22_000002_backfill_and_merge_wallet_contexts.php');
-        $migration->up();
     }
 }

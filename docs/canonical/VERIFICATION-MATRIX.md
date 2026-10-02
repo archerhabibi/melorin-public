@@ -1,10 +1,10 @@
 # Melorin — Verification Matrix
 
-**Contract:** Master 2.8 · Website 1.8 · **Code baseline:** 3.3.4 (بعد از فاز ۷ — Full Test Environment)
+**Contract:** Master 2.8 · Website 1.8 · **Code baseline:** 3.3.5 (تکمیل فاز ۷ — Baseline + Redis)
 
 **راهنما:** ✅ انجام و مستند · ⚠️ ناقص یا **مغایر Contract** · ☐ انجام نشده · — نامربوط · ⛔ DEPRECATED
 
-**قاعده‌ی صداقت:** ستون *Unit/Feature* فقط وقتی ✅ است که تست‌ها روی یک محیط واقعی اجرا و سبز شده باشند. آخرین اجرا (پس از فاز ۵ و دوباره پس از فاز ۶): `php artisan test` ← **SQLite: ۴۸۵ تست سبز؛ MariaDB 10.11: ۴۷۶ سبز + ۹ skip** (فاز ۷؛ PHP 8.3 لینوکس، `migrate:fresh` بدون خطا). قبل از آن: ۴۸۳ تست (اجرای مالک روی Windows + اجرای مستقل SQLite). این فقط سطح Unit/Feature است؛ E2E روی محیط واقعی، Security، Staging و Production هنوز ☐ هستند.
+**قاعده‌ی صداقت:** ستون *Unit/Feature* فقط وقتی ✅ است که تست‌ها روی یک محیط واقعی اجرا و سبز شده باشند. آخرین اجرا (تکمیل فاز ۷، 3.3.5): `php artisan test` ← **SQLite: ۴۷۷ سبز (+۵ تست Redis با flag = ۴۸۲)؛ MariaDB 10.11 + Redis 7: ۴۸۲ سبز، ۰ skip** (PHP 8.3 لینوکس، `migrate:fresh` بدون خطا). قبل از آن: ۴۸۳ تست (اجرای مالک روی Windows + اجرای مستقل SQLite). این فقط سطح Unit/Feature است؛ E2E روی محیط واقعی، Security، Staging و Production هنوز ☐ هستند.
 
 ## ۱. ماتریس اصلی
 
@@ -26,7 +26,7 @@
 | Refund (Snapshot) | ✅ | ✅ | ✅ | ☐ | ☐ | ☐ | ☐ |
 | Renewal | ✅ | ✅ | ✅ | ☐ | — | ☐ | ☐ |
 | Referral / Commission | ✅ | ✅ | ✅ | ☐ | — | ☐ | ☐ |
-| Sale Limit / Capacity (Atomic) | ✅ | ✅ | ✅ *(SQLite تک‌پردازه)* | ☐ *(Concurrency واقعی روی MySQL)* | — | ☐ | ☐ |
+| Sale Limit / Capacity (Atomic) | ✅ | ✅ | ✅ *(SQLite + MariaDB، تک‌پردازه)* | ☐ *(Concurrency واقعی روی MySQL)* | — | ☐ | ☐ |
 | Reseller Isolation (Main / A / B) | ✅ | ✅ | ✅ | ☐ | ☐ | ☐ | ☐ |
 | Reseller Website + Branding + Management | ✅ | ✅ | ✅ | ☐ | ☐ | ☐ | ☐ |
 | Telegram Linking | ✅ | ✅ | ✅ | ☐ | ⚠️ *Self-audit فقط* | ☐ | ☐ |
@@ -36,6 +36,8 @@
 | بازگشت به Checkout پس از شارژ (D-3) | ✅ | ✅ *(لینک بازگشت)* | ✅ | ☐ | — | ☐ | ☐ |
 | Security Headers/CSP/Rate Limit | ⚠️ *Matrix رسمی ندارد* | ✅ | ✅ | — | ☐ | ☐ | ☐ |
 | Money Representation (بدون float، ارز قابل‌تنظیم) | ✅ *(M1–M8)* | ✅ | ✅ | — | — | ☐ *(Migration روی کپی DB)* | ☐ |
+| Cache / RateLimiter / Queue روی Redis واقعی | ✅ | ✅ | ✅ *(فاز ۷؛ ۵ تست)* | ☐ | — | ☐ | ☐ |
+| Schema Baseline (۱ Migration، MariaDB + SQLite) | ✅ | ✅ | ✅ *(`BaselineSchemaTest`)* | — | — | ☐ | ☐ |
 | Backup / Restore | ☐ | ✅ *(update-git.sh)* | — | — | — | ☐ | ☐ |
 | Rollback (Migration/Health failure عمدی) | ☐ | ✅ | — | — | — | ☐ | ☐ |
 | Observability / Alerting / Health | ☐ | ⚠️ | — | — | — | ☐ | ☐ |
@@ -71,7 +73,7 @@
 
 | مورد | وضعیت |
 |---|---|
-| VERSION = Git Tag = نام Release | ☐ هنوز Tag نخورده؛ `VERSION` فقط یک شماره است (3.3.3). قبل از Tag: `php artisan test` + commit |
+| VERSION = Git Tag = نام Release | ☐ هنوز Tag نخورده؛ `VERSION` فقط یک شماره است (3.3.5). قبل از Tag: `php artisan test` + commit |
 | Working Tree تمیز | ☐ پس از commit فاز ۶ |
 | `.env`، `webhook.json`، `melorin-backup-*.sql`، `.phpunit.result.cache` | ✅ از Artifact فاز ۶ بیرون است (همه در `.gitignore`). ⚠️ ZIPهای قبلی که این فایل‌ها را داشتند: Token/Secret ربات و رمزهای `.env` را Rotate کنید |
 | `vendor/` و `node_modules/` | ✅ در Source Artifact نیست (`composer install` + `npm ci && npm run build`) |
@@ -90,3 +92,6 @@ C1، C2، C3، C4، C8، C9، C10، C11، C13 در **کد و تست‌های ن�
 
 ## ۷. فاز ۶ — Cleanup (نتیجه)
 بدون تغییر رفتار. ۴۸۳ تست قبل و بعد سبز. جزئیات: `../history/PHASE-6-CLEANUP.md`. هیچ Migration حذف/ادغام نشد (بخش «چرا Migration ادغام نشد» در همان سند).
+
+## ۸. تکمیل فاز ۷ (3.3.5)
+Baseline Squash (۸۲ Migration → ۱؛ حذف `users.reseller_id`)، تست Redis واقعی و رفع skipهای MariaDB. جزئیات: `../history/PHASE-7-TEST-ENVIRONMENT.md`. ماتریس: ردیف‌های «Redis» و «Schema Baseline» اضافه شد؛ `MoneyMigrationTest` حذف و با `BaselineSchemaTest` جایگزین شد.
