@@ -2,6 +2,8 @@
 
 namespace App\Filament\Pages;
 
+use App\Support\Money;
+use App\Filament\Support\MoneyInput;
 use App\Models\AffiliateSetting;
 use Filament\Forms;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -49,12 +51,10 @@ class ReferralSettings extends Page implements HasForms
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('referrer_bonus_amount')
-                    ->label('پاداش عضویت به معرف (تومان)')
+                MoneyInput::make('referrer_bonus_amount')
+                    ->label('پاداش عضویت به معرف ('.Money::label().')')
                     ->helperText('با عضویت هر شخص جدید از طریق لینک دعوت یک کاربر، همین مبلغ بلافاصله به کیف پول همان کاربر (معرف) واریز می‌شود. صفر یا خالی = این پاداش غیرفعال است.')
-                    ->numeric()
                     ->minValue(0)
-                    ->suffix('تومان')
                     ->default(0)
                     ->required(),
             ])

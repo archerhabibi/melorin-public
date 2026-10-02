@@ -5,6 +5,7 @@ namespace App\Services\Core\Payments;
 use App\DataTransferObjects\GatewayInitiationResult;
 use App\DataTransferObjects\GatewayVerificationResult;
 use App\Models\Payment;
+use App\Support\Money;
 use Illuminate\Support\Facades\Http;
 
 /**
@@ -17,9 +18,9 @@ use Illuminate\Support\Facades\Http;
  *   "sandbox": false            // اختیاری، برای تست روی sandbox.zarinpal.com
  * }
  *
- * توجه واحد پول: مبالغ داخل سیستم ملورین به تومان ذخیره می‌شوند (مطابق
- * سند نیازمندی)؛ API زرین‌پال مبلغ را به ریال می‌خواهد، بنابراین همه‌جا
- * ضرب‌در‌۱۰ انجام می‌شود.
+ * توجه واحد پول (فاز ۵): مبالغ داخل ملورین Integer Minor Unit در ارزِ config('melorin.currency')
+ * هستند. زرین‌پال فقط ریال می‌شناسد؛ بنابراین این درگاه فقط با ارز IRT (تومان، ×۱۰) یا
+ * IRR (ریال، ×۱) و decimals=0 کار می‌کند و با هر ارز دیگری (مثل USD) رد می‌شود.
  */
 class ZarinpalGateway implements PaymentGatewayInterface
 {
@@ -62,10 +63,10 @@ class ZarinpalGateway implements PaymentGatewayInterface
         return $merchantId;
     }
 
-    /** مبلغ ریالی معادل amount تومانی این پرداخت */
+    /** مبلغ ریالی معادل Minor Unit این پرداخت (تبدیل صریح؛ ارز غیر از IRT/IRR رد می‌شود) */
     protected function amountInRials(Payment $payment): int
     {
-        return (int) round((float) $payment->amount * 10);
+        return Money::toRial((int) $payment->amount);
     }
 
     public function isManual(): bool

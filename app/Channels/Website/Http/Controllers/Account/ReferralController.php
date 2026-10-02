@@ -50,7 +50,7 @@ class ReferralController
         return view('website.account.referral', [
             'referralCode' => $user->id,
             'referredCount' => $user->referredUsers()->count(),
-            'bonusAmount' => (float) $settings->referrer_bonus_amount,
+            'bonusAmount' => (int) $settings->referrer_bonus_amount,
             'commissions' => $commissions,
             'store' => $store,
         ]);

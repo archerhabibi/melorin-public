@@ -84,7 +84,7 @@ class FailurePolicyTest extends TestCase
         ProvisioningSetting::current()->update(['failure_policy' => $policy]);
     }
 
-    protected function makeProduct(float $price = 100000): Product
+    protected function makeProduct(int $price = 100000): Product
     {
         $category = Category::factory()->create(['status' => 'active']);
         $panel = ServerPanel::factory()->create([
@@ -105,7 +105,7 @@ class FailurePolicyTest extends TestCase
         ]);
     }
 
-    protected function buyer(float $balance = 500000)
+    protected function buyer(int $balance = 500000)
     {
         $customer = $this->identity->resolveCustomerAccount(User::factory()->create(), StoreContext::main());
         $this->wallet->credit($customer, $balance);
@@ -349,7 +349,7 @@ class FailurePolicyTest extends TestCase
         $this->assertEquals(1, Account::count(), 'تمدید نباید اکانت جدید بسازد');
         $this->assertEquals(0, $this->wallet->getBalance($customer));
         $this->assertTrue($account->fresh()->expires_at->isFuture());
-        $this->assertEquals(0, (float) $account->fresh()->traffic_used_gb);
+        $this->assertEquals(0, (int) $account->fresh()->traffic_used_gb);
     }
 
     #[Test]

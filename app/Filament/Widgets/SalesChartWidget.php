@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Support\Money;
 use App\Models\Order;
 use Filament\Widgets\ChartWidget;
 
@@ -38,8 +39,9 @@ class SalesChartWidget extends ChartWidget
         return [
             'datasets' => [
                 [
-                    'label' => 'فروش (تومان)',
-                    'data' => $days->map(fn ($day) => (float) ($revenueByDay[$day->toDateString()] ?? 0))->values(),
+                    'label' => 'فروش ('.Money::label().')',
+                    // فقط نمایش: Minor Unit → واحد اصلی ارز برای محور نمودار (هیچ محاسبه‌ی مالی‌ای نیست)
+                    'data' => $days->map(fn ($day) => ((int) ($revenueByDay[$day->toDateString()] ?? 0)) / Money::factor())->values(),
                     'fill' => true,
                 ],
             ],

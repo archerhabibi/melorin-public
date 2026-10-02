@@ -8,7 +8,7 @@
     <div class="bg-white border rounded-lg p-6 mb-6 flex items-center justify-between">
         <div>
             <p class="text-sm text-gray-500">موجودی کیف‌پول</p>
-            <p class="text-2xl font-bold mt-1">{{ number_format($balance) }} تومان</p>
+            <p class="text-2xl font-bold mt-1">{{ \App\Support\Money::format($balance) }}</p>
         </div>
 
         {{--
@@ -43,9 +43,9 @@
                             <td class="px-6 py-3 text-gray-500">{{ $transaction->created_at->format('Y/m/d H:i') }}</td>
                             <td class="px-6 py-3">{{ \App\Models\WalletTransaction::typeLabels()[$transaction->type] ?? $transaction->type }}</td>
                             <td class="px-6 py-3 {{ $transaction->amount >= 0 ? 'text-green-700' : 'text-red-700' }}">
-                                {{ $transaction->amount >= 0 ? '+' : '' }}{{ number_format($transaction->amount) }}
+                                {{ $transaction->amount >= 0 ? '+' : '' }}{{ \App\Support\Money::number($transaction->amount) }}
                             </td>
-                            <td class="px-6 py-3 text-gray-500">{{ number_format($transaction->balance_after) }}</td>
+                            <td class="px-6 py-3 text-gray-500">{{ \App\Support\Money::number($transaction->balance_after) }}</td>
                         </tr>
                     @endforeach
                 </tbody>

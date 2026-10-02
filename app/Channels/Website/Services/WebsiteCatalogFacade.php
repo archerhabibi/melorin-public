@@ -60,10 +60,10 @@ class WebsiteCatalogFacade
      * روی Product، بدون هیچ محاسبه‌ی اضافه (بند ۱ Roadmap:
      * «هیچ Price محاسبه‌شده در Client»).
      */
-    public function displayPrice(Product $product, StoreContext $store): float
+    public function displayPrice(Product $product, StoreContext $store): int
     {
         return $store->isReseller()
-            ? (float) $product->customersPrice($store->reseller)
+            ? (int) $product->customersPrice($store->reseller)
             : $product->mainPrice();
     }
 

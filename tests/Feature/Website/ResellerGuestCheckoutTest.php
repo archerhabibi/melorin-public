@@ -28,7 +28,7 @@ class ResellerGuestCheckoutTest extends TestCase
 {
     use InteractsWithWebsiteFixtures, RefreshDatabase;
 
-    protected function resellerProduct(float $customersPrice = 130000): array
+    protected function resellerProduct(int $customersPrice = 130000): array
     {
         $this->fakeSanaeiPanel();
         $category = Category::factory()->create(['status' => 'active']);
@@ -192,7 +192,7 @@ class ResellerGuestCheckoutTest extends TestCase
         $response->assertRedirect(route('website.store.orders.show', [$reseller->slug, $order->id]));
 
         $this->assertEquals($reseller->id, $order->reseller_id);
-        $this->assertEquals(130000, (float) $order->customers_price);
+        $this->assertEquals(130000, (int) $order->customers_price);
         $this->assertEquals(70000, app(WalletService::class)->getBalance($customer));
         $this->assertEquals('consumed', $guest->fresh()->status);
     }

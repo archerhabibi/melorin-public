@@ -32,7 +32,7 @@ trait InteractsWithWebsiteFixtures
      * خرید. دقیقاً هم‌ساختار نسخه‌ای که در CheckoutFlowTest (پچ ۳.۲.۱)
      * برای اولین بار نوشته شد.
      */
-    protected function makeSellableProduct(float $mainPrice = 120000): Product
+    protected function makeSellableProduct(int $mainPrice = 120000): Product
     {
         $category = Category::factory()->create(['status' => 'active']);
         $panel = $this->makeActiveSanaeiPanel();

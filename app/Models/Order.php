@@ -58,9 +58,9 @@ class Order extends Model
     }
 
     protected $casts = [
-        'main_price' => 'decimal:2',
-        'reseller_price' => 'decimal:2',
-        'customers_price' => 'decimal:2',
+        'main_price' => 'integer',
+        'reseller_price' => 'integer',
+        'customers_price' => 'integer',
         'next_provision_retry_at' => 'datetime',
     ];
 
@@ -166,12 +166,12 @@ class Order extends Model
      * نباید باعث شود customers_price به‌جای reseller_price از کیف‌پول
      * نماینده کسر شود.
      */
-    public function resellerProfit(): float
+    public function resellerProfit(): int
     {
         if (! $this->isResellerContext()) {
-            return 0.0;
+            return 0;
         }
 
-        return (float) $this->customers_price - (float) $this->reseller_price;
+        return (int) $this->customers_price - (int) $this->reseller_price;
     }
 }

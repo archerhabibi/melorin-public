@@ -24,18 +24,18 @@ class Reseller extends Model implements HasName
         'bot_token' => 'encrypted',
         'webhook_secret' => 'encrypted',
         'min_sale_price_rule' => 'array',
-        'debt_limit' => 'decimal:2',
+        'debt_limit' => 'integer',
         'webhook_registered_at' => 'datetime',
     ];
 
     /** سقف بدهی مجاز این نماینده (بند ۲۰ بلوپرینت) — صفر یعنی بدهی ممنوع */
-    public function debtLimit(): float
+    public function debtLimit(): int
     {
-        return (float) ($this->debt_limit ?? 0);
+        return (int) ($this->debt_limit ?? 0);
     }
 
     /** کف مجاز موجودی: منفیِ سقف بدهی */
-    public function minimumBalance(): float
+    public function minimumBalance(): int
     {
         return -1 * $this->debtLimit();
     }

@@ -71,7 +71,7 @@ class FinalModelSpecTest extends TestCase
         });
     }
 
-    protected function product(float $mainPrice = 12, float $resellerPrice = 10): Product
+    protected function product(int $mainPrice = 12, int $resellerPrice = 10): Product
     {
         $category = Category::factory()->create(['status' => 'active', 'available_to_resellers' => true]);
         $panel = ServerPanel::factory()->create([
@@ -90,7 +90,7 @@ class FinalModelSpecTest extends TestCase
         ]);
     }
 
-    protected function reseller(Product $product, float $customersPrice): Reseller
+    protected function reseller(Product $product, int $customersPrice): Reseller
     {
         $reseller = Reseller::factory()->create(['status' => 'active']);
 
@@ -136,7 +136,7 @@ class FinalModelSpecTest extends TestCase
         $this->assertEquals(100, $this->balance($c));
 
         $mainOrder = Order::where('reseller_id', null)->firstOrFail();
-        $this->assertEquals(12, (float) $mainOrder->main_price);
+        $this->assertEquals(12, (int) $mainOrder->main_price);
         $this->assertNull($mainOrder->reseller_price);
         $this->assertNull($mainOrder->customers_price);
 
@@ -151,9 +151,9 @@ class FinalModelSpecTest extends TestCase
 
         $orderA = Order::where('reseller_id', $a->id)->firstOrFail();
         $this->assertNull($orderA->main_price);
-        $this->assertEquals(10, (float) $orderA->reseller_price);
-        $this->assertEquals(14, (float) $orderA->customers_price);
-        $this->assertEquals(4, (float) $orderA->customers_price - (float) $orderA->reseller_price, 'reseller_profit');
+        $this->assertEquals(10, (int) $orderA->reseller_price);
+        $this->assertEquals(14, (int) $orderA->customers_price);
+        $this->assertEquals(4, (int) $orderA->customers_price - (int) $orderA->reseller_price, 'reseller_profit');
 
         // ── Ali → Reseller C: -16 و -10 ─────────────────────────────────
         $this->purchase->purchase($aliInC, $product, StoreContext::reseller($c), 'reseller_bot', idempotencyKey: 'spec:c');
@@ -164,7 +164,7 @@ class FinalModelSpecTest extends TestCase
         $this->assertEquals(86, $this->balance($aliInA));
 
         $orderC = Order::where('reseller_id', $c->id)->firstOrFail();
-        $this->assertEquals(6, (float) $orderC->customers_price - (float) $orderC->reseller_price);
+        $this->assertEquals(6, (int) $orderC->customers_price - (int) $orderC->reseller_price);
     }
 
     #[Test]
@@ -188,8 +188,8 @@ class FinalModelSpecTest extends TestCase
         $this->assertCount(1, $debits->pluck('operation_id')->unique(), 'هر دو زیر یک Operation');
         $this->assertNotNull($debits->first()->operation_id);
 
-        $customerDebit = $debits->firstWhere('amount', '-14.00');
-        $supplyDebit = $debits->firstWhere('amount', '-10.00');
+        $customerDebit = $debits->firstWhere('amount', -14);
+        $supplyDebit = $debits->firstWhere('amount', -10);
 
         $this->assertNotNull($customerDebit);
         $this->assertNotNull($supplyDebit);
@@ -283,7 +283,7 @@ class FinalModelSpecTest extends TestCase
         $this->assertNull($order->reseller_id, 'خرید در Main Context ثبت می‌شود');
         $this->assertNotNull($order->main_price);
         $this->assertNull($order->customers_price);
-        $this->assertEquals(100 - (float) $order->main_price, $this->balance($ownerMain));
+        $this->assertEquals(100 - (int) $order->main_price, $this->balance($ownerMain));
     }
 
     #[Test]
@@ -383,7 +383,7 @@ class FinalModelSpecTest extends TestCase
         $order = Order::firstOrFail();
 
         $this->assertNull($order->reseller_id, 'خرید همچنان در Main Context ثبت می‌شود (Rule 13)');
-        $this->assertEquals(10, (float) $order->main_price, 'مبلغ = reseller_price، نه main_price');
+        $this->assertEquals(10, (int) $order->main_price, 'مبلغ = reseller_price، نه main_price');
         $this->assertNull($order->customers_price);
         $this->assertEquals(90, $this->balance($ownerMain));
 

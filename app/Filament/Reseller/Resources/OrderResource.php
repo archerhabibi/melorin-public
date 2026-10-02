@@ -2,6 +2,7 @@
 
 namespace App\Filament\Reseller\Resources;
 
+use App\Support\Money;
 use App\Filament\Reseller\ResolvesCurrentReseller;
 use App\Filament\Reseller\Resources\OrderResource\Pages;
 use App\Models\Order;
@@ -37,11 +38,11 @@ class OrderResource extends Resource
                 Tables\Columns\TextColumn::make('id')->label('#'),
                 Tables\Columns\TextColumn::make('user.full_name')->label('مشتری'),
                 Tables\Columns\TextColumn::make('product.name')->label('محصول'),
-                Tables\Columns\TextColumn::make('reseller_price')->label('هزینه‌ی تأمین (reseller_price)')->money('IRT', divideBy: 1),
-                Tables\Columns\TextColumn::make('customers_price')->label('قیمت فروش (customers_price)')->money('IRT', divideBy: 1),
+                Tables\Columns\TextColumn::make('reseller_price')->label('هزینه‌ی تأمین (reseller_price)')->formatStateUsing(fn ($state) => $state === null ? null : Money::format((int) $state)),
+                Tables\Columns\TextColumn::make('customers_price')->label('قیمت فروش (customers_price)')->formatStateUsing(fn ($state) => $state === null ? null : Money::format((int) $state)),
                 Tables\Columns\TextColumn::make('profit')
                     ->label('سود')
-                    ->getStateUsing(fn (Order $record) => number_format($record->resellerProfit()).' تومان'),
+                    ->getStateUsing(fn (Order $record) => Money::format($record->resellerProfit())),
                 Tables\Columns\BadgeColumn::make('status')
                     ->label('وضعیت')
                     ->formatStateUsing(fn ($state) => Order::statusLabels()[$state] ?? $state)

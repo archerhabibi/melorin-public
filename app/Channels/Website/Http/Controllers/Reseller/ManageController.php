@@ -2,6 +2,7 @@
 
 namespace App\Channels\Website\Http\Controllers\Reseller;
 
+use App\Support\Money;
 use App\Models\Product;
 use App\Models\Reseller;
 use App\Models\ResellerProductPrice;
@@ -115,7 +116,7 @@ class ManageController
                 return [
                     'product' => $product,
                     'is_enabled' => $this->pricing->isSellable($reseller, $product),
-                    'customers_price' => $storedPrices->has($product->id) ? (float) $storedPrices[$product->id] : null,
+                    'customers_price' => $storedPrices->has($product->id) ? (int) $storedPrices[$product->id] : null,
                     'reseller_price' => $product->resellerPrice(),
                     // بند ۴۳: حاشیه‌ی سود صرفاً نمایشی است (customers_price - reseller_price)،
                     // نه یک عدد ذخیره‌شده‌ی جدا — دقیقاً طبق قرارداد Core.
@@ -134,11 +135,21 @@ class ManageController
         $reseller = $this->authorize($store);
 
         $data = $request->validate([
-            'customers_price' => ['required', 'numeric', 'min:0'],
+            'customers_price' => ['required', function (string $attribute, mixed $value, \Closure $fail) {
+                $minor = Money::parse((string) $value);
+
+                if ($minor === null) {
+                    $fail(Money::decimals() === 0
+                        ? 'قیمت باید عدد صحیح باشد.'
+                        : 'قیمت نامعتبر است (حداکثر '.Money::decimals().' رقم اعشار).');
+                } elseif ($minor < 0) {
+                    $fail('قیمت نمی‌تواند منفی باشد.');
+                }
+            }],
         ]);
 
         try {
-            $this->pricing->setCustomersPrice($reseller, $product, (float) $data['customers_price']);
+            $this->pricing->setCustomersPrice($reseller, $product, Money::toMinor((string) $data['customers_price']));
         } catch (InvalidArgumentException $e) {
             // پیامِ این استثنا خودش از قبل یک قاعده‌ی تجاریِ قابل‌نمایش
             // به کاربر است (نه یک خطای داخلی) — دقیقاً همان چیزی که
@@ -161,7 +172,7 @@ class ManageController
         }
 
         try {
-            $this->pricing->setCustomersPrice($reseller, $product, (float) $price);
+            $this->pricing->setCustomersPrice($reseller, $product, (int) $price);
         } catch (InvalidArgumentException $e) {
             // قیمتِ قبلاً ذخیره‌شده ممکن است با قوانینِ مرکزیِ امروز دیگر
             // مجاز نباشد (مثلاً ادمین سقف را تغییر داده)؛ فعال‌سازیِ

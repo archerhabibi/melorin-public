@@ -2,6 +2,8 @@
 
 namespace App\Channels\ResellerBot\Support;
 
+use App\Support\Money;
+
 /**
  * دقیقاً هم‌الگو با App\Channels\TelegramBot\Support\Keyboards — همان
  * دلیل مستندشده در آن فایل: هرگز از Telegram\Bot\Keyboard\Keyboard
@@ -49,9 +51,9 @@ class Keyboards
             [$product, $customersPrice] = $row;
 
             $label = sprintf(
-                '%s — %s تومان (%s روز%s)',
+                '%s — %s (%s روز%s)',
                 $product->name,
-                number_format($customersPrice),
+                Money::format($customersPrice),
                 $product->duration_days,
                 $product->traffic_gb ? ", {$product->traffic_gb} گیگ" : ''
             );
@@ -66,27 +68,24 @@ class Keyboards
 
     public static function walletTopupAmounts(): string
     {
-        return self::encode(['inline_keyboard' => [
-            [
-                ['text' => '۲۰۰,۰۰۰ تومان', 'callback_data' => 'rwallet:amount:200000'],
-                ['text' => '۵۰۰,۰۰۰ تومان', 'callback_data' => 'rwallet:amount:500000'],
-            ],
-            [
-                ['text' => '۱,۰۰۰,۰۰۰ تومان', 'callback_data' => 'rwallet:amount:1000000'],
-                ['text' => '✏️ مبلغ دلخواه', 'callback_data' => 'rwallet:amount:custom'],
-            ],
-        ]]);
+        $buttons = array_map(
+            fn (int $minor) => ['text' => Money::format($minor), 'callback_data' => 'rwallet:amount:'.$minor],
+            Money::topupPresets('customer')
+        );
+        $buttons[] = ['text' => '✏️ مبلغ دلخواه', 'callback_data' => 'rwallet:amount:custom'];
+
+        return self::encode(['inline_keyboard' => array_chunk($buttons, 2)]);
     }
 
     public static function resellerWalletTopupAmounts(): string
     {
-        return self::encode(['inline_keyboard' => [
-            [
-                ['text' => '۱,۰۰۰,۰۰۰ تومان', 'callback_data' => 'rswallet:amount:1000000'],
-                ['text' => '۵,۰۰۰,۰۰۰ تومان', 'callback_data' => 'rswallet:amount:5000000'],
-            ],
-            [['text' => '✏️ مبلغ دلخواه', 'callback_data' => 'rswallet:amount:custom']],
-        ]]);
+        $buttons = array_map(
+            fn (int $minor) => ['text' => Money::format($minor), 'callback_data' => 'rswallet:amount:'.$minor],
+            Money::topupPresets('supply')
+        );
+        $buttons[] = ['text' => '✏️ مبلغ دلخواه', 'callback_data' => 'rswallet:amount:custom'];
+
+        return self::encode(['inline_keyboard' => array_chunk($buttons, 2)]);
     }
 
     public static function paymentMethods(iterable $methods, string $prefix = 'rwallet'): string

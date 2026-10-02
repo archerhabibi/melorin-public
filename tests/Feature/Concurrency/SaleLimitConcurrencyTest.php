@@ -88,7 +88,7 @@ class SaleLimitConcurrencyTest extends TestCase
         ]);
     }
 
-    protected function buyer(float $balance = 5000)
+    protected function buyer(int $balance = 5000)
     {
         $customer = $this->identity->resolveCustomerAccount(User::factory()->create(), StoreContext::main());
         $this->wallet->credit($customer, $balance);

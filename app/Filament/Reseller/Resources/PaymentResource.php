@@ -2,6 +2,7 @@
 
 namespace App\Filament\Reseller\Resources;
 
+use App\Support\Money;
 use App\Filament\Reseller\ResolvesCurrentReseller;
 use App\Filament\Reseller\Resources\PaymentResource\Pages;
 use App\Models\Payment;
@@ -55,7 +56,7 @@ class PaymentResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('user.full_name')->label('مشتری'),
                 Tables\Columns\TextColumn::make('user.telegram_id')->label('شناسه تلگرام'),
-                Tables\Columns\TextColumn::make('amount')->label('مبلغ')->money('IRT', divideBy: 1),
+                Tables\Columns\TextColumn::make('amount')->label('مبلغ')->formatStateUsing(fn ($state) => $state === null ? null : Money::format((int) $state)),
                 Tables\Columns\TextColumn::make('depositor_name')->label('واریزکننده'),
                 Tables\Columns\ImageColumn::make('receipt_image')->label('رسید')->size(60),
                 Tables\Columns\BadgeColumn::make('status')

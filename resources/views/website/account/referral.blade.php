@@ -29,7 +29,7 @@
 
         @if($bonusAmount > 0)
             <p class="text-sm text-gray-500 mt-1">
-                با عضویت هر نفر از طریق این لینک، {{ number_format($bonusAmount) }} تومان به کیف پول شما اضافه می‌شود.
+                با عضویت هر نفر از طریق این لینک، {{ \App\Support\Money::format($bonusAmount) }} به کیف پول شما اضافه می‌شود.
             </p>
         @endif
     </div>
@@ -52,7 +52,7 @@
                     @foreach($commissions as $commission)
                         <tr>
                             <td class="px-6 py-3 text-gray-500">{{ $commission->created_at->format('Y/m/d') }}</td>
-                            <td class="px-6 py-3 text-green-700">+{{ number_format($commission->amount) }}</td>
+                            <td class="px-6 py-3 text-green-700">+{{ \App\Support\Money::number($commission->amount) }}</td>
                             <td class="px-6 py-3 text-gray-500">{{ $commission->status === 'paid' ? 'پرداخت‌شده' : $commission->status }}</td>
                         </tr>
                     @endforeach

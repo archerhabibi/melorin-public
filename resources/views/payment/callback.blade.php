@@ -23,7 +23,7 @@
         <div class="icon {{ $success ? 'ok' : 'fail' }}">{{ $success ? '✅' : '❌' }}</div>
         <p>{{ $message }}</p>
         @isset($amount)
-            <div class="amount">مبلغ: {{ number_format((float) $amount) }} تومان</div>
+            <div class="amount">مبلغ: {{ \App\Support\Money::format((int) $amount) }}</div>
         @endisset
 
         {{--

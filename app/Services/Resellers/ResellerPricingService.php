@@ -27,7 +27,7 @@ class ResellerPricingService
      *
      * @throws InvalidArgumentException اگر قیمت یا سودِ حاصل خارج از محدوده‌ی مجاز مرکزی باشد
      */
-    public function setCustomersPrice(Reseller $reseller, Product $product, float $customersPrice): ResellerProductPrice
+    public function setCustomersPrice(Reseller $reseller, Product $product, int $customersPrice): ResellerProductPrice
     {
         $this->assertPriceAllowed($reseller, $product, $customersPrice);
 
@@ -214,7 +214,7 @@ class ResellerPricingService
      * 'min_profit'=>?, 'max_profit'=>?] — هر کلید اختیاری است؛ کلید
      * غایب یعنی محدودیتی روی آن بعد وجود ندارد.
      */
-    protected function assertPriceAllowed(Reseller $reseller, Product $product, float $customersPrice): void
+    protected function assertPriceAllowed(Reseller $reseller, Product $product, int $customersPrice): void
     {
         $rule = $reseller->min_sale_price_rule ?? [];
         // مبنای سود همیشه reseller_price است (بند ۱۴): حاشیه یعنی
@@ -224,19 +224,19 @@ class ResellerPricingService
         $resellerPrice = $product->resellerPrice();
         $profit = $customersPrice - $resellerPrice;
 
-        if (isset($rule['min_price']) && $customersPrice < (float) $rule['min_price']) {
+        if (isset($rule['min_price']) && $customersPrice < (int) $rule['min_price']) {
             throw new InvalidArgumentException('قیمت فروش کمتر از حداقل مجاز است.');
         }
 
-        if (isset($rule['max_price']) && $customersPrice > (float) $rule['max_price']) {
+        if (isset($rule['max_price']) && $customersPrice > (int) $rule['max_price']) {
             throw new InvalidArgumentException('قیمت فروش بیشتر از حداکثر مجاز است.');
         }
 
-        if (isset($rule['min_profit']) && $profit < (float) $rule['min_profit']) {
+        if (isset($rule['min_profit']) && $profit < (int) $rule['min_profit']) {
             throw new InvalidArgumentException('سود این قیمت کمتر از حداقل مجاز است.');
         }
 
-        if (isset($rule['max_profit']) && $profit > (float) $rule['max_profit']) {
+        if (isset($rule['max_profit']) && $profit > (int) $rule['max_profit']) {
             throw new InvalidArgumentException('سود این قیمت بیشتر از سقف مجاز است.');
         }
 

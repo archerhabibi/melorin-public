@@ -83,7 +83,7 @@ class AccountSummaryAndRenewMessagingTest extends TestCase
         $this->app->instance(Api::class, $telegram);
     }
 
-    protected function makeAccountWithTraffic(User $user, float $price, float $trafficGb, float $trafficUsedGb): Account
+    protected function makeAccountWithTraffic(User $user, int $price, int $trafficGb, int $trafficUsedGb): Account
     {
         $panel = ServerPanel::factory()->create(['panel_type' => 'marzban']);
         $category = Category::factory()->create();

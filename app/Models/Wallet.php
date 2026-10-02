@@ -24,7 +24,7 @@ class Wallet extends Model
 {
     protected $fillable = ['user_id', 'store_type', 'reseller_id', 'scope_key', 'balance'];
 
-    protected $casts = ['balance' => 'decimal:2'];
+    protected $casts = ['balance' => 'integer'];
 
     protected static function booted(): void
     {

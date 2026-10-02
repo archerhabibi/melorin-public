@@ -74,7 +74,7 @@ class PaymentService
     public function initiate(
         User $user,
         PaymentMethod $method,
-        float $amount,
+        int $amount,
         string $purpose,
         ?Model $reference = null,
         ?string $receiptImage = null,
@@ -229,7 +229,7 @@ class PaymentService
                 'payment.rejected',
                 $payment,
                 before: ['status' => 'pending'],
-                after: ['status' => 'rejected', 'reason' => $reason, 'amount' => (float) $payment->amount],
+                after: ['status' => 'rejected', 'reason' => $reason, 'amount' => (int) $payment->amount],
                 actor: $admin,
             );
 
@@ -260,7 +260,7 @@ class PaymentService
                 'payment.rejected',
                 $payment,
                 before: ['status' => 'pending'],
-                after: ['status' => 'rejected', 'reason' => $reason, 'amount' => (float) $payment->amount],
+                after: ['status' => 'rejected', 'reason' => $reason, 'amount' => (int) $payment->amount],
                 actor: $reseller,
             );
 
@@ -289,7 +289,7 @@ class PaymentService
             if ($payment->purpose === 'wallet_charge') {
                 $this->walletService->adminAdjust(
                     $this->resolveWalletOwner($payment),
-                    -1 * (float) $payment->amount,
+                    -1 * (int) $payment->amount,
                     $payment,
                     "بازگشت وجه پرداخت #{$payment->id}"
                 );
@@ -304,7 +304,7 @@ class PaymentService
                 'payment.refunded',
                 $payment,
                 before: ['status' => 'confirmed'],
-                after: ['status' => 'refunded', 'amount' => (float) $payment->amount],
+                after: ['status' => 'refunded', 'amount' => (int) $payment->amount],
                 actor: $admin,
             );
 
@@ -337,7 +337,7 @@ class PaymentService
             if ($payment->purpose === 'wallet_charge') {
                 $this->walletService->charge(
                     $this->resolveWalletOwner($payment),
-                    (float) $payment->amount,
+                    (int) $payment->amount,
                     $payment,
                     "شارژ کیف پول — پرداخت #{$payment->id}"
                 );
@@ -351,7 +351,7 @@ class PaymentService
                 before: ['status' => 'pending'],
                 after: [
                     'status' => 'confirmed',
-                    'amount' => (float) $payment->amount,
+                    'amount' => (int) $payment->amount,
                     'purpose' => $payment->purpose,
                     'wallet_owner_type' => $payment->wallet_owner_type,
                 ],

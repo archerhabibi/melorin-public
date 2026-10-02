@@ -80,7 +80,7 @@ class CommissionAndBridgeTest extends TestCase
         });
     }
 
-    protected function makeProduct(float $price = 100000): Product
+    protected function makeProduct(int $price = 100000): Product
     {
         $category = Category::factory()->create(['status' => 'active', 'available_to_resellers' => true]);
 
@@ -128,7 +128,7 @@ class CommissionAndBridgeTest extends TestCase
 
         $commission = Commission::where('type', 'ongoing_commission')->firstOrFail();
 
-        $this->assertEquals(10000, (float) $commission->amount);
+        $this->assertEquals(10000, (int) $commission->amount);
         $this->assertEquals($referrer->id, $commission->referrer_id);
 
         $referrerAccount = $this->identity->resolveCustomerAccount($referrer, StoreContext::main());
@@ -157,9 +157,9 @@ class CommissionAndBridgeTest extends TestCase
 
         $commission = Commission::where('type', 'ongoing_commission')->firstOrFail();
 
-        $this->assertEquals(10, (float) $commission->commission_rate);
-        $this->assertEquals(100000, (float) $commission->base_amount);
-        $this->assertEquals(10000, (float) $commission->amount);
+        $this->assertEquals(10, (int) $commission->commission_rate);
+        $this->assertEquals(100000, (int) $commission->base_amount);
+        $this->assertEquals(10000, (int) $commission->amount);
     }
 
     /**
@@ -299,7 +299,7 @@ class CommissionAndBridgeTest extends TestCase
         $order = $account->order;
 
         $this->assertEquals($customer->id, $order->customer_account_id, 'سفارش باید مالک Multi-Store داشته باشد');
-        $this->assertEquals(100000, (float) $order->main_price, 'اسنپ‌شات قیمت باید ثبت شده باشد');
+        $this->assertEquals(100000, (int) $order->main_price, 'اسنپ‌شات قیمت باید ثبت شده باشد');
         $this->assertEquals(1, $order->provision_attempts, 'باید از مسیر ProvisioningService عبور کرده باشد');
     }
 

@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Models\Product;
 use App\Models\TestAccountSetting;
+use App\Support\Money;
 use Filament\Forms;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
@@ -47,7 +48,7 @@ class TestAccountSettings extends Page implements HasForms
 
                 Forms\Components\Select::make('product_id')
                     ->label('محصول اکانت تست')
-                    ->helperText('این محصول فقط برای تعیین دسته‌بندی/پروتکل و سرورهای مجاز اکانت تست استفاده می‌شود — حجم و مدت اعتبار خودِ محصول نادیده گرفته می‌شود و از دو فیلد زیر خوانده می‌شود. می‌توانید همان محصول با قیمت ۰ تومان را در یک دسته‌بندی جدا و غیرفعال/مخفی از منوی خرید عادی قرار دهید.')
+                    ->helperText('این محصول فقط برای تعیین دسته‌بندی/پروتکل و سرورهای مجاز اکانت تست استفاده می‌شود — حجم و مدت اعتبار خودِ محصول نادیده گرفته می‌شود و از دو فیلد زیر خوانده می‌شود. می‌توانید همان محصول با قیمت '.Money::format(0).' را در یک دسته‌بندی جدا و غیرفعال/مخفی از منوی خرید عادی قرار دهید.')
                     ->options(fn () => Product::query()->pluck('name', 'id'))
                     ->searchable()
                     ->preload()

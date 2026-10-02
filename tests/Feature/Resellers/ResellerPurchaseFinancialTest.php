@@ -49,7 +49,7 @@ class ResellerPurchaseFinancialTest extends TestCase
         return $category;
     }
 
-    protected function sellableProduct(Reseller $reseller, float $mainPrice, float $customersPrice): Product
+    protected function sellableProduct(Reseller $reseller, int $mainPrice, int $customersPrice): Product
     {
         $category = $this->makeCategoryWithPanel();
         $product = Product::factory()->create(['category_id' => $category->id, 'main_price' => $mainPrice]);

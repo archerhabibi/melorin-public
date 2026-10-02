@@ -140,11 +140,11 @@ class Reports extends Page implements HasForms
     {
         $orders = $this->paidOrders();
 
-        $revenue = (float) (clone $orders)->sum('main_price') + (float) (clone $orders)->sum('customers_price');
-        $supplyCost = (float) (clone $orders)->sum('main_price') + (float) (clone $orders)->sum('reseller_price');
+        $revenue = (int) (clone $orders)->sum('main_price') + (int) (clone $orders)->sum('customers_price');
+        $supplyCost = (int) (clone $orders)->sum('main_price') + (int) (clone $orders)->sum('reseller_price');
         $count = (clone $orders)->count();
 
-        $resellerRevenue = (float) (clone $orders)->whereNotNull('reseller_id')->sum('customers_price');
+        $resellerRevenue = (int) (clone $orders)->whereNotNull('reseller_id')->sum('customers_price');
         $directRevenue = $revenue - $resellerRevenue;
 
         $newUsers = User::query()->whereBetween('created_at', [$this->from(), $this->to()])->count();
@@ -172,13 +172,13 @@ class Reports extends Page implements HasForms
         $pendingPayments = Payment::query()->where('status', 'pending')->whereBetween('created_at', [$this->from(), $this->to()])->count();
 
         return [
-            'revenue' => (float) $revenue,
-            'supply_cost' => (float) $supplyCost,
-            'reseller_margin' => (float) $revenue - (float) $supplyCost,
+            'revenue' => $revenue,
+            'supply_cost' => $supplyCost,
+            'reseller_margin' => $revenue - $supplyCost,
             'orders' => $count,
-            'average_order' => $count > 0 ? (float) $revenue / $count : 0.0,
-            'direct_revenue' => (float) $directRevenue,
-            'reseller_revenue' => (float) $resellerRevenue,
+            'average_order' => $count > 0 ? intdiv($revenue + intdiv($count, 2), $count) : 0, // Half-Up، عدد صحیح
+            'direct_revenue' => $directRevenue,
+            'reseller_revenue' => $resellerRevenue,
             'new_users' => $newUsers,
             'new_accounts' => $newAccounts,
             'test_accounts' => $testAccounts,
@@ -186,7 +186,7 @@ class Reports extends Page implements HasForms
             'failure_rate' => ($count + $failedOrders) > 0
                 ? round($failedOrders / ($count + $failedOrders) * 100, 1)
                 : 0.0,
-            'confirmed_payments' => (float) $confirmedPayments,
+            'confirmed_payments' => (int) $confirmedPayments,
             'pending_payments' => $pendingPayments,
         ];
     }

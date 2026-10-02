@@ -2,6 +2,7 @@
 
 namespace App\Channels\ResellerBot\Handlers;
 
+use App\Support\Money;
 use App\Exceptions\ResellerScopeViolationException;
 use App\Services\Core\Payments\InvalidPaymentTransitionException;
 use App\Models\Payment;
@@ -50,7 +51,7 @@ class PaymentReviewHandler
         if ($payment->user?->telegram_id) {
             $this->telegram->sendMessage([
                 'chat_id' => $payment->user->telegram_id,
-                'text' => '✅ شارژ کیف پول شما به مبلغ '.number_format((float) $payment->amount).' تومان تایید شد.',
+                'text' => '✅ شارژ کیف پول شما به مبلغ '.Money::format((int) $payment->amount).' تایید شد.',
             ]);
         }
     }

@@ -2,6 +2,8 @@
 
 namespace App\Channels\TelegramBot\Support;
 
+use App\Support\Money;
+
 /**
  * منوهای ربات اصلی — دقیقاً مطابق بند ۳.۱ سند نیازمندی.
  *
@@ -75,9 +77,9 @@ class Keyboards
 
         foreach ($products as $product) {
             $label = sprintf(
-                '%s — %s تومان (%s روز%s)',
+                '%s — %s (%s روز%s)',
                 $product->name,
-                number_format($product->mainPrice()),
+                Money::format($product->mainPrice()),
                 $product->duration_days,
                 $product->traffic_gb ? ", {$product->traffic_gb} گیگ" : ''
             );
@@ -117,16 +119,13 @@ class Keyboards
 
     public static function walletTopupAmounts(): string
     {
-        return self::encode(['inline_keyboard' => [
-            [
-                ['text' => '۲۰۰,۰۰۰ تومان', 'callback_data' => 'wallet:amount:200000'],
-                ['text' => '۵۰۰,۰۰۰ تومان', 'callback_data' => 'wallet:amount:500000'],
-            ],
-            [
-                ['text' => '۱,۰۰۰,۰۰۰ تومان', 'callback_data' => 'wallet:amount:1000000'],
-                ['text' => '✏️ مبلغ دلخواه', 'callback_data' => 'wallet:amount:custom'],
-            ],
-        ]]);
+        $buttons = array_map(
+            fn (int $minor) => ['text' => Money::format($minor), 'callback_data' => 'wallet:amount:'.$minor],
+            Money::topupPresets('customer')
+        );
+        $buttons[] = ['text' => '✏️ مبلغ دلخواه', 'callback_data' => 'wallet:amount:custom'];
+
+        return self::encode(['inline_keyboard' => array_chunk($buttons, 2)]);
     }
 
     public static function paymentMethods(iterable $methods): string

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Support\Money;
 use App\Models\Account;
 use App\Models\Order;
 use App\Models\Payment;
@@ -30,14 +31,14 @@ class SalesOverviewWidget extends BaseWidget
         $todayOrdersQuery = fn () => Order::query()
             ->whereIn('status', $completedStatuses)
             ->whereDate('created_at', today());
-        $todayRevenue = (float) $todayOrdersQuery()->sum('main_price')
-            + (float) $todayOrdersQuery()->sum('customers_price');
+        $todayRevenue = (int) $todayOrdersQuery()->sum('main_price')
+            + (int) $todayOrdersQuery()->sum('customers_price');
 
         $monthOrdersQuery = fn () => Order::query()
             ->whereIn('status', $completedStatuses)
             ->whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()]);
-        $monthRevenue = (float) $monthOrdersQuery()->sum('main_price')
-            + (float) $monthOrdersQuery()->sum('customers_price');
+        $monthRevenue = (int) $monthOrdersQuery()->sum('main_price')
+            + (int) $monthOrdersQuery()->sum('customers_price');
 
         $todayOrdersCount = Order::query()
             ->whereIn('status', $completedStatuses)
@@ -45,11 +46,11 @@ class SalesOverviewWidget extends BaseWidget
             ->count();
 
         return [
-            Stat::make('فروش امروز', number_format($todayRevenue).' تومان')
+            Stat::make('فروش امروز', Money::format($todayRevenue))
                 ->description($todayOrdersCount.' سفارش')
                 ->color('success'),
 
-            Stat::make('فروش این ماه', number_format($monthRevenue).' تومان')
+            Stat::make('فروش این ماه', Money::format($monthRevenue))
                 ->color('success'),
 
             Stat::make('کاربران فعال', number_format(User::query()->where('status', 'active')->count()))

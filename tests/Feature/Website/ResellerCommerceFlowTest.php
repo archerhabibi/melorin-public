@@ -49,7 +49,7 @@ class ResellerCommerceFlowTest extends TestCase
     }
 
     /** محصولِ Core با یک پنل فعال؛ قیمت‌های main/reseller مشخص. */
-    protected function makeProduct(float $mainPrice = 150000, float $resellerPrice = 100000): Product
+    protected function makeProduct(int $mainPrice = 150000, int $resellerPrice = 100000): Product
     {
         $category = Category::factory()->create(['status' => 'active']);
 
@@ -70,7 +70,7 @@ class ResellerCommerceFlowTest extends TestCase
     }
 
     /** یک نماینده‌ی فعال که این محصول را با customers_price مشخص فعال کرده است. */
-    protected function resellerSelling(Product $product, float $customersPrice = 130000, array $resellerAttributes = []): Reseller
+    protected function resellerSelling(Product $product, int $customersPrice = 130000, array $resellerAttributes = []): Reseller
     {
         $reseller = Reseller::factory()->create($resellerAttributes + ['status' => 'active']);
 
@@ -128,8 +128,8 @@ class ResellerCommerceFlowTest extends TestCase
 
         // Price Snapshot (بند ۵۰ سند مادر)
         $this->assertNull($order->main_price);
-        $this->assertEquals(100000, (float) $order->reseller_price);
-        $this->assertEquals(130000, (float) $order->customers_price);
+        $this->assertEquals(100000, (int) $order->reseller_price);
+        $this->assertEquals(130000, (int) $order->customers_price);
 
         // Debit اول: کیف‌پول مشتری در Context نماینده = customers_price
         $this->assertEquals(70000, $this->wallet->getBalance($customer));

@@ -14,8 +14,8 @@ class WalletTransaction extends Model
     ];
 
     protected $casts = [
-        'amount' => 'decimal:2',
-        'balance_after' => 'decimal:2',
+        'amount' => 'integer',
+        'balance_after' => 'integer',
     ];
 
     /**

@@ -24,7 +24,7 @@
                                 @if($product->traffic_gb) · {{ $product->traffic_gb }} گیگابایت @endif
                             </div>
                             <div class="mt-3 font-bold" style="color: var(--brand)">
-                                {{ number_format($catalog->displayPrice($product, $store)) }} تومان
+                                {{ \App\Support\Money::format($catalog->displayPrice($product, $store)) }}
                             </div>
                         </a>
                     @endforeach

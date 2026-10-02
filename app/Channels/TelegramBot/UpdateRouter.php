@@ -2,6 +2,7 @@
 
 namespace App\Channels\TelegramBot;
 
+use App\Support\Money;
 use App\Channels\TelegramBot\Handlers\AccountsHandler;
 use App\Channels\TelegramBot\Handlers\BuyAccountHandler;
 use App\Channels\TelegramBot\Handlers\MiscHandler;
@@ -203,7 +204,7 @@ class UpdateRouter
                 ."شناسه‌ی تلگرام: {$user->telegram_id}\n"
                 ."نام: {$user->full_name}\n"
                 ."تاریخ عضویت: {$user->created_at->format('Y-m-d')}\n"
-                .'💰 موجودی کیف پول: '.number_format($balance).' تومان',
+                .'💰 موجودی کیف پول: '.Money::format($balance),
         ]);
     }
 }

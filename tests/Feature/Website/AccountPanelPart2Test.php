@@ -36,7 +36,7 @@ class AccountPanelPart2Test extends TestCase
 {
     use RefreshDatabase;
 
-    protected function makeAccount(User $user, float $price = 100000): Account
+    protected function makeAccount(User $user, int $price = 100000): Account
     {
         $panel = ServerPanel::factory()->create(['panel_type' => 'marzban']);
         $category = Category::factory()->create();

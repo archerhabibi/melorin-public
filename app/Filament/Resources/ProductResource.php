@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources;
 
+use App\Support\Money;
+use App\Filament\Support\MoneyInput;
 use App\Filament\Resources\ProductResource\Pages;
 use App\Models\Product;
 use Filament\Forms;
@@ -34,12 +36,10 @@ class ProductResource extends Resource
             Forms\Components\TextInput::make('name')->label('نام محصول')->required()->maxLength(255),
 
             Forms\Components\Grid::make(3)->schema([
-                Forms\Components\TextInput::make('main_price')
-                    ->label('قیمت فروش مستقیم — main_price (تومان)')
+                MoneyInput::make('main_price')
+                    ->label('قیمت فروش مستقیم — main_price ('.Money::label().')')
                     ->helperText('قیمتی که مشتریِ مستقیمِ فروشگاه اصلی می‌پردازد.')
-                    ->numeric()
-                    ->required()
-                    ->suffix('تومان'),
+                    ->required(),
 
                 Forms\Components\TextInput::make('traffic_gb')
                     ->label('حجم (گیگابایت)')
@@ -52,11 +52,9 @@ class ProductResource extends Resource
                     ->required(),
             ]),
 
-            Forms\Components\TextInput::make('reseller_price')
-                ->label('قیمت تأمین برای نماینده — reseller_price (تومان)')
-                ->helperText('قیمتی که ما این محصول را به نماینده می‌فروشیم — نه قیمت فروش نماینده (که همیشه دست خودِ نماینده است و اینجا تعیین نمی‌شود). معمولاً باید پایین‌تر از main_price باشد. خالی = همان main_price برای تأمین نماینده هم اعمال می‌شود.')
-                ->numeric()
-                ->suffix('تومان'),
+            MoneyInput::make('reseller_price')
+                ->label('قیمت تأمین برای نماینده — reseller_price ('.Money::label().')')
+                ->helperText('قیمتی که ما این محصول را به نماینده می‌فروشیم — نه قیمت فروش نماینده (که همیشه دست خودِ نماینده است و اینجا تعیین نمی‌شود). معمولاً باید پایین‌تر از main_price باشد. خالی = همان main_price برای تأمین نماینده هم اعمال می‌شود.'),
 
             Forms\Components\Select::make('protocol_id')
                 ->label('پروتکل')
@@ -82,13 +80,13 @@ class ProductResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('name')->label('نام')->searchable(),
-                Tables\Columns\TextColumn::make('main_price')->label('قیمت مستقیم (main_price)')->money('IRT', divideBy: 1)->sortable(),
+                Tables\Columns\TextColumn::make('main_price')->label('قیمت مستقیم (main_price)')->formatStateUsing(fn ($state) => $state === null ? null : Money::format((int) $state))->sortable(),
                 // طبق درخواست صریح: این ستون همیشه دیده شود. قبلاً ->toggleable()
                 // داشت که آن را به یک ستون اختیاری تبدیل می‌کرد و با بقیه‌ی
                 // ستون‌های قیمت (که ثابت‌اند) ناهماهنگ بود — در حالی که این
                 // عدد، هزینه‌ی واقعیِ نماینده و مبنای کل معماری قیمت‌گذاری
                 // نمایندگی است.
-                Tables\Columns\TextColumn::make('reseller_price')->label('قیمت تأمین نماینده (reseller_price)')->money('IRT', divideBy: 1)->placeholder('—')->sortable(),
+                Tables\Columns\TextColumn::make('reseller_price')->label('قیمت تأمین نماینده (reseller_price)')->formatStateUsing(fn ($state) => $state === null ? null : Money::format((int) $state))->placeholder('—')->sortable(),
                 Tables\Columns\TextColumn::make('duration_days')->label('مدت (روز)'),
                 Tables\Columns\TextColumn::make('traffic_gb')->label('حجم (گیگ)')->placeholder('نامحدود'),
                 Tables\Columns\BadgeColumn::make('status')->label('وضعیت')

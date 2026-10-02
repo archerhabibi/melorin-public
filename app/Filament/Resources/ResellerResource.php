@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Support\Money;
 use App\Filament\Resources\ResellerResource\Pages;
 use App\Models\Reseller;
 use App\Models\User;
@@ -104,7 +105,7 @@ class ResellerResource extends Resource
                     ->label('آدرس پنل')
                     ->formatStateUsing(fn (Reseller $record) => $record->panelUrl())
                     ->url(fn (Reseller $record) => $record->panelUrl(), shouldOpenInNewTab: true),
-                Tables\Columns\TextColumn::make('wallet.balance')->label('اعتبار نماینده')->money('IRT', divideBy: 1),
+                Tables\Columns\TextColumn::make('wallet.balance')->label('اعتبار نماینده')->formatStateUsing(fn ($state) => $state === null ? null : Money::format((int) $state)),
                 Tables\Columns\BadgeColumn::make('status')
                     ->label('وضعیت')
                     ->colors(['success' => 'active', 'gray' => 'inactive'])

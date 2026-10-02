@@ -10,6 +10,7 @@ use App\Models\Order;
 use App\Services\Core\Store\IdentityService;
 use App\Services\Core\Store\StoreContext;
 use App\Services\Core\WalletService;
+use App\Support\Money;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -83,9 +84,10 @@ class CommissionService
         }
 
         $settings = AffiliateSetting::current();
-        $rate = (float) $settings->commission_percent;
+        // درصد «نرخ» است نه پول: به‌صورت رشته‌ی دسیمال نگه داشته می‌شود (بدون float).
+        $rate = (string) $settings->commission_percent;
 
-        if ($rate <= 0) {
+        if (! is_numeric($rate) || $rate <= 0) {
             return null;
         }
 
@@ -100,8 +102,8 @@ class CommissionService
         $store = StoreContext::fromReseller($buyer->reseller);
         $referrerAccount = $this->identity->resolveCustomerAccount($referrerUser, $store);
 
-        $base = (float) ($order->main_price ?? $order->customers_price);
-        $amount = round($base * $rate / 100, 2);
+        $base = (int) ($order->main_price ?? $order->customers_price);
+        $amount = Money::percentOf($base, $rate); // Half-Up، کاملاً عدد صحیح
 
         if ($amount <= 0) {
             return null;

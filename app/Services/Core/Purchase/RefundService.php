@@ -62,7 +62,7 @@ class RefundService
 
             // طرف مشتری: دقیقاً همان چیزی که پرداخته — main_price در
             // فروشگاه اصلی، customers_price در فروشگاه نماینده.
-            $customerPaid = (float) ($order->customers_price ?? $order->main_price ?? 0);
+            $customerPaid = (int) ($order->customers_price ?? $order->main_price ?? 0);
 
             if ($customerPaid > 0) {
                 $this->wallet->credit(
@@ -82,7 +82,7 @@ class RefundService
             // باشد و برگرداندن عدد امروز یعنی برگرداندن مبلغ اشتباه.
             // این دقیقاً همان دلیلی است که اسنپ‌شات قیمت (بند ۱۲) وجود دارد.
             $store = StoreContext::fromReseller($customer->reseller);
-            $resellerPaid = (float) ($order->reseller_price ?? 0);
+            $resellerPaid = (int) ($order->reseller_price ?? 0);
 
             if ($store->isReseller() && $resellerPaid > 0) {
                 $this->wallet->credit(

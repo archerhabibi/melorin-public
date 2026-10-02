@@ -22,8 +22,8 @@ class Commission extends Model
 
     protected $casts = [
         'commission_rate' => 'decimal:2',
-        'base_amount' => 'decimal:2',
-        'amount' => 'decimal:2',
+        'base_amount' => 'integer',
+        'amount' => 'integer',
     ];
 
     public function referrer(): BelongsTo

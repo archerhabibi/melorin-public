@@ -2,6 +2,7 @@
 
 namespace App\Filament\Reseller\Resources;
 
+use App\Support\Money;
 use App\Filament\Reseller\ResolvesCurrentReseller;
 use App\Filament\Reseller\Resources\CustomerResource\Pages;
 use App\Models\User;
@@ -54,12 +55,10 @@ class CustomerResource extends Resource
                     // کیف‌پول مشتری به CustomerAccountِ همین نماینده تعلق
                     // دارد، نه به خودِ User (بند ۱۷). خواندن مستقیم
                     // $record->wallet همیشه صفر نشان می‌داد.
-                    ->content(fn (User $record) => number_format(
-                        app(\App\Services\Core\WalletService::class)->balanceIn(
+                    ->content(fn (User $record) => Money::format(app(\App\Services\Core\WalletService::class)->balanceIn(
                             $record,
                             \App\Services\Core\Store\StoreContext::reseller(static::currentReseller()),
-                        )
-                    ).' تومان'),
+                        ))),
             ]),
         ]);
     }
@@ -74,12 +73,10 @@ class CustomerResource extends Resource
                 // User::wallet() فقط Main را برمی‌گرداند، پس از WalletService می‌خوانیم.
                 Tables\Columns\TextColumn::make('wallet_balance')
                     ->label('موجودی کیف پول')
-                    ->getStateUsing(fn (User $record) => number_format(
-                        app(\App\Services\Core\WalletService::class)->balanceIn(
+                    ->getStateUsing(fn (User $record) => Money::format(app(\App\Services\Core\WalletService::class)->balanceIn(
                             $record,
                             \App\Services\Core\Store\StoreContext::reseller(static::currentReseller()),
-                        )
-                    ).' تومان'),
+                        ))),
                 Tables\Columns\TextColumn::make('orders_count')->label('تعداد سفارش‌ها')->counts('orders'),
                 Tables\Columns\TextColumn::make('created_at')->label('عضویت از')->dateTime('Y-m-d'),
             ])

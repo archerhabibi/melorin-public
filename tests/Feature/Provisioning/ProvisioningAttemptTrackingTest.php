@@ -146,7 +146,7 @@ class ProvisioningAttemptTrackingTest extends TestCase
         ]);
     }
 
-    protected function buyer(float $balance = 500000)
+    protected function buyer(int $balance = 500000)
     {
         $customer = $this->identity->resolveCustomerAccount(
             User::factory()->create(),
@@ -296,7 +296,7 @@ class ProvisioningAttemptTrackingTest extends TestCase
         // Debit خرید (main_price=100000) قبلاً در مرحله‌ی ۱ (قبل از
         // Provisioning) قطعی شده — چه Provisioning موفق شود چه نه.
         $balanceAfterFailedPurchase = $this->wallet->getBalance($customer);
-        $this->assertSame(400000.0, $balanceAfterFailedPurchase);
+        $this->assertSame(400000, $balanceAfterFailedPurchase);
 
         $this->panelSucceeds();
 

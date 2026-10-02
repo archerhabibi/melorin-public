@@ -53,9 +53,9 @@ class WalletService
     }
 
     /** موجودی Wallet یک User در یک Context صریح (بدون نیاز به ساخت CustomerAccount) */
-    public function balanceIn(User $user, StoreContext $context): float
+    public function balanceIn(User $user, StoreContext $context): int
     {
-        return (float) $this->walletForContext($user, $context)->balance;
+        return (int) $this->walletForContext($user, $context)->balance;
     }
 
     protected function resolveWallet(int $userId, string $storeType, ?int $resellerId): Wallet
@@ -113,13 +113,13 @@ class WalletService
         throw new \InvalidArgumentException('مالک Wallet نامعتبر: '.$owner::class);
     }
 
-    public function balance(Model $owner): float
+    public function balance(Model $owner): int
     {
-        return (float) $this->getOrCreateWallet($owner)->balance;
+        return (int) $this->getOrCreateWallet($owner)->balance;
     }
 
     /** شارژ کیف پول (بند ۱۱) */
-    public function charge(Model $owner, float $amount, ?Model $reference = null, ?string $description = null): WalletTransaction
+    public function charge(Model $owner, int $amount, ?Model $reference = null, ?string $description = null): WalletTransaction
     {
         $this->assertPositive($amount);
 
@@ -137,7 +137,7 @@ class WalletService
      *
      * @throws InsufficientBalanceException
      */
-    public function purchase(Model $owner, float $amount, ?Model $reference = null, ?string $description = null): WalletTransaction
+    public function purchase(Model $owner, int $amount, ?Model $reference = null, ?string $description = null): WalletTransaction
     {
         $this->assertPositive($amount);
 
@@ -145,7 +145,7 @@ class WalletService
     }
 
     /** بازگشت وجه (بند ۱۲) */
-    public function refund(Model $owner, float $amount, ?Model $reference = null, ?string $description = null): WalletTransaction
+    public function refund(Model $owner, int $amount, ?Model $reference = null, ?string $description = null): WalletTransaction
     {
         $this->assertPositive($amount);
 
@@ -153,14 +153,14 @@ class WalletService
     }
 
     /** واریز کمیسیون یا پاداش زیرمجموعه‌گیری (بند ۱۳) */
-    public function addCommission(Model $owner, float $amount, ?Model $reference = null, ?string $description = null): WalletTransaction
+    public function addCommission(Model $owner, int $amount, ?Model $reference = null, ?string $description = null): WalletTransaction
     {
         $this->assertPositive($amount);
 
         return $this->applyTransaction($owner, 'commission', $amount, $reference, $description);
     }
 
-    public function addReferralBonus(Model $owner, float $amount, ?Model $reference = null, ?string $description = null): WalletTransaction
+    public function addReferralBonus(Model $owner, int $amount, ?Model $reference = null, ?string $description = null): WalletTransaction
     {
         $this->assertPositive($amount);
 
@@ -171,7 +171,7 @@ class WalletService
      * تغییر دستی موجودی توسط ادمین (بند ۱۴: افزایش/کاهش موجودی).
      * amount می‌تواند مثبت یا منفی باشد.
      */
-    public function adminAdjust(Model $owner, float $amount, ?Model $reference = null, ?string $description = null): WalletTransaction
+    public function adminAdjust(Model $owner, int $amount, ?Model $reference = null, ?string $description = null): WalletTransaction
     {
         return $this->applyTransaction($owner, 'admin_adjust', $amount, $reference, $description);
     }
@@ -184,12 +184,12 @@ class WalletService
     protected function applyTransaction(
         Model $owner,
         string $type,
-        float $signedAmount,
+        int $signedAmount,
         ?Model $reference,
         ?string $description,
         ?Wallet $lockedWallet = null,
         ?Operation $operation = null,
-        ?float $minimumBalance = null
+        ?int $minimumBalance = null
     ): WalletTransaction {
         $owner = $this->normalizeOwner($owner);
         $floor = $minimumBalance ?? $this->minimumBalanceFor($owner);
@@ -208,14 +208,12 @@ class WalletService
                 $wallet = Wallet::query()->whereKey($wallet->id)->lockForUpdate()->first();
             }
 
-            $newBalance = (float) $wallet->balance + $signedAmount;
+            $newBalance = (int) $wallet->balance + $signedAmount;
 
             // کف مجاز برای مشتری صفر است و برای نماینده منفیِ سقف بدهی
-            // (بند ۲۰ بلوپرینت). مقایسه با یک epsilon کوچک انجام می‌شود
-            // چون جمع/تفریق اعداد اعشاری می‌تواند -500 را به
-            // -500.0000000001 تبدیل کند و یک خریدِ کاملاً مجاز را به‌
-            // اشتباه مسدود کند.
-            if ($newBalance < $floor - 0.00001) {
+            // (بند ۲۰ بلوپرینت). از فاز ۵ همه‌چیز عدد صحیحِ Minor Unit است؛
+            // مقایسه‌ی دقیق است و epsilon لازم نیست.
+            if ($newBalance < $floor) {
                 throw new InsufficientBalanceException;
             }
 
@@ -247,7 +245,7 @@ class WalletService
     /** واریز به کیف‌پول با نوع مشخص و اتصال اختیاری به یک Operation */
     public function credit(
         Model $owner,
-        float $amount,
+        int $amount,
         string $type = 'charge',
         ?Model $reference = null,
         ?string $description = null,
@@ -266,7 +264,7 @@ class WalletService
      */
     public function debit(
         Model $owner,
-        float $amount,
+        int $amount,
         string $type = 'purchase',
         ?Model $reference = null,
         ?string $description = null,
@@ -285,12 +283,12 @@ class WalletService
      * کسر واقعی، یک خرید هم‌زمان دیگر می‌تواند موجودی را خالی کند.
      * تنها تضمین واقعی، خودِ debit است که زیر قفل ردیف کار می‌کند.
      */
-    public function canDebit(Model $owner, float $amount): bool
+    public function canDebit(Model $owner, int $amount): bool
     {
         return $this->balance($owner) >= $amount;
     }
 
-    public function getBalance(Model $owner): float
+    public function getBalance(Model $owner): int
     {
         return $this->balance($owner);
     }
@@ -347,16 +345,16 @@ class WalletService
      * می‌دهد فروش نماینده در لحظه‌ی تمام‌شدن اعتبار قطع نشود، بدون
      * این‌که بدهی بی‌انتها ممکن باشد.
      */
-    protected function minimumBalanceFor(Model $owner): float
+    protected function minimumBalanceFor(Model $owner): int
     {
         if ($owner instanceof Reseller) {
-            return -1 * (float) ($owner->debt_limit ?? 0);
+            return -1 * (int) ($owner->debt_limit ?? 0);
         }
 
-        return 0.0;
+        return 0;
     }
 
-    protected function assertPositive(float $amount): void
+    protected function assertPositive(int $amount): void
     {
         if ($amount <= 0) {
             throw new \InvalidArgumentException('مبلغ باید بزرگ‌تر از صفر باشد.');

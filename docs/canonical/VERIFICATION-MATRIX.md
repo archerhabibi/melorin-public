@@ -1,6 +1,6 @@
 # Melorin — Verification Matrix
 
-**Contract:** Master 2.7 · Website 1.7 · **Code baseline:** Release 3.3.0 (Git `09009bc`، working tree تمیز)
+**Contract:** Master 2.8 · Website 1.8 · **Code baseline:** Release 3.3.0 (Git `09009bc`، working tree تمیز)
 
 **راهنما:** ✅ انجام و مستند · ⚠️ ناقص یا **مغایر Contract** · ☐ انجام نشده · — نامربوط · ⛔ DEPRECATED
 
@@ -35,7 +35,7 @@
 | Guest Retention (۶۰ روز) | ✅ | ✅ *(`guest:prune` روزانه، فاز ۴)* | ☐ *(اجرا نشده)* | — | — | ☐ | ☐ |
 | بازگشت به Checkout پس از شارژ (D-3) | ✅ | ✅ *(لینک بازگشت اضافه شد، فاز ۴)* | ☐ *(اجرا نشده)* | ☐ | — | ☐ | ☐ |
 | Security Headers/CSP/Rate Limit | ⚠️ *Matrix رسمی ندارد* | ✅ | ✅ | — | ☐ | ☐ | ☐ |
-| Money Representation (بدون float) | ✅ *(M1–M5؛ واحد تومان)* | ⚠️ *۸۱ مورد `(float)`* | — | — | — | — | — |
+| Money Representation (بدون float، ارز قابل‌تنظیم) | ✅ *(M1–M8)* | ✅ *(فاز ۵)* | ☐ *(اجرا نشده)* | — | — | ☐ *(Migration روی کپی DB)* | ☐ |
 | Backup / Restore | ☐ | ✅ *(update-git.sh)* | — | — | — | ☐ | ☐ |
 | Rollback (Migration/Health failure عمدی) | ☐ | ✅ | — | — | — | ☐ | ☐ |
 | Observability / Alerting / Health | ☐ | ⚠️ | — | — | — | ☐ | ☐ |
@@ -65,7 +65,7 @@
 | C9 | `/complete-profile` و `POST /guest-checkout/purchase` وابسته به مدل قدیم Guest | `routes/website.php` | ✅ بسته شد (فاز ۴) |
 | C10 | Email Verification در Contract (G11) هست ولی در کد نیست: `User` بدون `MustVerifyEmail`، بدون Route/Notification، بدون Gate روی Checkout/Wallet Charge، بدون تست | Auth + `User` + Middleware + تست | ✅ بسته شد (فاز ۴) |
 | C5 | `orders.status`/`payments.purpose` enum شامل مقادیر تاریخی | Migrations | 3 (مستندسازی؛ حذف نه) |
-| C6 | استفاده‌ی گسترده از `float` در سرویس‌های مالی | `PaymentService`, `WalletService`, … | 5 |
+| C6 | استفاده‌ی گسترده از `float` در سرویس‌های مالی | `PaymentService`, `WalletService`, … | ✅ بسته شد (فاز ۵؛ تست‌ها هنوز اجرا نشده) |
 
 ## ۴. Release Artifact (یافته‌های ZIP دریافتی)
 

@@ -2,6 +2,7 @@
 
 namespace App\Channels\Website\Http\Controllers\Account;
 
+use App\Support\Money;
 use App\Models\Account;
 use App\Models\CustomerAccount;
 use App\Services\Core\Renewal\RenewalFailedException;
@@ -91,7 +92,7 @@ class AccountsController
 
         if ($balanceBeforeRenewal < $product->mainPrice()) {
             return redirect($redirectRoute)->with('renewal_error',
-                'برای تمدید، ابتدا کیف پول خود را شارژ کنید. هزینه‌ی تمدید: '.number_format($product->mainPrice()).' تومان'
+                'برای تمدید، ابتدا کیف پول خود را شارژ کنید. هزینه‌ی تمدید: '.Money::format($product->mainPrice())
             );
         }
 

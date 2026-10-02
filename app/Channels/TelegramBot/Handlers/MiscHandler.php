@@ -2,6 +2,7 @@
 
 namespace App\Channels\TelegramBot\Handlers;
 
+use App\Support\Money;
 use App\Channels\TelegramBot\Support\ConversationState;
 use App\Events\TicketCreated;
 use App\Events\TicketUserReplied;
@@ -36,14 +37,14 @@ class MiscHandler
     {
         $settings = AffiliateSetting::current();
         $botUsername = config('telegram.bots.main.username', 'MelorinBot');
-        $bonus = (float) $settings->referrer_bonus_amount;
+        $bonus = (int) $settings->referrer_bonus_amount;
 
         // قبلاً این پیام وعده‌ی «پاداش خرید اول» و «کمیسیون خریدهای بعدی» را
         // هم می‌داد، در حالی که هیچ‌کدام پرداخت نمی‌شدند (Commission هیچ‌جا
         // create نمی‌شد). فقط همان پاداشی که واقعاً در StartHandler پرداخت
         // می‌شود اینجا تبلیغ می‌شود.
         $bonusLine = $bonus > 0
-            ? '🎁 با عضویت هر نفر از طریق این لینک، '.number_format($bonus)." تومان به کیف پول شما اضافه می‌شود.\n"
+            ? '🎁 با عضویت هر نفر از طریق این لینک، '.Money::format($bonus)." به کیف پول شما اضافه می‌شود.\n"
             : '';
 
         $this->telegram->sendMessage([

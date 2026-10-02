@@ -2,6 +2,7 @@
 
 namespace App\Channels\TelegramBot\Handlers;
 
+use App\Support\Money;
 use App\Channels\TelegramBot\Support\Keyboards;
 use App\Channels\TelegramBot\Support\QrCodeGenerator;
 use App\Exceptions\InsufficientBalanceException;
@@ -119,7 +120,7 @@ class AccountsHandler
         if ($balanceBeforeRenewal < $product->mainPrice()) {
             $this->telegram->sendMessage([
                 'chat_id' => $chatId,
-                'text' => 'برای تمدید، ابتدا کیف پول خود را شارژ کنید. هزینه‌ی تمدید: '.number_format($product->mainPrice()).' تومان',
+                'text' => 'برای تمدید، ابتدا کیف پول خود را شارژ کنید. هزینه‌ی تمدید: '.Money::format($product->mainPrice()),
             ]);
 
             return;
@@ -170,8 +171,8 @@ class AccountsHandler
         $this->telegram->sendMessage([
             'chat_id' => $chatId,
             'text' => "✅ اکانت شما با موفقیت تمدید شد.\n\n"
-                .'موجودی کیف پول قبل از تمدید: '.number_format($balanceBeforeRenewal)." تومان\n"
-                .'موجودی کیف پول بعد از تمدید: '.number_format($balanceAfterRenewal).' تومان',
+                .'موجودی کیف پول قبل از تمدید: '.Money::format($balanceBeforeRenewal)."\n"
+                .'موجودی کیف پول بعد از تمدید: '.Money::format($balanceAfterRenewal),
         ]);
         $this->sendSummary($chatId, $account->fresh());
     }

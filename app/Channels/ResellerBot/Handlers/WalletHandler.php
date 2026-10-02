@@ -2,6 +2,7 @@
 
 namespace App\Channels\ResellerBot\Handlers;
 
+use App\Support\Money;
 use App\Channels\ResellerBot\Support\ConversationState;
 use App\Channels\ResellerBot\Support\Keyboards;
 use App\Models\Payment;
@@ -33,7 +34,7 @@ class WalletHandler
     {
         $this->telegram->sendMessage([
             'chat_id' => $chatId,
-            'text' => '💰 موجودی کیف پول شما: '.number_format($this->walletService->balanceIn($user, StoreContext::reseller($reseller)))."تومان\n\nبرای شارژ، مبلغ را انتخاب کنید:",
+            'text' => '💰 موجودی کیف پول شما: '.Money::format($this->walletService->balanceIn($user, StoreContext::reseller($reseller)))."\n\nبرای شارژ، مبلغ را انتخاب کنید:",
             'reply_markup' => Keyboards::walletTopupAmounts(),
         ]);
     }
@@ -42,20 +43,20 @@ class WalletHandler
     {
         if ($amount === 'custom') {
             $this->state->set($reseller, $chatId, ConversationState::WALLET_AWAITING_AMOUNT, [], $user);
-            $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => 'مبلغ دلخواه را به تومان وارد کنید (فقط عدد):']);
+            $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => 'مبلغ دلخواه را به '.Money::label().' وارد کنید (فقط عدد):']);
 
             return;
         }
 
-        $this->promptPaymentMethod($reseller, $chatId, $user, (float) $amount);
+        $this->promptPaymentMethod($reseller, $chatId, $user, (int) $amount);
     }
 
     public function handleCustomAmountText(Reseller $reseller, int $chatId, User $user, string $text): void
     {
-        $amount = (float) preg_replace('/[^0-9.]/', '', $text);
+        $amount = Money::parseOrZero($text);
 
-        if ($amount < 10000) {
-            $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => 'مبلغ نامعتبر است. حداقل مبلغ شارژ ۱۰,۰۰۰ تومان است.']);
+        if ($amount < Money::minTopup('customer')) {
+            $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => 'مبلغ نامعتبر است. حداقل مبلغ شارژ '.Money::format(Money::minTopup()).' است.']);
 
             return;
         }
@@ -63,7 +64,7 @@ class WalletHandler
         $this->promptPaymentMethod($reseller, $chatId, $user, $amount);
     }
 
-    protected function promptPaymentMethod(Reseller $reseller, int $chatId, User $user, float $amount): void
+    protected function promptPaymentMethod(Reseller $reseller, int $chatId, User $user, int $amount): void
     {
         $methods = PaymentMethod::query()->where('status', 'active')->get();
 
@@ -85,7 +86,8 @@ class WalletHandler
     public function chooseMethod(Reseller $reseller, int $chatId, User $user, int $methodId): void
     {
         $state = $this->state->find($reseller, $chatId);
-        $amount = (float) ($state->payload['amount'] ?? 0);
+        $amount = (int) ($state->payload['amount'] ?? 0);
+        $amountText = Money::format($amount);
         $method = PaymentMethod::query()->where('status', 'active')->findOrFail($methodId);
 
         ['payment' => $payment, 'initiation' => $initiation] = $this->paymentService->initiate(
@@ -100,7 +102,7 @@ class WalletHandler
 
             $this->telegram->sendMessage([
                 'chat_id' => $chatId,
-                'text' => "مبلغ {$amount} تومان را به کارت زیر واریز کرده و سپس عکس رسید را همین‌جا ارسال کنید:\n\nشماره کارت: {$card}\nبه نام: {$holder}",
+                'text' => "مبلغ {$amountText} را به کارت زیر واریز کرده و سپس عکس رسید را همین‌جا ارسال کنید:\n\nشماره کارت: {$card}\nبه نام: {$holder}",
             ]);
 
             return;
@@ -166,7 +168,7 @@ class WalletHandler
                 'chat_id' => $reseller->user->telegram_id,
                 'text' => "🧾 درخواست شارژ کیف‌پول جدید\n\n"
                     ."از: {$user->full_name} (شناسه: {$user->telegram_id})\n"
-                    .'مبلغ: '.number_format((float) $payment->amount)." تومان\n"
+                    .'مبلغ: '.Money::format((int) $payment->amount)."\n"
                     ."واریزکننده: {$depositorName}",
             ]);
 

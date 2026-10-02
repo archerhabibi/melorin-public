@@ -2,11 +2,11 @@
 
 | فیلد | مقدار |
 |---|---|
-| **نسخه** | 2.7 |
+| **نسخه** | 2.8 |
 | **وضعیت** | CANONICAL (تنها مرجع معتبر معماری) |
-| **جایگزین** | Master v2.1 / v2.3 / 2.4 / 2.5 / 2.6 — DEPRECATED (v2.3: نام فایل 2.3، متن داخلی 2.1) |
+| **جایگزین** | Master v2.1 / v2.3 / 2.4 / 2.5 / 2.6 / 2.7 — DEPRECATED (v2.3: نام فایل 2.3، متن داخلی 2.1) |
 | **تاریخ اعتبار** | ۱۴۰۵/۰۷/۰۸ (۲۰۲۶-۰۹-۳۰) |
-| **زیرسند وابسته** | Website Architecture Contract v1.7 (`Parent Contract: Master 2.7`) |
+| **زیرسند وابسته** | Website Architecture Contract v1.8 (`Parent Contract: Master 2.8`) |
 | **مبنای Implementation** | Release 3.3.0 + فاز ۴ (Guest/Verify/Retention؛ متن Contract بدون تغییر) |
 | **دامنه** | Core + Main/Reseller Store + Telegram Bots + Website + Admin + Wallet + Payment + Purchase + Provisioning + Renewal + Referral + Commission |
 
@@ -145,17 +145,21 @@ Checkout → Wallet Payment → Order → Provisioning
 
 ---
 
-## 4.1 Money Representation (D-5 — تصمیم اتخاذ‌شده، اجرا در فاز ۵)
+## 4.1 Money Representation (D-5 — اجرا‌شده در فاز ۵)
 
 | # | قاعده |
 |---|---|
 | M1 | همه‌ی مبالغ مالی در Core به‌صورت **Integer Minor Unit** نگهداری و محاسبه می‌شوند؛ `float` برای پول ممنوع است. |
 | M2 | Signature سرویس‌های مالی (`WalletService`, `PaymentService`, `PurchaseService`, `RefundService`, `RenewalService`, Commission) `int` می‌گیرند/برمی‌گردانند؛ تبدیل به رشته‌ی نمایشی فقط در لایه‌ی UI. |
 | M3 | ستون‌های مالی به `bigInteger` مهاجرت می‌کنند (Migration جداگانه، Backup اجباری، `IRREVERSIBLE`). |
-| M4 | تا پایان فاز ۵ وضعیت فعلی (`decimal(15,2)` + ۸۱ مورد `(float)` در `app/`) **مغایر Contract و شناخته‌شده** است (Verification Matrix، C6). |
-| M5 | Guard دائمی: تست Architecture که `(float)`/`float` را در مسیرهای مالی رد کند (مانند `PricingNamingAndReportsTest`). |
+| M4 | (فاز ۵ اجرا شد) هیچ `float` مالی در `app/` باقی نمانده؛ ستون‌ها `bigInteger`‌اند. تنها استثنا: حجم ترافیک (GB) و `Support/Money.php`. |
+| M5 | Guard دائمی: `MoneyGuardTest` (float ممنوع، «تومان» هاردکد ممنوع، ستون decimal مالی جدید ممنوع). |
+| M6 | **ارز قابل‌تنظیم (D-5b):** هر نصب یک ارز دارد (`config('melorin.currency')`: `code`, `label`, `decimals`, `symbol_position`). Minor Unit = `10^decimals`. تبدیل ورودی/نمایش فقط از `App\Support\Money`. |
+| M7 | Zarinpal فقط با ارز `IRT` (×۱۰) یا `IRR` و `decimals=0` کار می‌کند؛ با ارز دیگر Exception می‌دهد. |
+| M8 | `decimals` پیش از Migration و پیش از داده‌ی واقعی انتخاب می‌شود؛ تغییر بعدی مقدار همه‌ی موجودی‌ها را تغییر می‌دهد. |
 
-**D-5a (بسته):** واحد Minor Unit = **تومان** (عدد صحیح، بدون اعشار). پیش از Migration باید تأیید شود که مقادیر موجود `decimal(15,2)` اعشار غیرصفر ندارند؛ در غیر این‌صورت قاعده‌ی گرد کردن باید صریح تعریف شود.
+**D-5a (بسته):** پیش‌فرض ارز = **تومان** (`decimals=0`). Migration فاز ۵ اگر اعشار غیرقابل‌نمایش ببیند متوقف می‌شود، مگر `MELORIN_MONEY_ALLOW_ROUNDING=true` (Half-Up).
+**D-5b (بسته، به‌درخواست صاحب پروژه):** ارز غیر از تومان (دلار، یورو، …) مجاز است، به‌صورت «یک نصب = یک ارز». چندارزی هم‌زمان با نرخ تبدیل همچنان خارج از Scope است.
 
 ## 5. Wallet
 
@@ -312,7 +316,7 @@ Core-only؛ Website/Bot هرگز Discount محاسبه نمی‌کنند.
 **Production** (همه باید Verified باشند): Backup DB · Migrations · Data Backfill · Tests (کل پروژه) · Secrets Rotated · Webhook Secured · Audit · Payment/Purchase/Provisioning/Retry/Refund/Reseller Debt Tested · **Guest Checkout (مدل جدید) Tested** · Rollback Plan Verified · Independent Security Review · Backup Restore Test.
 
 ## 19. خارج از Scope فعلی
-Advanced RBAC · Full Financial Reconciliation · Advanced Monitoring · Mobile App · Public API · Multi-language · Multi-currency · Object Storage · Wallet Transfer · **Partial Wallet + Direct Payment** · Reseller Product Creation · **Google Sign-In (D-6)** · Cart · Payment States `created/processing/partially_refunded` · ادامه‌ی خودکار Purchase پس از شارژ Direct Payment.
+Advanced RBAC · Full Financial Reconciliation · Advanced Monitoring · Mobile App · Public API · Multi-language · Multi-currency هم‌زمان/نرخ تبدیل (ارز قابل‌تنظیم برای کل نصب مجاز است، M6) · Object Storage · Wallet Transfer · **Partial Wallet + Direct Payment** · Reseller Product Creation · **Google Sign-In (D-6)** · Cart · Payment States `created/processing/partially_refunded` · ادامه‌ی خودکار Purchase پس از شارژ Direct Payment.
 این موارد حذف دائمی نیستند؛ فعال‌سازی هرکدام = Contract مستقل + Verification.
 
 ---
@@ -343,7 +347,7 @@ Advanced RBAC · Full Financial Reconciliation · Advanced Monitoring · Mobile 
 | D-2 | Discount Stacking/Eligibility | **بسته:** No Stacking؛ اولین خرید از سابقه‌ی واقعی Core (بخش ۱۶) |
 | D-3 | ادامه‌ی خودکار Purchase پس از شارژ | **بسته:** ممنوع؛ بازگشت به Checkout (بخش ۷.۲) |
 | D-4 | Retention | **بسته:** Guest = ۶۰ روز؛ بقیه طبق `DATA-RETENTION.md` (تأییدشده توسط صاحب پروژه؛ تأیید حقوقی/حسابداری توصیه می‌شود) |
-| D-5 | Money بدون float | **بسته:** Integer Minor Unit (بخش ۴.۱)؛ **D-5a بسته:** تومان |
+| D-5 | Money بدون float | **بسته و اجرا‌شده (فاز ۵):** Integer Minor Unit (بخش ۴.۱)؛ D-5a: پیش‌فرض تومان؛ D-5b: ارز قابل‌تنظیم |
 | D-6 | Google Sign-In | **بسته:** حذف از Release اول |
 | D-7 | Email Verification | **بسته:** بله (G11) |
 | D-8 | Gate کاربر Verify‌نشده | **بسته:** فقط Purchase و Wallet Charge (G11) |
@@ -356,7 +360,7 @@ Advanced RBAC · Full Financial Reconciliation · Advanced Monitoring · Mobile 
 | ~~D-6~~ | ~~Google Sign-In~~ | **بسته شد:** حذف از Release اول |
 | ~~D-7~~ | ~~Email Verification در Register~~ | **بسته شد:** بله، Register Email را Verify می‌کند (G11) |
 | D-8 | کاربر Verify‌نشده فقط از Purchase و Wallet Charge منع شود (بقیه‌ی سایت آزاد)؟ | بله |
-| D-5 | نمایش Money به‌صورت Integer Minor Unit | Phase 5 (Financial Hardening)؛ فعلاً `decimal(15,2)` |
+| ~~D-5~~ | ~~Money Integer Minor Unit~~ | **بسته شد (فاز ۵)** |
 
 ---
 

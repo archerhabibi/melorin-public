@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources;
 
+use App\Support\Money;
+use App\Filament\Support\MoneyInput;
 use App\Filament\Resources\UserResource\Pages;
 use App\Models\User;
 use App\Services\Core\WalletService;
@@ -58,7 +60,7 @@ class UserResource extends Resource
                         'reseller' => '🏬 نماینده', 'admin' => '🔑 ادمین ربات', default => 'مشتری',
                     }),
                 Tables\Columns\TextColumn::make('wallet.balance')->label('موجودی Main')
-                    ->money('IRT', divideBy: 1)
+                    ->formatStateUsing(fn ($state) => $state === null ? null : Money::format((int) $state))
                     ->default(0),
                 Tables\Columns\TextColumn::make('orders_count')->counts('orders')->label('تعداد سفارش'),
                 Tables\Columns\TextColumn::make('accounts_count')->counts('accounts')->label('تعداد اکانت'),
@@ -98,9 +100,8 @@ class UserResource extends Resource
                     ->label('💰 تنظیم موجودی')
                     ->color('warning')
                     ->form([
-                        Forms\Components\TextInput::make('amount')
+                        MoneyInput::make('amount')
                             ->label('مبلغ (مثبت برای افزایش، منفی برای کاهش)')
-                            ->numeric()
                             ->required(),
                         Forms\Components\TextInput::make('description')
                             ->label('توضیح (برای گردش حساب)')
@@ -110,7 +111,7 @@ class UserResource extends Resource
                         try {
                             app(WalletService::class)->adminAdjust(
                                 $record,
-                                (float) $data['amount'],
+                                (int) $data['amount'],
                                 description: $data['description']
                             );
 

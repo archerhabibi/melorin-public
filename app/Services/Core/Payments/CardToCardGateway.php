@@ -31,7 +31,7 @@ class CardToCardGateway implements PaymentGatewayInterface
             'card_number' => $settings['card_number'] ?? null,
             'card_holder_name' => $settings['card_holder_name'] ?? null,
             'bank_name' => $settings['bank_name'] ?? null,
-            'amount' => (float) $payment->amount,
+            'amount' => (int) $payment->amount,
         ]);
     }
 

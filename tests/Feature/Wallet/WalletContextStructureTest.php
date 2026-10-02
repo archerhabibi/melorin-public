@@ -101,7 +101,7 @@ class WalletContextStructureTest extends TestCase
 
         // یک Wallet در Main برای این User وجود دارد، نه دو تا (نه «اعتبار نماینده»ی جدا)
         $this->assertEquals(1, Wallet::where('user_id', $reseller->user_id)->where('scope_key', 'main')->count());
-        $this->assertEquals(1000, (float) $reseller->wallet->balance);
+        $this->assertEquals(1000, (int) $reseller->wallet->balance);
     }
 
     #[Test]
@@ -220,16 +220,16 @@ class WalletContextStructureTest extends TestCase
             ]);
         }
 
-        $before = (float) DB::table('wallets')->sum('balance');
+        $before = (int) DB::table('wallets')->sum('balance');
 
         $this->runMerge();
 
-        $this->assertEquals($before, (float) DB::table('wallets')->sum('balance'));
+        $this->assertEquals($before, (int) DB::table('wallets')->sum('balance'));
         $this->assertEquals(3, DB::table('wallets')->count());
 
         $mainWallet = Wallet::where('user_id', $owner->id)->where('scope_key', 'main')->firstOrFail();
         $this->assertEquals($w1, $mainWallet->id);
-        $this->assertEquals(1300, (float) $mainWallet->balance);
+        $this->assertEquals(1300, (int) $mainWallet->balance);
         $this->assertNull($mainWallet->owner_type);
         $this->assertNull($mainWallet->customer_account_id);
 
@@ -237,20 +237,20 @@ class WalletContextStructureTest extends TestCase
         $this->assertEquals(3, $mainWallet->transactions()->count());
         $marker = $mainWallet->transactions()->latest('id')->first();
         $this->assertEquals('admin_adjust', $marker->type);
-        $this->assertEquals(1000, (float) $marker->amount);
-        $this->assertEquals(1300, (float) $marker->balance_after);
+        $this->assertEquals(1000, (int) $marker->amount);
+        $this->assertEquals(1300, (int) $marker->balance_after);
 
         $aliWallet = Wallet::where('user_id', $ali->id)->firstOrFail();
         $this->assertEquals('reseller', $aliWallet->store_type);
         $this->assertEquals($reseller->id, $aliWallet->reseller_id);
-        $this->assertEquals(50, (float) $aliWallet->balance);
+        $this->assertEquals(50, (int) $aliWallet->balance);
 
         // WalletService حالا همان موجودی‌ها را می‌بیند (قبلاً Wallet قدیمی «صفر» دیده می‌شد)
         $this->assertEquals(1300, $this->wallet->balance($ownerMain));
         $this->assertEquals(50, $this->wallet->balance($aliInStore));
 
         // غیرقابل‌نگاشت دست‌نخورده می‌ماند
-        $this->assertEquals(7, (float) DB::table('wallets')->where('id', $w5)->value('balance'));
+        $this->assertEquals(7, (int) DB::table('wallets')->where('id', $w5)->value('balance'));
     }
 
     #[Test]
@@ -269,7 +269,7 @@ class WalletContextStructureTest extends TestCase
         $this->runMerge();
 
         $this->assertEquals(1, DB::table('wallets')->count());
-        $this->assertEquals(30, (float) DB::table('wallets')->value('balance'));
+        $this->assertEquals(30, (int) DB::table('wallets')->value('balance'));
         $this->assertEquals(1, DB::table('wallet_transactions')->count());
     }
 

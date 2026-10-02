@@ -82,8 +82,8 @@ class ReferralService
         }
 
         $settings = AffiliateSetting::current();
-        $customerBonus = (float) $settings->customer_bonus_amount;
-        $referrerBonus = (float) $settings->referrer_bonus_amount;
+        $customerBonus = (int) $settings->customer_bonus_amount;
+        $referrerBonus = (int) $settings->referrer_bonus_amount;
 
         if ($customerBonus <= 0 && $referrerBonus <= 0) {
             return;
@@ -101,7 +101,7 @@ class ReferralService
                     'referred_customer_account_id' => $buyer->id,
                     'order_id' => $order->id,
                     'type' => 'first_purchase_bonus',
-                    'base_amount' => (float) ($order->main_price ?? $order->customers_price),
+                    'base_amount' => (int) ($order->main_price ?? $order->customers_price),
                     'amount' => $referrerBonus,
                     'status' => 'paid',
                 ]);

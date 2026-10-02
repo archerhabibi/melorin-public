@@ -114,9 +114,9 @@ class ProvisioningAndRenewalTest extends TestCase
     }
 
     protected function makeProduct(
-        float $price = 100000,
+        int $price = 100000,
         int $days = 30,
-        float $gb = 50
+        int $gb = 50
     ): Product {
         $category = Category::factory()->create([
             'status' => 'active',
@@ -146,7 +146,7 @@ class ProvisioningAndRenewalTest extends TestCase
         ]);
     }
 
-    protected function buyer(float $balance = 500000)
+    protected function buyer(int $balance = 500000)
     {
         $customer = $this->identity->resolveCustomerAccount(
             User::factory()->create(),
@@ -491,12 +491,12 @@ class ProvisioningAndRenewalTest extends TestCase
 
         $this->assertEquals(
             50,
-            (float) $renewed->traffic_gb
+            (int) $renewed->traffic_gb
         );
 
         $this->assertEquals(
             0,
-            (float) $renewed->traffic_used_gb
+            (int) $renewed->traffic_used_gb
         );
 
         $this->assertTrue(
@@ -545,12 +545,12 @@ class ProvisioningAndRenewalTest extends TestCase
 
         $this->assertEquals(
             50,
-            (float) $renewed->traffic_gb
+            (int) $renewed->traffic_gb
         );
 
         $this->assertEquals(
             0,
-            (float) $renewed->traffic_used_gb
+            (int) $renewed->traffic_used_gb
         );
 
         $this->assertTrue(
@@ -655,7 +655,7 @@ class ProvisioningAndRenewalTest extends TestCase
         ->firstOrFail();
 
         // Renewal باید قیمت فعلی را برای تراکنش جدید Snapshot کند.
-        $this->assertEquals(100000, (float) $renewalOrder->main_price);
+        $this->assertEquals(100000, (int) $renewalOrder->main_price);
 
         // و مبلغ Renewal باید از موجودی فعلی کسر شده باشد.
         $this->assertEquals(
@@ -794,12 +794,12 @@ class ProvisioningAndRenewalTest extends TestCase
 
         $this->assertEquals($reseller->id, $renewalOrder->reseller_id);
         $this->assertNull($renewalOrder->main_price);
-        $this->assertEquals(100000, (float) $renewalOrder->reseller_price);
-        $this->assertEquals(130000, (float) $renewalOrder->customers_price);
+        $this->assertEquals(100000, (int) $renewalOrder->reseller_price);
+        $this->assertEquals(130000, (int) $renewalOrder->customers_price);
 
         $renewed->refresh();
-        $this->assertEquals(50, (float) $renewed->traffic_gb);
-        $this->assertEquals(0, (float) $renewed->traffic_used_gb);
+        $this->assertEquals(50, (int) $renewed->traffic_gb);
+        $this->assertEquals(0, (int) $renewed->traffic_used_gb);
         $this->assertTrue($renewed->expires_at->isFuture());
     }
 }

@@ -1,6 +1,6 @@
 @php
     $summary = $this->getSummary();
-    $money = fn ($v) => number_format((float) $v).' تومان';
+    $money = fn ($v) => \App\Support\Money::format((int) $v);
 @endphp
 
 <x-filament-panels::page>

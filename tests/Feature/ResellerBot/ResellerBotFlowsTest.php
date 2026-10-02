@@ -96,7 +96,7 @@ class ResellerBotFlowsTest extends TestCase
         ]);
     }
 
-    protected function sellableProduct(Reseller $reseller, float $mainPrice, float $customersPrice): Product
+    protected function sellableProduct(Reseller $reseller, int $mainPrice, int $customersPrice): Product
     {
         $panel = ServerPanel::factory()->create(['panel_type' => 'marzban']);
         $category = Category::factory()->create(['status' => 'active', 'server_selection_mode' => 'auto']);

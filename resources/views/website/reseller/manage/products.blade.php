@@ -33,14 +33,14 @@
                     <tr>
                         <td class="px-4 py-3">{{ $row['product']->name }}</td>
                         <td class="px-4 py-3 text-gray-500">{{ $row['product']->category->name }}</td>
-                        <td class="px-4 py-3 text-gray-500">{{ number_format($row['reseller_price']) }} تومان</td>
+                        <td class="px-4 py-3 text-gray-500">{{ \App\Support\Money::format($row['reseller_price']) }}</td>
                         <td class="px-4 py-3">
                             <form method="POST"
                                   action="{{ route('website.store.manage.products.price', [$store->reseller->slug, $row['product']->id]) }}"
                                   class="flex items-center gap-2">
                                 @csrf
-                                <input type="number" name="customers_price" min="0" step="1"
-                                       value="{{ old('customers_price', $row['customers_price']) }}"
+                                <input type="number" name="customers_price" min="0" step="{{ \App\Support\Money::inputStep() }}"
+                                       value="{{ old('customers_price', $row['customers_price'] === null ? null : \App\Support\Money::toMajorString($row['customers_price'])) }}"
                                        class="w-28 border rounded px-2 py-1 text-sm">
                                 <button type="submit" class="text-xs px-2 py-1 rounded text-white" style="background: var(--brand)">ثبت</button>
                             </form>

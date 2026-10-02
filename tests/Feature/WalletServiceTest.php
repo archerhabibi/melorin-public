@@ -100,8 +100,8 @@ class WalletServiceTest extends TestCase
 
         $wallet = $this->wallet->getOrCreateWallet($user);
 
-        $this->assertEquals(85000, (float) $wallet->balance);
+        $this->assertEquals(85000, (int) $wallet->balance);
         $this->assertCount(3, $wallet->transactions);
-        $this->assertEquals(85000, (float) $wallet->transactions()->latest('id')->first()->balance_after);
+        $this->assertEquals(85000, (int) $wallet->transactions()->latest('id')->first()->balance_after);
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Channels\ResellerBot\Handlers;
 
+use App\Support\Money;
 use App\Channels\ResellerBot\Support\ConversationState;
 use App\Channels\ResellerBot\Support\Keyboards;
 use App\Channels\TelegramBot\Support\QrCodeGenerator;
@@ -56,7 +57,7 @@ class BuyAccountHandler
 
         $this->telegram->sendMessage([
             'chat_id' => $chatId,
-            'text' => '💰 موجودی کیف پول شما: '.number_format($this->walletService->balanceIn($user, StoreContext::reseller($reseller)))."تومان\n\nیک سبد فروش انتخاب کنید:",
+            'text' => '💰 موجودی کیف پول شما: '.Money::format($this->walletService->balanceIn($user, StoreContext::reseller($reseller)))."\n\nیک سبد فروش انتخاب کنید:",
             'reply_markup' => Keyboards::categoryList($categories),
         ]);
     }
@@ -104,8 +105,8 @@ class BuyAccountHandler
         $this->telegram->sendMessage([
                 'chat_id' => $chatId,
                 'text' => 'موجودی کیف پول شما کافی نیست.'
-                    ."\nقیمت این تعرفه: ".number_format($customersPrice).' تومان'
-                    ."\nموجودی فعلی: ".number_format($this->walletService->balance($customer)).' تومان'
+                    ."\nقیمت این تعرفه: ".Money::format($customersPrice)
+                    ."\nموجودی فعلی: ".Money::format($this->walletService->balance($customer))
                     ."\n\nابتدا از بخش «💰 شارژ حساب» حساب خود را شارژ کنید.",
             ]);
 
@@ -139,7 +140,7 @@ class BuyAccountHandler
 
         $this->telegram->sendMessage([
             'chat_id' => $chatId,
-            'text' => '💰 موجودی کیف پول شما: '.number_format($this->walletService->balance($customer)).' تومان',
+            'text' => '💰 موجودی کیف پول شما: '.Money::format($this->walletService->balance($customer)),
             ]);
     }
 

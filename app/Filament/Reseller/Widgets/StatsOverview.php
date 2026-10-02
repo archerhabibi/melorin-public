@@ -2,6 +2,7 @@
 
 namespace App\Filament\Reseller\Widgets;
 
+use App\Support\Money;
 use App\Filament\Reseller\ResolvesCurrentReseller;
 use App\Models\Order;
 use App\Services\Core\WalletService;
@@ -31,17 +32,17 @@ class StatsOverview extends BaseWidget
         // Context نماینده‌اند — پس «مبلغی که مشتری پرداخته» همیشه
         // customers_price است، نه main_price (که اصلاً در این سفارش‌ها
         // پر نمی‌شود).
-        $monthRevenue = (float) $monthOrders->sum('customers_price');
-        $monthProfit = (float) $monthOrders->sum(fn (Order $o) => $o->resellerProfit());
+        $monthRevenue = (int) $monthOrders->sum('customers_price');
+        $monthProfit = (int) $monthOrders->sum(fn (Order $o) => $o->resellerProfit());
         $customersCount = $reseller->customers()->count();
 
         return [
-            Stat::make('موجودی اعتبار نماینده', number_format(app(WalletService::class)->balance($reseller)).' تومان')
+            Stat::make('موجودی اعتبار نماینده', Money::format(app(WalletService::class)->balance($reseller)))
                 ->color('success'),
             Stat::make('تعداد مشتریان', $customersCount),
             Stat::make('تعداد خریدها (این ماه)', $monthOrders->count()),
-            Stat::make('فروش این ماه', number_format($monthRevenue).' تومان'),
-            Stat::make('سود این ماه', number_format($monthProfit).' تومان')
+            Stat::make('فروش این ماه', Money::format($monthRevenue)),
+            Stat::make('سود این ماه', Money::format($monthProfit))
                 ->color('success'),
         ];
     }

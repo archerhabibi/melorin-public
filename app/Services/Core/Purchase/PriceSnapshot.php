@@ -37,9 +37,9 @@ final class PriceSnapshot
 
     private function __construct(
         public readonly string $context,
-        public readonly float $mainPrice,
-        public readonly float $resellerPrice,
-        public readonly float $customersPrice,
+        public readonly int $mainPrice,
+        public readonly int $resellerPrice,
+        public readonly int $customersPrice,
     ) {}
 
     /**
@@ -59,8 +59,8 @@ final class PriceSnapshot
         return new self(
             context: self::CONTEXT_MAIN,
             mainPrice: $buyerOwnsAReseller ? $product->resellerPrice() : $product->mainPrice(),
-            resellerPrice: 0.0,
-            customersPrice: 0.0,
+            resellerPrice: 0,
+            customersPrice: 0,
         );
     }
 
@@ -69,11 +69,11 @@ final class PriceSnapshot
      * مشتری customers_price می‌پردازد، نماینده reseller_price.
      * main_price اینجا عمداً صفر است (Rule 7).
      */
-    public static function forResellerStore(Product $product, float $customersPrice): self
+    public static function forResellerStore(Product $product, int $customersPrice): self
     {
         return new self(
             context: self::CONTEXT_RESELLER,
-            mainPrice: 0.0,
+            mainPrice: 0,
             resellerPrice: $product->resellerPrice(),
             customersPrice: $customersPrice,
         );
@@ -82,13 +82,13 @@ final class PriceSnapshot
     /** اکانت تست: هیچ پولی جابه‌جا نمی‌شود */
     public static function free(): self
     {
-        return new self(self::CONTEXT_MAIN, 0.0, 0.0, 0.0);
+        return new self(self::CONTEXT_MAIN, 0, 0, 0);
     }
 
     public static function for(
         StoreContext $store,
         Product $product,
-        ?float $customersPrice = null,
+        ?int $customersPrice = null,
         bool $buyerOwnsAReseller = false,
     ): self {
         if ($store->isMain()) {
@@ -111,7 +111,7 @@ final class PriceSnapshot
      * مبلغی که از کیف‌پول مشتری در Context خودش کسر می‌شود.
      * Main → main_price (Rule 2) · Reseller → customers_price (Rule 3)
      */
-    public function customerDebit(): float
+    public function customerDebit(): int
     {
         return $this->isReseller() ? $this->customersPrice : $this->mainPrice;
     }
@@ -120,15 +120,15 @@ final class PriceSnapshot
      * مبلغی که از کیف‌پول نماینده در Main کسر می‌شود (بند ۱۳، Debit دوم).
      * در فروش مستقیم Main اصلاً چنین کسری وجود ندارد.
      */
-    public function resellerDebit(): float
+    public function resellerDebit(): int
     {
-        return $this->isReseller() ? $this->resellerPrice : 0.0;
+        return $this->isReseller() ? $this->resellerPrice : 0;
     }
 
     /** حاشیه‌ی نماینده (بند ۱۴) — فقط یک عدد گزارشی، نه مبنای هیچ Debit. */
-    public function resellerProfit(): float
+    public function resellerProfit(): int
     {
-        return $this->isReseller() ? $this->customersPrice - $this->resellerPrice : 0.0;
+        return $this->isReseller() ? $this->customersPrice - $this->resellerPrice : 0;
     }
 
     public function isFree(): bool

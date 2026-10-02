@@ -104,13 +104,13 @@ class StoreWalletAndOperationTest extends TestCase
         $wallet = $this->wallet->walletFor($account);
         $transactions = $wallet->transactions()->orderBy('id')->get();
 
-        $this->assertEquals(70000, (float) $wallet->balance);
-        $this->assertEquals(70000, (float) $transactions->last()->balance_after);
+        $this->assertEquals(70000, (int) $wallet->balance);
+        $this->assertEquals(70000, (int) $transactions->last()->balance_after);
 
         // جمع تک‌تک تراکنش‌ها باید دقیقاً همان موجودی نهایی باشد
         $this->assertEquals(
-            (float) $wallet->balance,
-            (float) $transactions->sum('amount')
+            (int) $wallet->balance,
+            (int) $transactions->sum('amount')
         );
     }
 
@@ -196,7 +196,7 @@ class StoreWalletAndOperationTest extends TestCase
         $operation = Operation::where('idempotency_key', 'purchase:test:traceable')->firstOrFail();
         $transaction = WalletTransaction::where('operation_id', $operation->id)->firstOrFail();
 
-        $this->assertEquals(-20000, (float) $transaction->amount);
+        $this->assertEquals(-20000, (int) $transaction->amount);
         $this->assertTrue($operation->isCompleted());
     }
 

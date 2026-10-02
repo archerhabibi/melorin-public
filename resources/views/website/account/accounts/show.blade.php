@@ -13,8 +13,8 @@
             <div class="mt-4 p-3 rounded bg-green-50 text-green-800 text-sm whitespace-pre-line">
                 ✅ اکانت شما با موفقیت تمدید شد.
 
-                موجودی کیف پول قبل از تمدید: {{ number_format($result['balance_before']) }} تومان
-                موجودی کیف پول بعد از تمدید: {{ number_format($result['balance_after']) }} تومان
+                موجودی کیف پول قبل از تمدید: {{ \App\Support\Money::format($result['balance_before']) }}
+                موجودی کیف پول بعد از تمدید: {{ \App\Support\Money::format($result['balance_after']) }}
             </div>
         @endif
 

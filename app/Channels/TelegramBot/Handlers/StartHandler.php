@@ -2,6 +2,7 @@
 
 namespace App\Channels\TelegramBot\Handlers;
 
+use App\Support\Money;
 use App\Channels\TelegramBot\Support\ConversationState;
 use App\Channels\TelegramBot\Support\Keyboards;
 use App\Models\AffiliateSetting;
@@ -85,7 +86,7 @@ class StartHandler
 
         $user->refresh();
 
-        $bonus = (float) AffiliateSetting::current()->referrer_bonus_amount;
+        $bonus = (int) AffiliateSetting::current()->referrer_bonus_amount;
 
         // اگر ادمین هنوز مبلغی تنظیم نکرده (مقدار پیش‌فرض ۰)، بی‌سروصدا
         // رد می‌شویم — addReferralBonus() برای مبلغ صفر/منفی استثنا پرت
@@ -110,8 +111,8 @@ class StartHandler
                 $this->telegram->sendMessage([
                     'chat_id' => $referrer->telegram_id,
                     'text' => "🎉 یک کاربر جدید با لینک دعوت شما عضو ربات شد!\n"
-                        .number_format($bonus)." تومان به کیف پول شما اضافه شد.\n"
-                        .'موجودی فعلی: '.number_format($this->walletService->balance($referrer)).' تومان',
+                        .Money::format($bonus)." به کیف پول شما اضافه شد.\n"
+                        .'موجودی فعلی: '.Money::format($this->walletService->balance($referrer)),
                 ]);
             }
         }

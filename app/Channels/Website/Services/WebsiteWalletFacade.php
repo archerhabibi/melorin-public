@@ -15,7 +15,7 @@ class WebsiteWalletFacade
 {
     public function __construct(protected WalletService $wallet) {}
 
-    public function balance(User $user, StoreContext $store): float
+    public function balance(User $user, StoreContext $store): int
     {
         return $this->wallet->balanceIn($user, $store);
     }

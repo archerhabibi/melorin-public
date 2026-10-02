@@ -17,8 +17,8 @@ class Product extends Model
     ];
 
     protected $casts = [
-        'main_price' => 'decimal:2',
-        'reseller_price' => 'decimal:2',
+        'main_price' => 'integer',
+        'reseller_price' => 'integer',
         'traffic_gb' => 'decimal:2',
         'allowed_panel_ids' => 'array',
     ];
@@ -54,9 +54,9 @@ class Product extends Model
      * `main_price` — قیمتی که مشتریِ مستقیمِ فروشگاه اصلی می‌پردازد
      * (بند ۴). فقط و فقط در فروش مستقیم Main استفاده می‌شود.
      */
-    public function mainPrice(): float
+    public function mainPrice(): int
     {
-        return (float) $this->main_price;
+        return (int) $this->main_price;
     }
 
     /**
@@ -68,9 +68,9 @@ class Product extends Model
      * main_price سقوط می‌کند تا محصولات قدیمی بدون اقدام صریح رفتارشان
      * عوض نشود.
      */
-    public function resellerPrice(): float
+    public function resellerPrice(): int
     {
-        return (float) ($this->reseller_price ?? $this->main_price);
+        return (int) ($this->reseller_price ?? $this->main_price);
     }
 
     public function resellerPrices(): HasMany
@@ -89,7 +89,7 @@ class Product extends Model
      * و قیمت‌گذاری کرده باشد. یعنی غیرفعال‌کردن محصول توسط ادمین اصلی
      * همیشه بالادستِ فعال‌سازی محلی نماینده است.
      */
-    public function customersPrice(Reseller $reseller): ?float
+    public function customersPrice(Reseller $reseller): ?int
     {
         if ($this->status !== 'active') {
             return null;
@@ -100,6 +100,6 @@ class Product extends Model
             ->where('is_enabled', true)
             ->first();
 
-        return $setting ? (float) $setting->customers_price : null;
+        return $setting ? (int) $setting->customers_price : null;
     }
 }

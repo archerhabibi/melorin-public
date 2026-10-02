@@ -32,7 +32,7 @@ class ResellerManagementTest extends TestCase
         return $user;
     }
 
-    protected function product(float $resellerPrice = 100000): Product
+    protected function product(int $resellerPrice = 100000): Product
     {
         $category = Category::factory()->create(['status' => 'active']);
 
@@ -115,7 +115,7 @@ class ResellerManagementTest extends TestCase
 
         $row = ResellerProductPrice::query()->where('reseller_id', $reseller->id)->firstOrFail();
         $this->assertTrue($row->is_enabled);
-        $this->assertEquals(130000, (float) $row->customers_price);
+        $this->assertEquals(130000, (int) $row->customers_price);
     }
 
     #[Test]

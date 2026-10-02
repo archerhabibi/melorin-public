@@ -100,7 +100,7 @@ class ResellerPanelRenderTest extends TestCase
 
         $this->assertEquals(
             100000,
-            (float) $product->fresh()->reseller_price
+            (int) $product->fresh()->reseller_price
         );
     }
 }

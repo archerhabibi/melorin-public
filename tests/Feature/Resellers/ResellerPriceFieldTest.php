@@ -43,7 +43,7 @@ class ResellerPriceFieldTest extends TestCase
         );
     }
 
-    protected function sellableProduct(Reseller $reseller, float $price, ?float $resellerPrice, float $customersPrice): Product
+    protected function sellableProduct(Reseller $reseller, int $price, ?int $resellerPrice, int $customersPrice): Product
     {
         $panel = ServerPanel::factory()->create(['panel_type' => 'marzban']);
         $category = Category::factory()->create(['server_selection_mode' => 'auto']);

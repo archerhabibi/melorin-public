@@ -19,7 +19,7 @@
         </dl>
 
         <div class="mt-6 text-2xl font-bold" style="color: var(--brand)">
-            {{ number_format($price) }} تومان
+            {{ \App\Support\Money::format($price) }}
         </div>
 
         {{--

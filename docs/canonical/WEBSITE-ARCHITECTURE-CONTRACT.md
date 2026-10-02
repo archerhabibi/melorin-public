@@ -2,10 +2,10 @@
 
 | فیلد | مقدار |
 |---|---|
-| **نسخه** | 1.7 |
+| **نسخه** | 1.8 |
 | **وضعیت** | CANONICAL |
-| **Parent Contract** | Master Architecture Contract 2.7 |
-| **جایگزین** | Website Subdocument v1.2 (متن داخلی 1.1) و Website Contract 1.3 / 1.4 / 1.6 — DEPRECATED |
+| **Parent Contract** | Master Architecture Contract 2.8 |
+| **جایگزین** | Website Subdocument v1.2 (متن داخلی 1.1) و Website Contract 1.3 / 1.4 / 1.6 / 1.7 — DEPRECATED |
 | **تاریخ اعتبار** | ۱۴۰۵/۰۷/۰۸ (۲۰۲۶-۰۹-۳۰) |
 | **دامنه** | Main Website + Reseller Websites + Guest Checkout + Auth + Checkout + Payment (Wallet Charge) + Wallet + Orders + Renewal + Referral + Commission + Provisioning (نمایش) |
 
@@ -94,7 +94,7 @@ Correlation/Request ID برای هر Request حساس تا Core؛ Financial Trut
 **Reseller Website**: StoreContext · Customer/Pricing/Wallet/Order/Payment Scope · Branding · Management · E2E.
 
 ## 17. Out of Scope
-Cart · Multi-language · Multi-currency · Wallet Transfer · Partial Wallet + Direct Payment · Public API · Mobile App · Reseller Product Creation.
+Cart · Multi-language · Multi-currency هم‌زمان (ارز قابل‌تنظیم نصب مجاز است) · Wallet Transfer · Partial Wallet + Direct Payment · Public API · Mobile App · Reseller Product Creation.
 
 ## 18. TBD Policy
 TBD ≠ اجازه‌ی تصمیم در Channel. هر TBD: `Analyze → Check Master → Decide → Document → Implement → Test → Verify`.
@@ -170,7 +170,7 @@ Email Verification (فقط Context اصلی، پشت `auth`): `GET /email/verify
 | D-8 | کاربر Verify‌نشده فقط از Purchase و Wallet Charge منع شود؟ | **بسته:** بله |
 | D-2 / D-3 | Discount / ادامه‌ی خودکار Purchase | **بسته** (Master ۱۶، ۷.۲) |
 | D-4 | Retention | **بسته:** Guest ۶۰ روز؛ بقیه طبق `DATA-RETENTION.md` |
-| D-5 | Money | **بسته:** Integer Minor Unit، واحد = تومان (Master ۴.۱) |
+| D-5 | Money | **بسته و اجرا‌شده:** Integer Minor Unit، ارز قابل‌تنظیم (پیش‌فرض تومان) — Master ۴.۱ |
 
 **هشدار Deploy (D-7):** با `MAIL_MAILER=log` هیچ Email تأییدی نمی‌رسد و خرید/شارژ ثبت‌نام‌های جدید مسدود می‌ماند؛ SMTP واقعی پیش‌نیاز Production است.
 

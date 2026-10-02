@@ -20,7 +20,7 @@
                     <tr>
                         <td class="px-4 py-3">{{ $customer->full_name ?: '—' }}</td>
                         <td class="px-4 py-3 text-gray-500">{{ $customer->phone ?: '—' }}</td>
-                        <td class="px-4 py-3 font-medium">{{ number_format($customer->websiteWalletBalance) }} تومان</td>
+                        <td class="px-4 py-3 font-medium">{{ \App\Support\Money::format($customer->websiteWalletBalance) }}</td>
                     </tr>
                 @empty
                     <tr>

@@ -2,6 +2,7 @@
 
 namespace App\Listeners;
 
+use App\Support\Money;
 use App\Events\PaymentConfirmed;
 use Illuminate\Support\Facades\Log;
 use Telegram\Bot\Api;
@@ -28,9 +29,9 @@ class NotifyUserOfPaymentConfirmation
             return;
         }
 
-        $amount = number_format((float) $payment->amount);
+        $amount = Money::format((int) $payment->amount);
 
-        $text = "✅ واریزی شما تایید شد.\n\nمبلغ {$amount} تومان به کیف پول شما اضافه شد.";
+        $text = "✅ واریزی شما تایید شد.\n\nمبلغ {$amount} به کیف پول شما اضافه شد.";
 
         try {
             $this->telegram->sendMessage([

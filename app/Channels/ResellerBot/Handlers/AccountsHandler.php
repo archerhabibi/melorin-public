@@ -2,6 +2,7 @@
 
 namespace App\Channels\ResellerBot\Handlers;
 
+use App\Support\Money;
 use App\Channels\ResellerBot\Support\Keyboards;
 use App\Channels\TelegramBot\Support\QrCodeGenerator;
 use App\Exceptions\InsufficientBalanceException;
@@ -123,7 +124,7 @@ class AccountsHandler
         $resellerPrice = $product->resellerPrice();
 
         if ($this->walletService->balanceIn($user, StoreContext::reseller($reseller)) < $customersPrice) {
-            $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => 'برای تمدید، ابتدا کیف پول خود را شارژ کنید. هزینه‌ی تمدید: '.number_format($customersPrice).' تومان']);
+            $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => 'برای تمدید، ابتدا کیف پول خود را شارژ کنید. هزینه‌ی تمدید: '.Money::format($customersPrice)]);
 
             return;
         }
@@ -173,7 +174,7 @@ class AccountsHandler
 
         $this->telegram->sendMessage([
             'chat_id' => $chatId,
-            'text' => "✅ اکانت شما با موفقیت تمدید شد.\n\n".'موجودی کیف پول: '.number_format($this->walletService->balanceIn($user, StoreContext::reseller($reseller))).' تومان',
+            'text' => "✅ اکانت شما با موفقیت تمدید شد.\n\n".'موجودی کیف پول: '.Money::format($this->walletService->balanceIn($user, StoreContext::reseller($reseller))),
         ]);
         $this->sendSummary($chatId, $account->fresh());
     }

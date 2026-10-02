@@ -1,3 +1,11 @@
+3.3.2 - فاز ۵ (Financial Hardening): Integer Minor Unit + ارز قابل‌تنظیم (تومان/دلار/…)
+
+جزئیات: docs/canonical/PHASE-5-FINANCIAL-HARDENING.md
+⚠️ IRREVERSIBLE DATA MIGRATION (2026_10_01_000001) + قفل ارز (system_meta). Backup اجباری. تست‌ها نوشته شدند ولی اجرا نشده‌اند؛
+قبل از Tag: php artisan migrate && php artisan test
+
+---
+
 3.3.1 - فاز ۴ (Guest Cleanup): مدل Guest جدید، Email Verification + Gate در Core، Retention ۶۰ روزه، لینک بازگشت به Checkout، اصلاح .env.example
 
 جزئیات: docs/canonical/PHASE-4-GUEST-CLEANUP.md

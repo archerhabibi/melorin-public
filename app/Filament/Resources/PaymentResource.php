@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Support\Money;
 use App\Filament\Resources\PaymentResource\Pages;
 use App\Models\Payment;
 use App\Services\Core\PaymentService;
@@ -42,7 +43,7 @@ class PaymentResource extends Resource
 
             Forms\Components\Placeholder::make('amount')
                 ->label('مبلغ')
-                ->content(fn (Payment $record) => number_format((float) $record->amount).' تومان'),
+                ->content(fn (Payment $record) => Money::format((int) $record->amount)),
 
             Forms\Components\Placeholder::make('method')
                 ->label('روش پرداخت')
@@ -66,7 +67,7 @@ class PaymentResource extends Resource
                 Tables\Columns\TextColumn::make('user.full_name')->label('کاربر تلگرام')->searchable(),
                 Tables\Columns\TextColumn::make('user.telegram_id')->label('شناسه تلگرام')->searchable(),
                 Tables\Columns\TextColumn::make('depositor_name')->label('نام واریزکننده')->searchable()->placeholder('—'),
-                Tables\Columns\TextColumn::make('amount')->label('مبلغ')->money('IRT', divideBy: 1)->sortable(),
+                Tables\Columns\TextColumn::make('amount')->label('مبلغ')->formatStateUsing(fn ($state) => $state === null ? null : Money::format((int) $state))->sortable(),
                 Tables\Columns\TextColumn::make('paymentMethod.name')->label('روش پرداخت'),
                 Tables\Columns\TextColumn::make('purpose')->label('بابت')
                     ->formatStateUsing(fn ($state) => $state === 'wallet_charge' ? 'شارژ کیف پول' : 'سفارش'),

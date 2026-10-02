@@ -2,6 +2,8 @@
 
 namespace App\Filament\Reseller\Resources;
 
+use App\Filament\Support\MoneyInput;
+use App\Support\Money;
 use App\Filament\Reseller\ResolvesCurrentReseller;
 use App\Filament\Reseller\Resources\ProductResource\Pages;
 use App\Models\Product;
@@ -69,7 +71,7 @@ class ProductResource extends Resource
                 // reseller_price (بند ۵) — نه main_price.
                 Tables\Columns\TextColumn::make('reseller_price')
                     ->label('هزینه‌ی تأمین من (reseller_price)')
-                    ->getStateUsing(fn (Product $record) => number_format($record->resellerPrice()).' تومان'),
+                    ->getStateUsing(fn (Product $record) => Money::format($record->resellerPrice())),
                 Tables\Columns\TextColumn::make('duration_days')->label('مدت (روز)'),
                 Tables\Columns\IconColumn::make('is_enabled')
                     ->label('فعال برای من')
@@ -80,7 +82,7 @@ class ProductResource extends Resource
                     ->getStateUsing(function (Product $record) use ($reseller) {
                         $price = $record->customersPrice($reseller);
 
-                        return $price !== null ? number_format($price).' تومان' : '—';
+                        return $price !== null ? Money::format($price) : '—';
                     }),
             ])
             // طبق درخواست صریح: محصولات هر سبد فروش زیرمجموعه‌ی همان
@@ -100,9 +102,8 @@ class ProductResource extends Resource
                     ->label('تنظیم قیمت')
                     ->icon('heroicon-o-currency-dollar')
                     ->form([
-                        Forms\Components\TextInput::make('customers_price')
-                            ->label('قیمت فروش به مشتری — customers_price (تومان)')
-                            ->numeric()
+                        MoneyInput::make('customers_price')
+                            ->label('قیمت فروش به مشتری — customers_price ('.Money::label().')')
                             ->required()
                             ->minValue(0),
                     ])
@@ -111,7 +112,7 @@ class ProductResource extends Resource
                     ])
                     ->action(function (Product $record, array $data) use ($reseller, $pricingService) {
                         try {
-                            $pricingService->setCustomersPrice($reseller, $record, (float) $data['customers_price']);
+                            $pricingService->setCustomersPrice($reseller, $record, (int) $data['customers_price']);
                         } catch (InvalidArgumentException $e) {
                             Notification::make()->title($e->getMessage())->danger()->send();
 
@@ -140,7 +141,7 @@ class ProductResource extends Resource
                             ->first()?->customers_price;
 
                         try {
-                            $pricingService->setCustomersPrice($reseller, $record, (float) $price);
+                            $pricingService->setCustomersPrice($reseller, $record, (int) $price);
                         } catch (InvalidArgumentException $e) {
                             // قیمتِ ذخیره‌شده ممکن است با قوانین فعلی
                             // (که ادمین از آن زمان تغییر داده) دیگر مجاز

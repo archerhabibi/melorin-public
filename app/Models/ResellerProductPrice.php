@@ -18,7 +18,7 @@ class ResellerProductPrice extends Model
     protected $fillable = ['reseller_id', 'product_id', 'customers_price', 'is_enabled'];
 
     protected $casts = [
-        'customers_price' => 'decimal:2',
+        'customers_price' => 'integer',
         'is_enabled' => 'boolean',
     ];
 

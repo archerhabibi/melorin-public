@@ -12,8 +12,8 @@ class AffiliateSetting extends Model
     ];
 
     protected $casts = [
-        'customer_bonus_amount' => 'decimal:2',
-        'referrer_bonus_amount' => 'decimal:2',
+        'customer_bonus_amount' => 'integer',
+        'referrer_bonus_amount' => 'integer',
         'commission_percent' => 'decimal:2',
     ];
 

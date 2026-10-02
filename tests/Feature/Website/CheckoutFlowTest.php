@@ -41,7 +41,7 @@ class CheckoutFlowTest extends TestCase
         $this->fakeSanaeiPanel();
     }
 
-    protected function makeProduct(float $mainPrice = 120000): Product
+    protected function makeProduct(int $mainPrice = 120000): Product
     {
         $category = Category::factory()->create(['status' => 'active']);
 

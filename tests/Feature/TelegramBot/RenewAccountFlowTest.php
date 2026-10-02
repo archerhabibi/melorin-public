@@ -60,7 +60,7 @@ class RenewAccountFlowTest extends TestCase
         $this->app->instance(Api::class, $telegram);
     }
 
-    protected function makeAccount(User $user, float $price = 100000): Account
+    protected function makeAccount(User $user, int $price = 100000): Account
     {
         $panel = ServerPanel::factory()->create([
             'panel_type' => 'marzban',

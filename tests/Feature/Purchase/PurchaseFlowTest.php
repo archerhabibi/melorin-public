@@ -86,7 +86,7 @@ class PurchaseFlowTest extends TestCase
         });
     }
 
-    protected function makeProduct(float $mainPrice = 120000, ?float $resellerPrice = null): Product
+    protected function makeProduct(int $mainPrice = 120000, ?int $resellerPrice = null): Product
     {
         $category = Category::factory()->create([
             'status' => 'active',
@@ -129,7 +129,7 @@ class PurchaseFlowTest extends TestCase
 
         $order = $account->order->fresh();
 
-        $this->assertEquals(120000, (float) $order->main_price);
+        $this->assertEquals(120000, (int) $order->main_price);
     }
 
     #[Test]
@@ -175,8 +175,8 @@ class PurchaseFlowTest extends TestCase
         $this->assertEquals(0, $this->wallet->getBalance($reseller));
 
         $order = $account->order;
-        $this->assertEquals(100000, (float) $order->reseller_price);
-        $this->assertEquals(130000, (float) $order->customers_price);
+        $this->assertEquals(100000, (int) $order->reseller_price);
+        $this->assertEquals(130000, (int) $order->customers_price);
     }
 
     /* ── سقف بدهی — بند ۲۰، سناریوهای دقیق بند ۵۹ ───────────────── */
@@ -357,8 +357,8 @@ class PurchaseFlowTest extends TestCase
 
         $order = $account->order->fresh();
 
-        $this->assertEquals(90000, (float) $order->reseller_price);
-        $this->assertEquals(140000, (float) $order->customers_price);
+        $this->assertEquals(90000, (int) $order->reseller_price);
+        $this->assertEquals(140000, (int) $order->customers_price);
 
         // قیمت‌های Product بعد از خرید تغییر می‌کنند.
         $product->update([
@@ -411,7 +411,7 @@ class PurchaseFlowTest extends TestCase
     /**
      * @return array{0: \App\Models\CustomerAccount, 1: StoreContext, 2: Product}
      */
-    protected function resellerSetup(float $debtLimit, float $resellerPrice, float $customersPrice): array
+    protected function resellerSetup(int $debtLimit, int $resellerPrice, int $customersPrice): array
     {
         $reseller = Reseller::factory()->create([
             'status' => 'active',

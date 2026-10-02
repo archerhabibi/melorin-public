@@ -14,7 +14,7 @@
 
         <dl class="mt-4 space-y-2 text-sm text-gray-600">
             <div class="flex justify-between"><dt>تعرفه</dt><dd>{{ $product->name }}</dd></div>
-            <div class="flex justify-between"><dt>مبلغ</dt><dd class="font-bold text-gray-900">{{ number_format($price) }} تومان</dd></div>
+            <div class="flex justify-between"><dt>مبلغ</dt><dd class="font-bold text-gray-900">{{ \App\Support\Money::format($price) }}</dd></div>
         </dl>
 
         @error('guest_email') <div class="mt-4 text-sm text-red-700">{{ $message }}</div> @enderror

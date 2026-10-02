@@ -23,7 +23,7 @@ class WebsiteChargeFacade
     public function __construct(protected PaymentService $payments) {}
 
     /** @return array{payment: Payment, initiation: GatewayInitiationResult} */
-    public function charge(User $user, PaymentMethod $method, float $amount, StoreContext $store): array
+    public function charge(User $user, PaymentMethod $method, int $amount, StoreContext $store): array
     {
         return $this->payments->initiate(
             user: $user,

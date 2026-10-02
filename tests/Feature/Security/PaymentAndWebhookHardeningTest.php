@@ -27,7 +27,7 @@ class PaymentAndWebhookHardeningTest extends TestCase
 {
     use FakesTelegram, RefreshDatabase;
 
-    protected function pendingWalletCharge(User $user, float $amount = 100000): Payment
+    protected function pendingWalletCharge(User $user, int $amount = 100000): Payment
     {
         $method = PaymentMethod::factory()->create(['type' => 'card_to_card', 'status' => 'active']);
 

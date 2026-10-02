@@ -2,6 +2,7 @@
 
 namespace App\Channels\Website\Http\Controllers\Shared;
 
+use App\Support\Money;
 use App\Channels\Website\Services\WebsiteChargeFacade;
 use App\Channels\Website\Services\WebsiteCatalogFacade;
 use App\Channels\Website\Support\CoreErrorMapper;
@@ -53,7 +54,17 @@ class ChargeController
     public function store(Request $request, StoreContext $store): RedirectResponse
     {
         $data = $request->validate([
-            'amount' => ['required', 'numeric', 'min:10000'],
+            'amount' => ['required', function (string $attribute, mixed $value, \Closure $fail) {
+                $minor = Money::parse((string) $value);
+
+                if ($minor === null) {
+                    $fail(Money::decimals() === 0
+                        ? 'مبلغ باید عدد صحیح باشد.'
+                        : 'مبلغ نامعتبر است (حداکثر '.Money::decimals().' رقم اعشار).');
+                } elseif ($minor < Money::minTopup()) {
+                    $fail('حداقل مبلغ شارژ '.Money::format(Money::minTopup()).' است.');
+                }
+            }],
             'payment_method_id' => ['required', 'integer', 'exists:payment_methods,id'],
             'return_product' => ['nullable', 'integer'],
         ]);
@@ -76,7 +87,7 @@ class ChargeController
             ['payment' => $payment, 'initiation' => $initiation] = $this->charge->charge(
                 user: $request->user(),
                 method: $method,
-                amount: (float) $data['amount'],
+                amount: Money::toMinor((string) $data['amount']),
                 store: $store,
             );
         } catch (EmailNotVerifiedException) {

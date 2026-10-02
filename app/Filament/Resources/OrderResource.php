@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Support\Money;
 use App\Filament\Resources\OrderResource\Pages;
 use App\Models\Order;
 use App\Services\Core\Provisioning\FailedOrderRecovery;
@@ -45,7 +46,7 @@ class OrderResource extends Resource
                 // main_price است یا customers_price — هیچ‌وقت هردو.
                 Tables\Columns\TextColumn::make('customer_paid')
                     ->label('مبلغ فروش')
-                    ->getStateUsing(fn (Order $record) => number_format((float) ($record->main_price ?? $record->customers_price)).' تومان'),
+                    ->getStateUsing(fn (Order $record) => Money::format((int) ($record->main_price ?? $record->customers_price))),
                 Tables\Columns\BadgeColumn::make('status')
                     ->label('وضعیت')
                     ->formatStateUsing(fn ($state) => Order::statusLabels()[$state] ?? $state)
@@ -86,7 +87,7 @@ class OrderResource extends Resource
 
     public static function infolist(Infolist $infolist): Infolist
     {
-        $money = fn ($state) => $state === null ? '—' : number_format((float) $state).' تومان';
+        $money = fn ($state) => $state === null ? '—' : Money::format((int) $state);
 
         return $infolist->schema([
             Infolists\Components\Section::make('سفارش')->columns(3)->schema([
@@ -132,11 +133,11 @@ class OrderResource extends Resource
     /** خلاصه‌ی مبالغی که بازگشت وجه از روی اسنپ‌شات خودِ سفارش پس می‌دهد */
     public static function refundSummary(Order $order): string
     {
-        $customer = (float) ($order->customers_price ?? $order->main_price ?? 0);
-        $text = 'مشتری: '.number_format($customer).' تومان';
+        $customer = (int) ($order->customers_price ?? $order->main_price ?? 0);
+        $text = 'مشتری: '.Money::format($customer);
 
         if ($order->isResellerContext()) {
-            $text .= ' | نماینده (reseller_price): '.number_format((float) $order->reseller_price).' تومان';
+            $text .= ' | نماینده (reseller_price): '.Money::format((int) $order->reseller_price);
         }
 
         return $text.' — از روی قیمت‌های ثبت‌شده‌ی همین سفارش، نه قیمت امروز.';

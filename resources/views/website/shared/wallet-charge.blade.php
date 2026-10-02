@@ -24,8 +24,8 @@
                     <input type="hidden" name="return_product" value="{{ (int) $returnProduct }}">
                 @endif
                 <div>
-                    <label class="block text-sm text-gray-600 mb-1">مبلغ (تومان)</label>
-                    <input type="number" name="amount" min="10000" step="1000" value="{{ old('amount') }}" required
+                    <label class="block text-sm text-gray-600 mb-1">مبلغ ({{ \App\Support\Money::label() }})</label>
+                    <input type="number" name="amount" min="{{ \App\Support\Money::toMajorString(\App\Support\Money::minTopup()) }}" step="{{ \App\Support\Money::inputStep() }}" value="{{ old('amount') }}" required
                            class="w-full border rounded px-3 py-2 text-sm">
                 </div>
 

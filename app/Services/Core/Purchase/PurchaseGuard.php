@@ -220,7 +220,7 @@ class PurchaseGuard
         // است، هرگز customers_price.
         $newBalance = $this->wallet->getBalance($reseller) - $price->resellerDebit();
 
-        if ($newBalance < $reseller->minimumBalance() - 0.00001) {
+        if ($newBalance < $reseller->minimumBalance()) {
             throw new ResellerDebtLimitException(
                 'اعتبار نمایندگی برای این خرید کافی نیست. لطفاً با پشتیبانی تماس بگیرید.'
             );
