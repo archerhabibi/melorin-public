@@ -14,8 +14,8 @@ use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
- * پچ 3.2.7 - فاز W6 بند 1: Rate Limiting.
- * مرجع: docs/PHASE-W6-PART2-RATE-LIMITING.md
+ * Rate Limiting.
+ * مرجع: docs/history/PHASE-W6-PART2-RATE-LIMITING.md
  */
 class RateLimitingTest extends TestCase
 {

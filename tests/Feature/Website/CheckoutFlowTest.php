@@ -11,17 +11,16 @@ use App\Services\Core\Store\IdentityService;
 use App\Services\Core\Store\StoreContext;
 use App\Services\Core\WalletService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Http;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\Concerns\InteractsWithWebsiteFixtures;
 use Tests\TestCase;
 
 /**
- * پچ 3.2.1 — فاز W2: Checkout مستقیم بدون Cart، پرداخت کیف‌پول.
+ * Checkout مستقیم بدون Cart، پرداخت کیف‌پول.
  *
  * این تست‌ها در سطح HTTP اجرا می‌شوند (نه فقط صدا زدن مستقیم Service)
  * تا مسیر واقعی کاربر — از صفحه‌ی محصول تا صفحه‌ی سفارش — پوشش داده
- * شود، دقیقاً همان چیزی که فاز W7 (Verification Matrix) به‌عنوان
+ * شود، دقیقاً همان چیزی که Verification Matrix به‌عنوان
  * حداقل لازم برای رسیدن از IMPLEMENTED به TESTED می‌خواهد.
  */
 class CheckoutFlowTest extends TestCase
@@ -41,30 +40,11 @@ class CheckoutFlowTest extends TestCase
         $this->fakeSanaeiPanel();
     }
 
-    protected function makeProduct(int $mainPrice = 120000): Product
-    {
-        $category = Category::factory()->create(['status' => 'active']);
-
-        $panel = ServerPanel::factory()->create([
-            'status' => 'active',
-            'panel_type' => 'sanaei',
-            'credentials' => json_encode(['api_token' => 'x']),
-            'extra_settings' => ['template_username' => 't', 'sub_base_url' => 'https://s.test/sub'],
-        ]);
-
-        $category->serverPanels()->attach($panel->id);
-
-        return Product::factory()->create([
-            'category_id' => $category->id,
-            'main_price' => $mainPrice,
-            'status' => 'active',
-        ]);
-    }
 
     #[Test]
     public function guest_is_redirected_to_login_instead_of_checkout(): void
     {
-        $product = $this->makeProduct();
+        $product = $this->makeSellableProduct();
 
         $this->get(route('website.checkout.show', $product->id))
             ->assertRedirect(route('website.login'));
@@ -73,7 +53,7 @@ class CheckoutFlowTest extends TestCase
     #[Test]
     public function an_authenticated_customer_can_complete_a_wallet_checkout(): void
     {
-        $product = $this->makeProduct(mainPrice: 120000);
+        $product = $this->makeSellableProduct(mainPrice: 120000);
         $user = User::factory()->create();
         $customer = $this->identity->resolveCustomerAccount($user, StoreContext::main());
         $this->wallet->credit($customer, 200000);
@@ -102,7 +82,7 @@ class CheckoutFlowTest extends TestCase
     #[Test]
     public function resubmitting_the_same_idempotency_token_does_not_charge_twice(): void
     {
-        $product = $this->makeProduct(mainPrice: 120000);
+        $product = $this->makeSellableProduct(mainPrice: 120000);
         $user = User::factory()->create();
         $customer = $this->identity->resolveCustomerAccount($user, StoreContext::main());
         $this->wallet->credit($customer, 200000);
@@ -121,7 +101,7 @@ class CheckoutFlowTest extends TestCase
     #[Test]
     public function checkout_is_blocked_when_wallet_balance_is_insufficient(): void
     {
-        $product = $this->makeProduct(mainPrice: 120000);
+        $product = $this->makeSellableProduct(mainPrice: 120000);
         $user = User::factory()->create();
         $this->identity->resolveCustomerAccount($user, StoreContext::main());
 
@@ -136,7 +116,7 @@ class CheckoutFlowTest extends TestCase
     #[Test]
     public function a_customer_cannot_view_another_customers_order(): void
     {
-        $product = $this->makeProduct();
+        $product = $this->makeSellableProduct();
         $owner = User::factory()->create();
         $ownerCustomer = $this->identity->resolveCustomerAccount($owner, StoreContext::main());
         $this->wallet->credit($ownerCustomer, 200000);

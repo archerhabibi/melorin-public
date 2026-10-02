@@ -3,7 +3,7 @@
 namespace App\Channels\Website\Support;
 
 /**
- * فاز W3 بند ۵ (نیمه‌ی دوم) + بخش ۹.۳ — Telegram-linking.
+ * بخش ۹.۳ — Telegram-linking.
  *
  * پیاده‌سازی رسمی الگوریتم Telegram Login Widget
  * (https://core.telegram.org/widgets/login#checking-authorization):
@@ -14,7 +14,7 @@ namespace App\Channels\Website\Support;
  *   hash محاسبه‌شده = HMAC-SHA256(data_check_string, secret_key)
  *   معتبر است اگر و فقط اگر hash محاسبه‌شده == hash دریافتی (hash_equals)
  *
- * **دقیقاً همان نکته‌ای که Roadmap صریح منع کرده**: نسخه‌ی VPNMarket
+ * **HMAC جعلی ممنوع است**: نسخه‌ی مرجع (VPNMarket)
  * یک HMAC جعلی داشت (احتمالاً بدون secret واقعی یا بدون hash_equals
  * ثابت‌زمانی) و `user_id` را بدون اعتبارسنجی امضا قبول می‌کرد. اینجا:
  * (الف) secret واقعاً از bot_token واقعی ساخته می‌شود، (ب) با

@@ -7,9 +7,9 @@ use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 /**
- * فاز ۴ (شکاف C9) — بازتعریف `/complete-profile`.
+ * بازتعریف `/complete-profile`.
  *
- * قبلاً برای «User بدون رمز» (ساخته‌شده از Guest، مدل DEPRECATED X4) رمز
+ * قبلاً برای «User بدون رمز» (ساخته‌شده از Guest، مدل DEPRECATED) رمز
  * عبور می‌گرفت. در مدل جدید هر User با Register و رمز ساخته می‌شود، پس آن
  * قابلیت حذف شد. این صفحه فقط «پروفایل / اتصال Telegram» است (Master G10):
  * User احراز‌شده Telegram خودش را با ویجت رسمی وصل می‌کند؛ اعتبارسنجی HMAC و
@@ -19,7 +19,7 @@ class ProfileController
 {
     public function show(Request $request, StoreContext $store): View
     {
-        // state یک‌بارمصرف Session-bound — ضد Login/Link CSRF (Review پچ 3.2.10).
+        // state یک‌بارمصرف Session-bound — ضد Login/Link CSRF.
         $state = bin2hex(random_bytes(16));
         $request->session()->put('telegram_link_state', $state);
 

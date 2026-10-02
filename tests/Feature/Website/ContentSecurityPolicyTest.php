@@ -7,8 +7,8 @@ use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
- * پچ 3.2.6 — فاز W6 بند ۲: CSP header.
- * مرجع: docs/PHASE-W6-PART1-CSP.md
+ * CSP header.
+ * مرجع: docs/history/PHASE-W6-PART1-CSP.md
  */
 class ContentSecurityPolicyTest extends TestCase
 {

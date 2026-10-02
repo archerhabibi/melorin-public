@@ -12,11 +12,11 @@ use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
- * پچ 3.2.8 - فاز W6 بند 3: Receipt Upload Security.
- * مرجع: docs/PHASE-W6-PART3-RECEIPT-SECURITY.md
+ * Receipt Upload Security.
+ * مرجع: docs/history/PHASE-W6-PART3-RECEIPT-SECURITY.md
  *
- * توجه: Storage خصوصی (دیسک local) و سرو کنترل‌شده از قبل در پچ 3.2.2
- * ساخته شده بودند؛ این پچ فقط سخت‌سازی اضافه‌ی روی همان مسیر است.
+ * توجه: Storage خصوصی (دیسک local) و سرو کنترل‌شده بخشی از مسیر شارژ
+ * هستند؛ این تست‌ها فقط سخت‌سازیِ آپلود روی همان مسیر را می‌سنجند.
  */
 class ReceiptSecurityTest extends TestCase
 {

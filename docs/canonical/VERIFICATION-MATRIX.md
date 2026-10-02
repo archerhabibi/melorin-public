@@ -1,10 +1,10 @@
 # Melorin — Verification Matrix
 
-**Contract:** Master 2.8 · Website 1.8 · **Code baseline:** Release 3.3.0 (Git `09009bc`، working tree تمیز)
+**Contract:** Master 2.8 · Website 1.8 · **Code baseline:** 3.3.3 (بعد از فاز ۶ — Cleanup)
 
 **راهنما:** ✅ انجام و مستند · ⚠️ ناقص یا **مغایر Contract** · ☐ انجام نشده · — نامربوط · ⛔ DEPRECATED
 
-**قاعده‌ی صداقت:** ستون *Unit/Feature* فقط وقتی ✅ است که تست‌ها روی یک محیط واقعی اجرا و سبز شده باشند. مبنای فعلی، گزارش Release 3.3.0 است (۴۱۶ تست، همه سبز؛ ۹۹ تست Website) و **در فاز ۱ توسط من دوباره اجرا نشده** (محیط من PHP ندارد). قبل از Production باید روی محیط خودتان تکرار شود.
+**قاعده‌ی صداقت:** ستون *Unit/Feature* فقط وقتی ✅ است که تست‌ها روی یک محیط واقعی اجرا و سبز شده باشند. آخرین اجرا (پس از فاز ۵ و دوباره پس از فاز ۶): `php artisan test` ← **۴۸۳ تست، ۱۶۵۸ assertion، همه سبز** (اجرای مالک پروژه روی Windows/MySQL-migrate + اجرای مستقل روی PHP 8.3/SQLite). این فقط سطح Unit/Feature است؛ E2E روی محیط واقعی، Security، Staging و Production هنوز ☐ هستند.
 
 ## ۱. ماتریس اصلی
 
@@ -14,8 +14,8 @@
 | Reseller Purchase + Double Debit | ✅ | ✅ | ✅ | ☐ | ☐ | ☐ | ☐ |
 | Wallet (Ledger، Lock، Isolation) | ✅ | ✅ | ✅ | ☐ | ☐ | ☐ | ☐ |
 | CustomerAccount (Lazy) | ✅ | ✅ | ✅ | ☐ | ☐ | ☐ | ☐ |
-| **Guest Checkout (مدل جدید §3)** | ✅ | ✅ *(فاز ۴)* | ☐ *(نوشته شد، اجرا نشده)* | ☐ | ☐ | ☐ | ☐ |
-| Pending → Login/Register → ادامه‌ی همان خرید | ✅ | ✅ *(فاز ۴)* | ☐ *(اجرا نشده)* | ☐ | ☐ | ☐ | ☐ |
+| **Guest Checkout (مدل جدید §3)** | ✅ | ✅ | ✅ | ☐ | ☐ | ☐ | ☐ |
+| Pending → Login/Register → ادامه‌ی همان خرید | ✅ | ✅ | ✅ | ☐ | ☐ | ☐ | ☐ |
 | Payment State Machine (۴ وضعیت) | ✅ | ✅ | ✅ | ☐ | ☐ | ☐ | ☐ |
 | Payment Purpose (`wallet_charge` فقط) | ✅ | ✅ | ✅ | ☐ | — | ☐ | ☐ |
 | Direct Payment = Wallet Charge (Zarinpal) | ✅ | ✅ | ✅ *(Http::fake)* | ☐ | ☐ | ☐ *(Sandbox واقعی لازم)* | ☐ |
@@ -30,12 +30,12 @@
 | Reseller Isolation (Main / A / B) | ✅ | ✅ | ✅ | ☐ | ☐ | ☐ | ☐ |
 | Reseller Website + Branding + Management | ✅ | ✅ | ✅ | ☐ | ☐ | ☐ | ☐ |
 | Telegram Linking | ✅ | ✅ | ✅ | ☐ | ⚠️ *Self-audit فقط* | ☐ | ☐ |
-| Email Verification + Gate (Purchase/Wallet Charge فقط) | ✅ | ✅ *(فاز ۴)* | ☐ *(اجرا نشده)* | ☐ | ☐ | ☐ | ☐ |
+| Email Verification + Gate (Purchase/Wallet Charge فقط) | ✅ | ✅ | ✅ | ☐ | ☐ | ☐ | ☐ |
 | Discount (No Stacking، Eligibility از سابقه) | ✅ | ☐ *(موتور وجود ندارد، C12)* | ☐ | ☐ | — | ☐ | ☐ |
-| Guest Retention (۶۰ روز) | ✅ | ✅ *(`guest:prune` روزانه، فاز ۴)* | ☐ *(اجرا نشده)* | — | — | ☐ | ☐ |
-| بازگشت به Checkout پس از شارژ (D-3) | ✅ | ✅ *(لینک بازگشت اضافه شد، فاز ۴)* | ☐ *(اجرا نشده)* | ☐ | — | ☐ | ☐ |
+| Guest Retention (۶۰ روز) | ✅ | ✅ *(`guest:prune` روزانه)* | ✅ | — | — | ☐ | ☐ |
+| بازگشت به Checkout پس از شارژ (D-3) | ✅ | ✅ *(لینک بازگشت)* | ✅ | ☐ | — | ☐ | ☐ |
 | Security Headers/CSP/Rate Limit | ⚠️ *Matrix رسمی ندارد* | ✅ | ✅ | — | ☐ | ☐ | ☐ |
-| Money Representation (بدون float، ارز قابل‌تنظیم) | ✅ *(M1–M8)* | ✅ *(فاز ۵)* | ☐ *(اجرا نشده)* | — | — | ☐ *(Migration روی کپی DB)* | ☐ |
+| Money Representation (بدون float، ارز قابل‌تنظیم) | ✅ *(M1–M8)* | ✅ | ✅ | — | — | ☐ *(Migration روی کپی DB)* | ☐ |
 | Backup / Restore | ☐ | ✅ *(update-git.sh)* | — | — | — | ☐ | ☐ |
 | Rollback (Migration/Health failure عمدی) | ☐ | ✅ | — | — | — | ☐ | ☐ |
 | Observability / Alerting / Health | ☐ | ⚠️ | — | — | — | ☐ | ☐ |
@@ -65,18 +65,16 @@
 | C9 | `/complete-profile` و `POST /guest-checkout/purchase` وابسته به مدل قدیم Guest | `routes/website.php` | ✅ بسته شد (فاز ۴) |
 | C10 | Email Verification در Contract (G11) هست ولی در کد نیست: `User` بدون `MustVerifyEmail`، بدون Route/Notification، بدون Gate روی Checkout/Wallet Charge، بدون تست | Auth + `User` + Middleware + تست | ✅ بسته شد (فاز ۴) |
 | C5 | `orders.status`/`payments.purpose` enum شامل مقادیر تاریخی | Migrations | 3 (مستندسازی؛ حذف نه) |
-| C6 | استفاده‌ی گسترده از `float` در سرویس‌های مالی | `PaymentService`, `WalletService`, … | ✅ بسته شد (فاز ۵؛ تست‌ها هنوز اجرا نشده) |
+| C6 | استفاده‌ی گسترده از `float` در سرویس‌های مالی | `PaymentService`, `WalletService`, … | ✅ بسته شد (فاز ۵؛ تست‌ها سبز) |
 
-## ۴. Release Artifact (یافته‌های ZIP دریافتی)
+## ۴. Release Artifact
 
 | مورد | وضعیت |
 |---|---|
-| VERSION = Git HEAD = نام Release (3.3.0) | ✅ در ZIP فعلی |
-| Working Tree تمیز | ✅ |
-| `.env` داخل ZIP | ⚠️ (در `.gitignore` است ولی در ZIP هست) → Rotate + حذف از Artifact |
-| `melorin-backup-2026-09-01.sql` داخل ZIP | ⚠️ حذف از Artifact |
-| `webhook.json` (Token/Secret) داخل ZIP | ⚠️ Rotate + حذف |
-| `vendor/` و `node_modules/` داخل ZIP | ⚠️ مدل Artifact باید مشخص شود |
+| VERSION = Git Tag = نام Release | ☐ هنوز Tag نخورده؛ `VERSION` فقط یک شماره است (3.3.3). قبل از Tag: `php artisan test` + commit |
+| Working Tree تمیز | ☐ پس از commit فاز ۶ |
+| `.env`، `webhook.json`، `melorin-backup-*.sql`، `.phpunit.result.cache` | ✅ از Artifact فاز ۶ بیرون است (همه در `.gitignore`). ⚠️ ZIPهای قبلی که این فایل‌ها را داشتند: Token/Secret ربات و رمزهای `.env` را Rotate کنید |
+| `vendor/` و `node_modules/` | ✅ در Source Artifact نیست (`composer install` + `npm ci && npm run build`) |
 
 ## ۵. فاز ۳ — شکاف‌های جدید
 | # | شکاف | فاز |
@@ -88,4 +86,7 @@
 | C5 | enumهای تاریخی (`payments.purpose=order`، `orders.status=pending/paid/…`) فقط مستند شدند؛ حذف نه | مستند شد |
 
 ## ۶. فاز ۴ — نتیجه
-C1، C2، C3، C4، C8، C9، C10، C11، C13 در **کد و تست‌های نوشته‌شده** بسته شدند (جزئیات: `PHASE-4-GUEST-CLEANUP.md`). **هیچ تستی اجرا نشد** (PHP در محیط من نیست)؛ ستون Unit/Feature تا اجرای واقعی سبز ☐ می‌ماند. C6 (float → Integer Minor Unit) در فاز ۵ می‌ماند.
+C1، C2، C3، C4، C8، C9، C10، C11، C13 در **کد و تست‌های نوشته‌شده** بسته شدند (جزئیات: `../history/PHASE-4-GUEST-CLEANUP.md`). تست‌ها بعداً اجرا و سبز شدند (بخش بالا). C6 در فاز ۵ بسته شد.
+
+## ۷. فاز ۶ — Cleanup (نتیجه)
+بدون تغییر رفتار. ۴۸۳ تست قبل و بعد سبز. جزئیات: `../history/PHASE-6-CLEANUP.md`. هیچ Migration حذف/ادغام نشد (بخش «چرا Migration ادغام نشد» در همان سند).

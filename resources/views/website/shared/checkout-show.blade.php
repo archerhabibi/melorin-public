@@ -27,7 +27,7 @@
                 و سپس به همین صفحه برگردید.
             </div>
         @else
-            {{-- فعلاً فقط پرداخت از کیف‌پول (W2 بند ۵ — Wallet Payment). --}}
+            {{-- فعلاً فقط پرداخت از کیف‌پول (Wallet Payment). --}}
             <form method="POST"
                   action="{{ $store->isReseller() ? route('website.store.checkout.store', ['slug' => $store->reseller->slug, 'product' => $product->id]) : route('website.checkout.store', $product->id) }}"
                   class="mt-6">

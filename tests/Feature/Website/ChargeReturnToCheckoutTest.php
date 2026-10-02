@@ -12,7 +12,7 @@ use Tests\Concerns\InteractsWithWebsiteFixtures;
 use Tests\TestCase;
 
 /**
- * فاز ۴ — D-3 / Master 7.2 (شکاف C13): بعد از شارژ موفق، صفحه‌ی callback
+ * D-3 / Master 7.2 (شکاف C13): بعد از شارژ موفق، صفحه‌ی callback
  * لینک بازگشت به Checkout دارد و خرید خودکار انجام نمی‌شود.
  */
 class ChargeReturnToCheckoutTest extends TestCase

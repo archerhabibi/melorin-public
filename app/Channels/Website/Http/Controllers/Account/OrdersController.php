@@ -9,11 +9,9 @@ use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 /**
- * فاز W4 بند ۲ Roadmap («Orders — فقط Context و مالکیت مجاز»، بند ۳۲
- * زیرسند: «User فقط Orderهای مجاز خود و Context جاری را مشاهده
- * می‌کند»). این کنترلر تنها مکمّل `Shared\OrderController::show()`
- * (فاز W2) است که همان‌جا صراحتاً «فهرست کامل سفارش‌ها فاز W4 است» را
- * یادآوری کرده بود — همان الگوی مالکیت (customer_account_id +
+ * Orders — فقط Context و مالکیت مجاز («User فقط Orderهای مجاز خود و
+ * Context جاری را مشاهده می‌کند»). این کنترلر مکمّل `Shared\OrderController::show()`
+ * (صفحه‌ی تک‌سفارش) است — همان الگوی مالکیت (customer_account_id +
  * reseller_id دوباره‌بررسی‌شده) اینجا هم تکرار می‌شود، نه یک Policy
  * جدید.
  */

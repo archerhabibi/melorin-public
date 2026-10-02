@@ -46,7 +46,7 @@ final class PriceSnapshot
      * خرید مستقیم از فروشگاه اصلی (بند ۸) — فقط main_price نقش دارد.
      *
      * $buyerOwnsAReseller — تصمیم صریح روی تناقض بند ۱۸ ↔ Rule 2/13
-     * (مستند در docs/PHASE-14-FINAL-MODEL-TESTS.md، بخش «یافته‌های
+     * (مستند در docs/history/PHASE-14-FINAL-MODEL-TESTS.md، بخش «یافته‌های
      * نیازمند تصمیم»، مورد ۲): وقتی صاحبِ یک نماینده شخصاً از فروشگاه
      * اصلی خرید می‌کند، Context همچنان main می‌ماند (Rule 13 — او
      * مشتری مستقیم Main باقی می‌ماند)، اما مبلغِ کسرشده reseller_price

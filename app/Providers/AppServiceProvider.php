@@ -17,7 +17,7 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        // فاز ۵: ارز/decimals بعد از Migration مبالغ قفل است (config با دیتابیس باید یکی باشد).
+        // ارز/decimals بعد از Migration مبالغ قفل است (config با دیتابیس باید یکی باشد).
         CurrencyLock::verify();
 
         // بعد از تایید هر پرداخت (چه کارت‌به‌کارت دستی، چه درگاه آنلاین)،

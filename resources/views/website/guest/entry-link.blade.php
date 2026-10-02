@@ -1,14 +1,13 @@
 {{--
-    پچ 3.2.4 — بند ۱۷ Roadmap (وابستگی نفر ۳ به نفر ۱): این پارشیال
-    همان «رابط قابل‌استفاده‌ی مجدد» است که نفر ۱ باید زود منتشر کند تا
-    نفر ۳ (فروشگاه نماینده) منتظر کل کار W3 نماند.
+    لینک ورود به Guest Checkout؛ پارشیالِ قابل‌استفاده‌ی مجدد برای صفحه‌ی
+    محصولِ Main و فروشگاه نماینده.
 
     استفاده:
         @include('website.guest.entry-link', ['product' => $product, 'store' => $store])
 
     فقط به $product و $store نیاز دارد؛ هیچ وابستگی دیگری به Layout یا
-    CSS خاص Main ندارد، پس داخل هر Layout (از جمله Branding نماینده که
-    مالکیتش با نفر ۳ است) قابل‌استفاده است.
+    CSS خاص Main ندارد، پس داخل هر Layout (از جمله Branding نماینده)
+    قابل‌استفاده است.
 --}}
 <a href="{{ $store->isReseller()
         ? route('website.store.guest-checkout.show', ['slug' => $store->reseller->slug, 'product' => $product->id])

@@ -13,8 +13,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
- * پچ 3.2.2 — فاز W2 (ادامه): شارژ کیف‌پول از سایت با Zarinpal و
- * Card-to-Card. مرجع: docs/PHASE-W2-PART2-PAYMENT-METHODS.md
+ * شارژ کیف‌پول از سایت با Zarinpal و Card-to-Card. پیشینه: docs/history/PHASE-W2-PART2-PAYMENT-METHODS.md
  */
 class WalletChargeFlowTest extends TestCase
 {

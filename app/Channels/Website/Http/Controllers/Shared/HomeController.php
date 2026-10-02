@@ -7,7 +7,7 @@ use App\Services\Core\Store\StoreContext;
 use Illuminate\View\View;
 
 /**
- * فاز W2 بند ۱: «Home + لیست Product — از Core، بدون هیچ Price
+ * «Home + لیست Product — از Core، بدون هیچ Price
  * محاسبه‌شده در Client». این Controller فقط WebsiteCatalogFacade را
  * صدا می‌زند و نتیجه را به View پاس می‌دهد — هیچ فیلتر/محاسبه‌ی
  * اضافه‌ای اینجا نیست.

@@ -2,7 +2,7 @@
 
 مرجع: `ROADMAP-WEBSITE-v1.md` (فاز W2 بند ۵: «Wallet Payment + Zarinpal
 + Card-to-Card»، بند ۶۳: «همه از قبل در Core پیاده و تست شده‌اند؛
-Website فقط UI آن‌ها را می‌سازد») + `docs/PHASE-W2-COMMERCE-CORE.md`
+Website فقط UI آن‌ها را می‌سازد») + `docs/history/PHASE-W2-COMMERCE-CORE.md`
 («قدم بعدی» همان سند).
 
 پچ متناظر: `melorin-website-v3.2.2.patch`. ادامه‌ی بی‌واسطه‌ی 3.2.1.

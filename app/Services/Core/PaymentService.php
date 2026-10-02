@@ -81,7 +81,7 @@ class PaymentService
         ?Reseller $reseller = null,
         string $walletOwnerType = 'user',
     ): array {
-        // Master 2.7 G11 (فاز ۴): شارژ کیف‌پول (Direct Payment و Card-to-Card)
+        // Master 2.7 G11: شارژ کیف‌پول (Direct Payment و Card-to-Card)
         // برای Userی با Email تأییدنشده مسدود است.
         app(EmailVerificationGate::class)->assertVerified($user);
 

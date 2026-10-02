@@ -7,12 +7,11 @@ use App\Services\Core\Store\StoreContext;
 use Illuminate\View\View;
 
 /**
- * فاز W4 بند ۱ Roadmap («Wallet: نمایش موجودی + Charge با همان
- * مسیرهای Payment فاز W2» — بند ۳۰، ۳۱ زیرسند).
+ * Wallet: نمایش موجودی + شارژ با همان مسیرهای Payment (Zarinpal /
+ * Card-to-Card).
  *
  * این کنترلر خودش هیچ مسیر شارژی نمی‌سازد — «Charge» همان
- * `ChargeController` است که در W2 ساخته شد (route نام‌های
- * wallet.charge.show/store، از قبل موجود). اینجا فقط صفحه‌ی
+ * `ChargeController` است (route نام‌های wallet.charge.show/store). اینجا فقط صفحه‌ی
  * داشبورد کیف‌پول (موجودی + گردش حساب) است که با یک دکمه به همان
  * مسیر موجود لینک می‌دهد — نه بازسازی آن.
  */

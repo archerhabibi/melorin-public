@@ -5,11 +5,11 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * فاز W6 بند ۴ (نفر ۴) — پیش‌نیاز Audit روی «Identity Linking» و سایر
+ * پیش‌نیاز Audit روی «Identity Linking» و سایر
  * عملیات حساسی که یک مشتری Website (نه Admin/Reseller) انجام می‌دهد.
  *
  * `actor_type` یک ENUM محدود به admin/reseller/system بود —
- * `AuditService::resolveActor()` (همین پچ) حالا یک User را هم
+ * `AuditService::resolveActor()` حالا یک User را هم
  * می‌شناسد و 'customer' برمی‌گرداند، پس خودِ ستون هم باید این مقدار را
  * قبول کند وگرنه هر Insert با actor مشتری با خطای Constraint شکست
  * می‌خورد.

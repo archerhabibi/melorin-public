@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * فاز W6 بند ۲ (Roadmap) + بخش ۹.۶ («CSP | Header پایه: self + دامنه‌ی
+ * بخش ۹.۶ («CSP | Header پایه: self + دامنه‌ی
  * درگاه‌های پرداخت مجاز + (در صورت استفاده) دامنه‌ی ویجت Telegram
  * Login»).
  *
@@ -19,12 +19,11 @@ use Symfony\Component\HttpFoundation\Response;
  * style-src 'unsafe-inline': صفحات Website از ویژگی inline
  * style="..." برای رنگ Brand نماینده استفاده می‌کنند (چون این رنگ در
  * Build-time مشخص نیست، در Runtime از StoreContext می‌آید). حذف این
- * ویژگی یعنی بازنویسی همه‌ی Viewهای موجود؛ خارج از Scope همین پچ،
- * به‌عنوان کار آینده در مستند پچ ثبت شده. Inline Style بسیار
+ * ویژگی یعنی بازنویسی همه‌ی Viewهای موجود؛ کار آینده است.
+ * Inline Style بسیار
  * کم‌خطرتر از Inline Script است، پس این یک سازش آگاهانه است.
  *
- * script-src: فقط self + telegram.org (ویجت رسمی Telegram Login، پچ
- * ۳.۲.۵) — بدون unsafe-inline روی اسکریپت.
+ * script-src: فقط self + telegram.org (ویجت رسمی Telegram Login) — بدون unsafe-inline روی اسکریپت.
  */
 class SetContentSecurityPolicyHeader
 {

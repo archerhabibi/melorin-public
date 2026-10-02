@@ -5,13 +5,11 @@ namespace App\Channels\Website\Http\Controllers\Shared;
 use App\Models\Payment;
 use App\Services\Core\Store\StoreContext;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * فاز W2 بند ۵ (ادامه): آپلود رسید کارت‌به‌کارت از سایت.
+ * آپلود رسید کارت‌به‌کارت از سایت.
  *
  * مالکیت دقیقاً با همان `Payment::findPendingForReceipt()` سنجیده
  * می‌شود که ربات هم استفاده می‌کند (P1 گزارش امنیتی، مورد #12؛
@@ -23,9 +21,8 @@ use Symfony\Component\HttpFoundation\Response;
  * دیسک خصوصی (`local`، نه `public`) ذخیره می‌شود و مقدار ستون
  * `receipt_image` با پیشوند `website:` نوشته می‌شود تا از file_idهای
  * تلگرام قابل‌تشخیص باشد. `TelegramReceiptController` طبق همین پیشوند
- * به‌روزرسانی شده تا هر دو منبع را نشان دهد (این تغییر خارج از مرز
- * کانال Website است — روی کد مشترک ادمین — و در مستند پچ به‌صراحت
- * ذکر شده).
+ * به‌روزرسانی شده تا هر دو منبع را نشان دهد (کدِ مشترک ادمین است،
+ * نه بخشی از کانال Website).
  */
 class ReceiptController
 {
@@ -54,8 +51,6 @@ class ReceiptController
         // واقعی محتوا نه فقط پسوند». `mimes:` در Laravel از finfo
         // (بررسی واقعی بایت‌های فایل) استفاده می‌کند، نه فقط پسوند نام
         // فایل — پس این خط همان الزام «محتوای واقعی» را برآورده می‌کند.
-        // پچ ۳.۲.۸ (نفر ۴): قبلاً pdf از قلم افتاده بود و سقف ۴ مگابایت
-        // (کمتر از عدد سند) بود.
         $data = $request->validate([
             'receipt' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
             'depositor_name' => ['required', 'string', 'min:2', 'max:100'],

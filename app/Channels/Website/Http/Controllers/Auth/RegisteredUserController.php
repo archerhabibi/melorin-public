@@ -15,26 +15,23 @@ use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 
 /**
- * فاز W1 بند ۱: Register (Breeze پایه). طبق تصمیم ۹.۲ (Session-based،
+ * Register (Breeze پایه). طبق تصمیم ۹.۲ (Session-based،
  * نه Token)، بعد از ساخت User بلافاصله Auth::login می‌کنیم — هیچ
  * توکن جداگانه‌ای برنمی‌گردانیم.
  *
  * توجه معماری: ساختن یک User اینجا «منطق کسب‌وکار Core» محسوب نمی‌شود
  * (بند ۹۳) — این صرفاً Identity/Auth است، نه خرید/کیف‌پول/Provisioning.
  * تنها بخشی که واقعاً به Core تعلق دارد (CustomerAccount هر Context)
- * توسط IdentityService و از طریق میان‌افزار EnsureCustomerAccountResolved
- * در همان اولین درخواست احراز‌هویت‌شده‌ی بعدی resolve می‌شود؛ اینجا
- * تکرارش نمی‌کنیم.
+ * توسط IdentityService و فقط در لحظه‌ی یک خرید واقعی ساخته می‌شود
+ * (CheckoutController::store)؛ اینجا تکرارش نمی‌کنیم.
  *
- * پچ ۳.۲.۱۳ (نفر ۵ — بستنِ نکته‌ی بازِ Referral که در پچ ۳.۲.۱۲، نفر ۲،
- * صریح یادداشت شده بود: «ثبت‌نام سایت هنوز ?ref= را نمی‌خواند»):
- * `?ref={user_id}` روی صفحه‌ی ثبت‌نام در Session نگه داشته می‌شود (چون
+ * Referral: `?ref={user_id}` روی صفحه‌ی ثبت‌نام در Session نگه داشته می‌شود (چون
  * ثبت‌نام یک فرم دو-مرحله‌ای HTTP است: GET صفحه، بعد POST جدا) و در
  * لحظه‌ی ساخت User واقعی، فقط اگر به یک User موجود اشاره کند مصرف
  * می‌شود — عدد نامعتبر بی‌صدا نادیده گرفته می‌شود، نه خطا (تجربه‌ی
  * ثبت‌نام کسی نباید به‌خاطر یک لینک معرفی خراب بشکند).
  *
- * فاز ۴ (Master 2.7 G6، G7، G11):
+ * Guest/Verification (Master 2.7 G6، G7، G11):
  *  - اگر نشست Guest فعال باشد، فرم با email/name/phone آن پیش‌پر می‌شود
  *    (فقط برای راحتی؛ Proof نیست — R9).
  *  - بعد از ثبت‌نام Email Verification ارسال می‌شود و کاربر به صفحه‌ی

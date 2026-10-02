@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * فاز W5 (نفر ۳) — بند ۴۶ زیرسند: Branding سبکِ فروشگاهِ نماینده روی
+ * Branding سبکِ فروشگاهِ نماینده روی
  * Website (نام نمایشی، لوگو، رنگ اصلی، اطلاعات تماس). تک‌رکوردی به‌ازای
  * هر Reseller — دقیقاً هم‌الگو با `ResellerBotSetting`.
  *
@@ -56,7 +56,7 @@ class ResellerWebsiteSetting extends Model
         }
 
         $setting = static::forReseller($reseller);
-        // همان نامِ پیش‌فرضِ قبل از این فاز (Layout W0 از StoreContext::label() می‌خواند)،
+        // همان نامِ پیش‌فرضِ قبل از این (Layout از StoreContext::label() می‌خواند)،
         // تا فروشگاهِ بدون برندینگ دقیقاً مثل قبل دیده شود.
         $fallbackName = \App\Services\Core\Store\StoreContext::reseller($reseller)->label();
 

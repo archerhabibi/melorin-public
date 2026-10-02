@@ -9,41 +9,32 @@ use App\Models\ServerPanel;
 use Illuminate\Support\Facades\Http;
 
 /**
- * فاز W7 (نفر ۵) — «اسکلت تست/Fixtureهای مشترک Website ... تا نفرات
- * ۱ تا ۴ همان اسکلت را استفاده کنند، نه اینکه هرکدام یک روش جدا برای
- * Mock کردن اختراع کنند» (بخش ۱۰ Roadmap، درسِ باگ پچ ۳.۱.۹).
- *
- * این پچ (۳.۲.۱۲) دیر منتشر شد — قاعدتاً باید از همان روز اول کنار
- * نفرات ۱ تا ۴ می‌آمد، اما چون همه‌ی آن پچ‌ها از قبل توسط من نوشته
- * شده بودند (بدون تفکیک نقش رسمی نفر ۵ در آن لحظه)، هرکدام از تست‌های
- * موجود (`CheckoutFlowTest`, `GuestCheckoutTokenTest`, `WalletChargeFlowTest`
- * و غیره) نسخه‌ی خودشان از `makeProduct()`/`fakeSanaeiPanel()` را
- * تکرار کرده بودند — دقیقا همان الگوی «چند fake ناهماهنگ» که بند ۱۰
- * هشدار داده. این Trait آن تکرار را جمع می‌کند؛ تست‌های موجود *بدون
- * تغییر رفتار* به آن مهاجرت داده نشدند (ریسک بی‌دلیل روی تست‌های از
- * قبل سبز)، ولی هر تست تازه (از جمله E2Eهای همین پچ) از اینجا استفاده
- * می‌کند و بازنویسی تدریجی تست‌های قدیمی، بدهی فنی مستند‌شده است (نه
- * فراموش‌شده).
+ * اسکلت مشترک تست/Fixtureهای Website: یک روش واحد برای ساختن محصولِ قابل‌فروش
+ * و Mock کردن پنل Sanaei، تا تست‌ها «چند fake ناهماهنگ» نداشته باشند.
+ * تست‌های Website (Checkout، Guest، Reseller، E2E) از همین Trait استفاده
+ * می‌کنند. تست‌های Core/Provisioning/Concurrency Fixtureهای خودشان را دارند
+ * چون پارامترهای متفاوتی لازم دارند (sale_limit، template_username،
+ * بدون پنل، …).
  */
 trait InteractsWithWebsiteFixtures
 {
     /**
      * یک دسته‌بندی + محصول فعال با یک پنل Sanaei فعال متصل، آماده‌ی
-     * خرید. دقیقاً هم‌ساختار نسخه‌ای که در CheckoutFlowTest (پچ ۳.۲.۱)
-     * برای اولین بار نوشته شد.
+     * خرید. `$overrides` فیلدهای Product را بازنویسی می‌کند (مثلاً
+     * `reseller_price`).
      */
-    protected function makeSellableProduct(int $mainPrice = 120000): Product
+    protected function makeSellableProduct(int $mainPrice = 120000, array $overrides = []): Product
     {
         $category = Category::factory()->create(['status' => 'active']);
         $panel = $this->makeActiveSanaeiPanel();
 
         $category->serverPanels()->attach($panel->id);
 
-        return Product::factory()->create([
+        return Product::factory()->create(array_merge([
             'category_id' => $category->id,
             'main_price' => $mainPrice,
             'status' => 'active',
-        ]);
+        ], $overrides));
     }
 
     protected function makeActiveSanaeiPanel(): ServerPanel
@@ -58,8 +49,7 @@ trait InteractsWithWebsiteFixtures
 
     /**
      * Http::fake برای پنل Sanaei — همان پاسخ موفق ثابتی که در چند
-     * تست (PurchaseFlowTest از قبل، CheckoutFlowTest پچ ۳.۲.۱) تکرار
-     * شده بود.
+     * تست تکرار می‌شد.
      */
     protected function fakeSanaeiPanel(): void
     {

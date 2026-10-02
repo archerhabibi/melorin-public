@@ -32,7 +32,7 @@ use Tests\TestCase;
  *     main_price = 12 ، reseller_price = 10
  *     customers_price: Reseller A = 14 ، Reseller C = 16
  *
- * هر تست به بند/Rule مربوط در docs/PHASE-14-FINAL-MODEL-TESTS.md نگاشته شده.
+ * هر تست به بند/Rule مربوط در docs/history/PHASE-14-FINAL-MODEL-TESTS.md نگاشته شده.
  */
 class FinalModelSpecTest extends TestCase
 {
@@ -369,7 +369,7 @@ class FinalModelSpecTest extends TestCase
     #[Test]
     public function a_reseller_owner_buying_directly_from_main_pays_reseller_price_not_main_price(): void
     {
-        // تصمیم بند ۱۸ ↔ Rule 2/13 (docs/PHASE-14-FINAL-MODEL-TESTS.md،
+        // تصمیم بند ۱۸ ↔ Rule 2/13 (docs/history/PHASE-14-FINAL-MODEL-TESTS.md،
         // «یافته‌های نیازمند تصمیم»، مورد ۲): Context همچنان main
         // می‌ماند (Rule 13)، ولی مبلغ reseller_price است، نه main_price.
         $product = $this->product(mainPrice: 12, resellerPrice: 10);

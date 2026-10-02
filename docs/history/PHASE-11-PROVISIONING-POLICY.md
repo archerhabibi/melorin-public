@@ -41,7 +41,7 @@ Command provisioning:retry-failed ┐
 
 ## فایل‌ها
 جدید: Migration `2026_09_21_000001` (دو ستون)، `ProvisioningFailureHandler`، `FailedOrderRecovery`، `OrderRecoveryNotifier`، `RecoveryResult`، trait `CarriesFailureOutcome`، دو فایل تست در `tests/Feature/Provisioning`.
-تغییر: `ProvisioningSetting`، `Order`، `ProvisioningService`، `PurchaseService`، `RenewalService`، `RefundService`، دو Exception، `ProvisioningSettings` (Filament)، `OrderResource` و `ViewOrder`، `routes/console.php`، چهار هندلر ربات (فقط متن پیام خطا)، `ARCHITECTURE.md` بند ۶.
+تغییر: `ProvisioningSetting`، `Order`، `ProvisioningService`، `PurchaseService`، `RenewalService`، `RefundService`، دو Exception، `ProvisioningSettings` (Filament)، `OrderResource` و `ViewOrder`، `routes/console.php`، چهار هندلر ربات (فقط متن پیام خطا)، `docs/history/ARCHITECTURE-3.1.1-SUPERSEDED.md` بند ۶.
 
 ## محدودیت‌های شناخته‌شده
 - retry (خودکار/دستی) ممکن است اگر اکانت روی پنل ساخته شده ولی پاسخ نرسیده بوده، اکانت تکراری روی پنل بسازد (تلاش جدید username جدید می‌گیرد). دلیل اصلی پیش‌فرض‌ماندنِ `retry` بدون بازگشت خودکار همین است.

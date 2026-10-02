@@ -16,7 +16,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
- * فاز W5 (نفر ۳) — بند ۴۹ زیرسند: Reseller Management سبک روی وب.
+ * Reseller Management سبک روی وب.
  * Website فقط UI است؛ هر قاعده (سقف/کفِ قیمت، سودِ مجاز، Scope) از
  * Core می‌آید و این تست‌ها فقط ثابت می‌کنند که UI آن را دور نمی‌زند.
  */

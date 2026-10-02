@@ -17,13 +17,11 @@ use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
- * پچ 3.2.3 — فاز W4 بخش ۱ (نفر ۲: پنل کاربری). مرجع:
- * docs/PHASE-W4-PART1-ACCOUNT-PANEL.md
+ * پنل کاربری. پیشینه: docs/history/PHASE-W4-PART1-ACCOUNT-PANEL.md
  *
- * این تست‌ها فقط صفحات Wallet/Orders/Accounts (بند ۳۰–۳۳ زیرسند) را
- * پوشش می‌دهند — دقیقاً همان مرز پچی که خودِ Roadmap برای این بخش
- * تعیین کرده («همه صرفاً نمایشی»)؛ Renewal/Refund/Retry (بند ۳۴، ۴۱،
- * ۴۲) بخش بعدی همین فاز است.
+ * این تست‌ها صفحات Wallet/Orders/Accounts را پوشش می‌دهند («همه صرفاً
+ * نمایشی»)؛ Renewal/Referral در AccountPanelPart2Test است و Refund/Retry
+ * Admin-only هستند.
  */
 class AccountPanelTest extends TestCase
 {

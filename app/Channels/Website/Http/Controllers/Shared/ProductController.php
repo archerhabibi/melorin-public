@@ -8,7 +8,7 @@ use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * فاز W2 بند ۲: «Product Detail — Price دقیقاً از PriceSnapshot Contract
+ * «Product Detail — Price دقیقاً از PriceSnapshot Contract
  * Core». محصولی که در این Context قابل‌فروش/قابل‌مشاهده نیست، دقیقاً
  * مثل یک محصول ناموجود 404 می‌شود — نه پیام خطای جداگانه، تا وجود/عدم‌
  * وجودِ محصولات غیرفعالِ نماینده از بیرون قابل‌حدس‌زدن نباشد.

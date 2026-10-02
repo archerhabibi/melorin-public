@@ -22,17 +22,13 @@ use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
 /**
- * فاز W2 بند ۳ و ۵: «Checkout مستقیم بدون Cart» — `Product → Checkout`،
- * فقط پرداخت کیف‌پول (Wallet Payment، بند ۲۵). Zarinpal (بند ۲۶) و
- * Card-to-Card (بند ۲۷) عمداً در همین پچ نیستند: این کنترلر طبق بند ۱
- * Roadmap («هیچ Business Logic مستقلی») فقط یک مسیر پرداخت را
- * پیاده‌سازی می‌کند تا اضافه‌شدن درگاه‌های بعدی به شکلِ افزودن یک
- * حالت جدید به همین الگو باشد، نه بازنویسی — نه اینکه سه درگاه نصفه و
- * تست‌نشده با هم اضافه شوند (همان درسی که در بند ۷ فاز W7 روی
- * Verification Matrix تاکید شده).
+ * «Checkout مستقیم بدون Cart» — `Product → Checkout`، فقط پرداخت از
+ * کیف‌پول (Wallet Payment). Zarinpal و Card-to-Card کیف‌پول را شارژ
+ * می‌کنند (ChargeController)؛ بعد از شارژ، کاربر به همین Checkout
+ * برمی‌گردد. کنترلر هیچ Business Logic مستقلی ندارد.
  *
- * Guest Checkout (فاز W3) از این کنترلر استفاده نمی‌کند؛ این کنترلر
- * فقط پشت `auth` + `store.customer` سوار است.
+ * Guest Checkout از این کنترلر استفاده نمی‌کند؛ این کنترلر فقط پشت
+ * `auth` + `store.customer` سوار است.
  */
 class CheckoutController
 {
@@ -51,7 +47,7 @@ class CheckoutController
 
     /**
      * صفحه‌ی تایید خرید. توکن Idempotency اینجا (نه در store()) ساخته
-     * و در فرم به‌صورت hidden قرار می‌گیرد — بند ۷ فاز W2: «از الگوی
+     * و در فرم به‌صورت hidden قرار می‌گیرد — «از الگوی
      * idempotencyKey که در Bot/Core از قبل هست استفاده شود». هر بار
      * تازه‌سازی این صفحه یک توکن جدید می‌سازد (الگوی استاندارد
      * Synchronizer Token)، پس Submit دوبار همان فرم (مثلاً با دکمه‌ی
@@ -87,7 +83,7 @@ class CheckoutController
             abort(404);
         }
 
-        // Master G11 (فاز ۴): Email تأییدنشده ⇒ هدایت به صفحه‌ی تأیید، *قبل* از
+        // Master G11: Email تأییدنشده ⇒ هدایت به صفحه‌ی تأیید، *قبل* از
         // ساخت CustomerAccount. Enforcement اصلی داخل PurchaseService است؛
         // این فقط UX + جلوگیری از ساخت عضویت بی‌مصرف است.
         try {
@@ -96,7 +92,7 @@ class CheckoutController
             return $this->redirectToVerification($request, $productModel->id);
         }
 
-        // پچ ۳.۲.۱۷: از این‌جا به بعد CustomerAccount فقط در همین لحظه
+        // CustomerAccount فقط در همین لحظه
         // (یک خرید واقعی) ساخته می‌شود — نه زودتر توسط میان‌افزار روی
         // صرفِ یک GET. این تنها نقطه‌ای‌ست که مجاز است آن را بسازد.
         $customer = $this->identity->resolveCustomerAccount($request->user(), $store);
@@ -116,7 +112,7 @@ class CheckoutController
             return back()->withErrors(['checkout' => $mapped['message'].' (کد پیگیری: '.$mapped['reference'].')']);
         }
 
-        // G6/G9 (فاز ۴): همان خرید Pending تکمیل شد ⇒ نشست Guest مصرف می‌شود.
+        // G6/G9: همان خرید Pending تکمیل شد ⇒ نشست Guest مصرف می‌شود.
         $guest = $this->guestContinuation->activeFor($request, $store);
 
         if ($guest && $guest->product_id === $productModel->id) {

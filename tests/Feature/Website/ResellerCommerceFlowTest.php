@@ -13,23 +13,18 @@ use App\Services\Core\Store\IdentityService;
 use App\Services\Core\Store\StoreContext;
 use App\Services\Core\WalletService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Http;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\Concerns\InteractsWithWebsiteFixtures;
 use Tests\TestCase;
 
 /**
- * فاز W5 (نفر ۳) — بند ۶۲ و ۶۶ زیرسند: Reseller Website E2E + تست‌های
- * Reseller Scope / Customer Scope / Product Scope / Pricing / Wallet
- * Scope / Order Scope.
+ * Reseller Website E2E + تست‌های Reseller Scope / Customer Scope /
+ * Product Scope / Pricing / Wallet Scope / Order Scope.
  *
- * تا پیش از این فاز، هیچ‌کدام از تست‌های W2 (`CheckoutFlowTest`،
- * `WalletChargeFlowTest`) Context نماینده را نمی‌سنجید؛ کنترلرها و
- * Facadeهای مشترک از ابتدا Context-aware نوشته شده بودند ولی روی آن
- * ادعایی «تست‌شده» وجود نداشت. این فایل همان شکاف را می‌بندد — و طبق
- * بند ۶۲ («هم‌زمان Financial Flow مربوط به Owner نیز باید Verification
- * شود»)، Debit دومِ کیف‌پول Main صاحبِ نماینده را هم می‌سنجد، نه فقط
- * کیف‌پول مشتری را.
+ * `CheckoutFlowTest` و `WalletChargeFlowTest` Context اصلی را می‌سنجند؛
+ * این فایل همان مسیرها را در Context نماینده می‌سنجد و — طبق «هم‌زمان
+ * Financial Flow مربوط به Owner نیز باید Verification شود» — Debit دومِ
+ * کیف‌پول Main صاحبِ نماینده را هم بررسی می‌کند، نه فقط کیف‌پول مشتری را.
  */
 class ResellerCommerceFlowTest extends TestCase
 {
@@ -49,25 +44,6 @@ class ResellerCommerceFlowTest extends TestCase
     }
 
     /** محصولِ Core با یک پنل فعال؛ قیمت‌های main/reseller مشخص. */
-    protected function makeProduct(int $mainPrice = 150000, int $resellerPrice = 100000): Product
-    {
-        $category = Category::factory()->create(['status' => 'active']);
-
-        $panel = ServerPanel::factory()->create([
-            'status' => 'active',
-            'panel_type' => 'sanaei',
-            'credentials' => json_encode(['api_token' => 'x']),
-            'extra_settings' => ['template_username' => 't', 'sub_base_url' => 'https://s.test/sub'],
-        ]);
-        $category->serverPanels()->attach($panel->id);
-
-        return Product::factory()->create([
-            'category_id' => $category->id,
-            'main_price' => $mainPrice,
-            'reseller_price' => $resellerPrice,
-            'status' => 'active',
-        ]);
-    }
 
     /** یک نماینده‌ی فعال که این محصول را با customers_price مشخص فعال کرده است. */
     protected function resellerSelling(Product $product, int $customersPrice = 130000, array $resellerAttributes = []): Reseller
@@ -87,9 +63,9 @@ class ResellerCommerceFlowTest extends TestCase
     #[Test]
     public function the_reseller_catalog_shows_customers_price_and_hides_products_it_has_not_enabled(): void
     {
-        $sold = $this->makeProduct(mainPrice: 150000, resellerPrice: 100000);
+        $sold = $this->makeSellableProduct(150000, ['reseller_price' => 100000]);
         $sold->update(['name' => 'محصول-فعال-برای-نماینده']);
-        $hidden = $this->makeProduct(mainPrice: 111111, resellerPrice: 90000);
+        $hidden = $this->makeSellableProduct(111111, ['reseller_price' => 90000]);
         $hidden->update(['name' => 'محصول-فعال-نشده']);
 
         $reseller = $this->resellerSelling($sold, customersPrice: 130000);
@@ -106,7 +82,7 @@ class ResellerCommerceFlowTest extends TestCase
     #[Test]
     public function a_reseller_customer_checkout_debits_both_wallets_and_creates_a_reseller_scoped_order(): void
     {
-        $product = $this->makeProduct(mainPrice: 150000, resellerPrice: 100000);
+        $product = $this->makeSellableProduct(150000, ['reseller_price' => 100000]);
         $reseller = $this->resellerSelling($product, customersPrice: 130000);
 
         $user = User::factory()->create();
@@ -141,7 +117,7 @@ class ResellerCommerceFlowTest extends TestCase
     #[Test]
     public function a_reseller_store_purchase_never_touches_the_customers_main_wallet(): void
     {
-        $product = $this->makeProduct();
+        $product = $this->makeSellableProduct(150000, ['reseller_price' => 100000]);
         $reseller = $this->resellerSelling($product);
 
         $user = User::factory()->create();
@@ -164,7 +140,7 @@ class ResellerCommerceFlowTest extends TestCase
     #[Test]
     public function an_order_made_in_a_reseller_store_is_not_visible_from_the_main_store(): void
     {
-        $product = $this->makeProduct();
+        $product = $this->makeSellableProduct(150000, ['reseller_price' => 100000]);
         $reseller = $this->resellerSelling($product);
 
         $user = User::factory()->create();
@@ -185,7 +161,7 @@ class ResellerCommerceFlowTest extends TestCase
     #[Test]
     public function a_customer_of_one_reseller_cannot_view_an_order_from_another_reseller_store(): void
     {
-        $product = $this->makeProduct();
+        $product = $this->makeSellableProduct(150000, ['reseller_price' => 100000]);
         $resellerA = $this->resellerSelling($product);
         $resellerB = $this->resellerSelling($product);
 
@@ -208,7 +184,7 @@ class ResellerCommerceFlowTest extends TestCase
     #[Test]
     public function a_product_the_reseller_never_enabled_cannot_be_bought_even_with_a_crafted_request(): void
     {
-        $product = $this->makeProduct();
+        $product = $this->makeSellableProduct(150000, ['reseller_price' => 100000]);
         $reseller = Reseller::factory()->create(['status' => 'active']); // هیچ ResellerProductPrice ای ندارد
 
         $user = User::factory()->create();
@@ -229,7 +205,7 @@ class ResellerCommerceFlowTest extends TestCase
     #[Test]
     public function checkout_is_blocked_and_nothing_is_debited_when_the_resellers_supply_wallet_is_empty(): void
     {
-        $product = $this->makeProduct(resellerPrice: 100000);
+        $product = $this->makeSellableProduct(150000, ['reseller_price' => 100000]);
         $reseller = $this->resellerSelling($product, customersPrice: 130000);
 
         $user = User::factory()->create();
@@ -265,7 +241,7 @@ class ResellerCommerceFlowTest extends TestCase
     #[Test]
     public function resubmitting_the_same_token_in_a_reseller_store_charges_neither_wallet_twice(): void
     {
-        $product = $this->makeProduct(resellerPrice: 100000);
+        $product = $this->makeSellableProduct(150000, ['reseller_price' => 100000]);
         $reseller = $this->resellerSelling($product, customersPrice: 130000);
 
         $user = User::factory()->create();

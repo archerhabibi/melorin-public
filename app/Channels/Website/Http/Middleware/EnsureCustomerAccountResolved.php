@@ -9,29 +9,24 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * فاز W1 بند ۵ Roadmap: «هر مسیر Auth باید CustomerAccount/StoreContext
- * درستی را resolve کند (نه User مستقل — بند ۵، ۱۰۳.۶ سند مادر)».
+ * هر مسیر Auth باید CustomerAccount/StoreContext درست را resolve کند (نه
+ * User مستقل).
  *
- * پچ ۳.۲.۱۷ — تصمیم صریح صاحب پروژه (override تحلیل قبلی نفر ۳ در
- * docs/PHASE-W5-PART2-COMPLETION-AND-SECURITY-NOTE.md): «تا خرید انجام
- * نشود نباید CustomerAccount جدید بسازد». پیش از این پچ، این میان‌افزار
- * با `resolveCustomerAccount()` روی **هر** درخواست GET زیر گروه
- * auth+store.customer یک CustomerAccount تازه می‌ساخت — یعنی صرفِ باز
- * کردن `/store/{slug}/orders` (حتی از طریق یک <img> مخفی در یک سایت
- * دیگر، چون GET هیچ CSRF Token ای لازم ندارد) کافی بود تا کاربر بدون
- * اطلاع خودش «مشتریِ» آن نماینده ثبت شود.
+ * قاعده‌ی مالک پروژه: «تا خرید انجام نشود نباید CustomerAccount جدید
+ * ساخته شود». اگر این میان‌افزار روی هر GET عضویت می‌ساخت، صرفِ باز کردن
+ * `/store/{slug}/orders` (حتی از یک <img> مخفی در سایت دیگر، چون GET
+ * CSRF Token لازم ندارد) کاربر را بدون اطلاعش «مشتریِ» آن نماینده ثبت
+ * می‌کرد. پس این میان‌افزار فقط **می‌خواند** (`findCustomerAccount`،
+ * nullable) و هرگز نمی‌سازد.
  *
- * از این پچ به بعد، این میان‌افزار فقط **می‌خواند** (`findCustomerAccount`،
- * nullable) — هرگز نمی‌سازد. ساختنِ واقعی فقط در لحظه‌ی یک اقدام مالی
- * واقعی (POST) اتفاق می‌افتد: `CheckoutController::store` (خرید) و
- * `AccountsController::renew` (تمدید) — هرکدام صریحاً
- * `IdentityService::resolveCustomerAccount()` را خودشان صدا می‌زنند،
- * نه این‌که به این میان‌افزار متکی باشند.
+ * ساختنِ واقعی فقط در لحظه‌ی یک اقدام مالی واقعی (POST) است:
+ * `CheckoutController::store` (خرید) و `AccountsController::renew`
+ * (تمدید) — هرکدام صریحاً `IdentityService::resolveCustomerAccount()`
+ * را خودشان صدا می‌زنند.
  *
- * صفحات فقط-خواندنی (Orders، Accounts، Referral) با همان الگوی
- * null-safe موجود (`$customer?->id`، `! $customer`) که از ابتدا در
- * آن‌ها بود، حالا واقعاً «هیچ‌چیز» را درست نشان می‌دهند (نه لیست خالی
- * از یک CustomerAccount خالی که همین الان ساخته شده).
+ * صفحات فقط-خواندنی (Orders، Accounts، Referral) با الگوی null-safe
+ * (`$customer?->id`، `! $customer`) برای کاربرِ بدون عضویت «هیچ‌چیز» را
+ * درست نشان می‌دهند.
  */
 class EnsureCustomerAccountResolved
 {

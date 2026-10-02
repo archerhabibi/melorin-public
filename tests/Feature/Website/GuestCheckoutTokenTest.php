@@ -12,7 +12,7 @@ use Tests\Concerns\InteractsWithWebsiteFixtures;
 use Tests\TestCase;
 
 /**
- * فاز ۴ — Guest Checkout (Master 2.7 §3: G1–G5، G8) — مدل جدید.
+ * Guest Checkout (Master 2.7 §3: G1–G5، G8) — مدل جدید.
  * (نسخه‌ی قدیمی: name/phone الزامی، email اختیاری — DEPRECATED.)
  */
 class GuestCheckoutTokenTest extends TestCase

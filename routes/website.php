@@ -46,7 +46,7 @@ $registerSharedRoutes = function () {
     Route::get('/', [HomeController::class, 'index'])->name('home');
     Route::get('/products/{product}', [ProductController::class, 'show'])->name('products.show');
 
-    // --- Guest Checkout (Master 2.7 §3؛ فاز ۴) — عمداً بدون auth ---
+    // --- Guest Checkout (Master 2.7 §3) — عمداً بدون auth ---
     // Guest فقط «شروع» Checkout است: فرم (email*) → Pending → Login/Register →
     // ادامه‌ی همان خرید. مسیر قدیمی POST /guest-checkout/purchase (ساخت User و
     // Auth::login خودکار) DEPRECATED و حذف شد (X4).
@@ -58,7 +58,7 @@ $registerSharedRoutes = function () {
     Route::get('/guest-checkout/pending', [GuestCheckoutController::class, 'pending'])
         ->name('guest-checkout.pending');
 
-    // --- Auth (فاز W1) ---
+    // --- Auth ---
     Route::middleware('guest')->group(function () {
         Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');
         Route::post('/register', [RegisteredUserController::class, 'store'])->name('register.store');
@@ -93,7 +93,7 @@ $registerSharedRoutes = function () {
         // تغییر نیست). نام route همچنان logout می‌ماند، پس فقط URI عوض شد.
         Route::post('/sign-out', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
 
-        // --- Commerce هسته‌ای، بدون Cart (فاز W2 بند ۳) ---
+        // --- Commerce هسته‌ای، بدون Cart ---
         // throttle روی POST checkout طبق تصمیم بخش ۹.۶ (Rate Limiting
         // روی مسیرهای حساس) — یک مسیر مالی است، نباید بدون محدودیت بماند.
         Route::get('/products/{product}/checkout', [CheckoutController::class, 'show'])->name('checkout.show');
@@ -103,10 +103,10 @@ $registerSharedRoutes = function () {
 
         Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
 
-        // --- Profile / اتصال Telegram (Master G10؛ فاز ۴ — جایگزین /complete-profile) ---
+        // --- Profile / اتصال Telegram (Master G10) ---
         Route::get('/profile', [ProfileController::class, 'show'])->name('identity.profile.show');
 
-        // --- Telegram-linking (بند ۵ فاز W3، نیمه‌ی دوم، پچ 3.2.5) ---
+        // --- Telegram-linking ---
         // throttle: هر تلاش یک درخواست HMAC-verify است؛ محدودیت جلوی
         // Brute-force حدس hash را می‌گیرد (هرچند خودِ HMAC عملاً غیرقابل‌حدس
         // است، این یک لایه‌ی دفاعی اضافه است، نه تکیه‌گاه اصلی امنیت).
@@ -114,7 +114,7 @@ $registerSharedRoutes = function () {
             ->middleware('throttle:20,1')
             ->name('identity.telegram.callback');
 
-        // --- شارژ کیف‌پول: Zarinpal + Card-to-Card (فاز W2 بند ۵، ادامه‌ی پچ 3.2.1) ---
+        // --- شارژ کیف‌پول: Zarinpal + Card-to-Card ---
         Route::get('/wallet/charge', [ChargeController::class, 'show'])->name('wallet.charge.show');
         Route::post('/wallet/charge', [ChargeController::class, 'store'])
             ->middleware('throttle:10,1')
@@ -122,35 +122,31 @@ $registerSharedRoutes = function () {
 
         Route::get('/wallet/charge/{payment}/receipt', [ReceiptController::class, 'show'])->name('wallet.receipt.show');
         Route::post('/wallet/charge/{payment}/receipt', [ReceiptController::class, 'store'])
-            // بخش ۹.۶: «Upload رسید: ۵/دقیقه». قبلاً به اشتباه ۱۰/دقیقه
-            // بود (پچ ۳.۲.۲، قبل از این‌که این عدد دقیق مستند شود) —
-            // پچ ۳.۲.۷ (نفر ۴) اصلاح کرد.
+            // بخش ۹.۶: «Upload رسید: ۵/دقیقه».
             ->middleware('throttle:5,1')
             ->name('wallet.receipt.store');
 
-        // --- پنل کاربری: Wallet + Orders + Accounts (فاز W4 بند ۱-۳، نفر ۲، پچ 3.2.11) ---
+        // --- پنل کاربری: Wallet + Orders + Accounts ---
         Route::get('/wallet', [WalletController::class, 'show'])->name('wallet.show');
         Route::get('/orders', [OrdersController::class, 'index'])->name('orders.index');
         Route::get('/accounts', [AccountsController::class, 'index'])->name('accounts.index');
         Route::get('/accounts/{account}', [AccountsController::class, 'show'])->name('accounts.show');
 
-        // --- پنل کاربری: Renewal (فاز W4 بند ۴، نفر ۲، پچ 3.2.12) ---
+        // --- پنل کاربری: Renewal ---
         Route::post('/accounts/{account}/renew', [AccountsController::class, 'renew'])->name('accounts.renew');
 
-        // --- پنل کاربری: Referral/Commission (فاز W4 بند ۵، نفر ۲، پچ 3.2.12) ---
+        // --- پنل کاربری: Referral/Commission ---
         Route::get('/referral', [ReferralController::class, 'show'])->name('referral.show');
 
-        // فاز W4 بند ۶-۷ (Refund UI، Retry UI): طبق تصمیم صریح، این دو
-        // کاملاً Admin-only می‌مانند — دقیقاً مثل ربات تلگرام که هیچ
-        // دکمه‌ی Refund/Retry به مشتری نشان نمی‌دهد. Website هم فقط
-        // همان برچسب وضعیت را نشان می‌دهد که در فهرست سفارش‌ها (بند ۱-۳)
-        // از قبل موجود است («ساخت ناموفق — نیازمند رسیدگی» /
-        // «بازگشت‌شده») — هیچ Route یا دکمه‌ی اکشن جدیدی لازم نیست.
+        // Refund و Retry کاملاً Admin-only هستند — مثل ربات تلگرام که هیچ
+        // دکمه‌ی Refund/Retry به مشتری نشان نمی‌دهد. Website فقط برچسب
+        // وضعیت را در فهرست سفارش‌ها نشان می‌دهد («ساخت ناموفق — نیازمند
+        // رسیدگی» / «بازگشت‌شده») و هیچ Route یا اکشنی برای آن‌ها ندارد.
     });
 };
 
 /*
- * فاز W5 (نفر ۳) — بند ۴۶ و ۴۹ زیرسند: خودِ مدیریتِ فروشگاه نماینده.
+ * مدیریتِ فروشگاه نماینده (Branding، مشتریان، قیمت‌ها).
  * عمداً فقط زیرِ `website.store.*` ثبت می‌شود (نه در $registerSharedRoutes،
  * که بین Main و Reseller مشترک است) — «مدیریت فروشگاه نماینده» بدون
  * یک نماینده در Context بی‌معناست. مجوزِ واقعی (آیا این کاربر
@@ -186,9 +182,8 @@ Route::middleware(['web', 'store.context', 'website.csp', 'auth'])->group(functi
         ->name('verification.send');
 });
 
-// فاز W6 بند ۲ (مالکیت نفر ۴): CSP فقط اینجا، روی هر دو گروه Website،
-// اضافه شده — نه سراسری روی 'web' (پنل ادمین این گروه global را جدا
-// تعریف می‌کند، پس دست‌نخورده می‌ماند).
+// CSP فقط روی هر دو گروه Website اعمال می‌شود — نه سراسری روی 'web'
+// (پنل‌های ادمین/نماینده دست‌نخورده می‌مانند).
 Route::middleware(['web', 'store.context', 'website.csp'])
     ->name('website.')
     ->group($registerSharedRoutes);

@@ -39,7 +39,7 @@ create، بدون تغییر منطق دیگری).
 
 ## Verification Matrix
 
-`docs/VERIFICATION-MATRIX.md` - جدول کامل بند 104 پر شد: هر پانزده
+`docs/history/VERIFICATION-MATRIX.md` - جدول کامل بند 104 پر شد: هر پانزده
 ردیف با چهار وضعیت SPECIFIED/IMPLEMENTED/TESTED/PRODUCTION VERIFIED.
 خلاصه:
 - همه‌ی ردیف‌های Main (Guest Checkout، Login، Register،
@@ -55,7 +55,7 @@ create، بدون تغییر منطق دیگری).
 
 ## چک‌لیست Deploy (فاز W8)
 
-`docs/PHASE-W8-DEPLOY-CHECKLIST.md` - چک‌لیست کامل بند 73 + پنج
+`docs/operations/DEPLOY-CHECKLIST.md` - چک‌لیست کامل بند 73 + پنج
 پیش‌نیاز مسدودکننده‌ی Production.
 
 ## محدودیت این پچ

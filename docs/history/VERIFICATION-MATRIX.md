@@ -54,7 +54,7 @@
 
 هیچ ردیفی به PRODUCTION VERIFIED نرسیده — طبیعی است، چون هنوز حتی
 Staging واقعی وجود ندارد (فاز W8، مستند جدا:
-`docs/PHASE-W8-DEPLOY-CHECKLIST.md`). قبل از هر ادعای Done بودن،
+`docs/operations/DEPLOY-CHECKLIST.md`). قبل از هر ادعای Done بودن،
 حداقل باید:
 1. `composer install` + `php artisan test` کامل (نه فقط فایل‌های
    جدید) روی یک محیط واقعی اجرا شود.
@@ -68,18 +68,18 @@ Staging واقعی وجود ندارد (فاز W8، مستند جدا:
 یافته‌ی امنیتیِ گزارش‌شده در انتهای این بازبینی (`EnsureCustomerAccountResolved`
 با هر GET یک CustomerAccount می‌ساخت) توسط صاحب پروژه با یک قاعده‌ی
 صریح رفع شد: «تا خرید انجام نشود نباید CustomerAccount جدید بسازد».
-جزئیات و تست‌ها در `docs/PHASE-W5-PART3-LAZY-CUSTOMER-ACCOUNT.md`. این
+جزئیات و تست‌ها در `docs/history/PHASE-W5-PART3-LAZY-CUSTOMER-ACCOUNT.md`. این
 موضوع override ای است روی تحلیل قبلی نفر ۳ در
-`docs/PHASE-W5-PART2-COMPLETION-AND-SECURITY-NOTE.md`.
+`docs/history/PHASE-W5-PART2-COMPLETION-AND-SECURITY-NOTE.md`.
 
 ## به‌روزرسانی (نسخه‌ی 3.3.0)
 
 `php artisan test --filter=Website` روی محیط واقعی: **۹۹ تست، ۳۴۶ assertion، همه سبز**
 (همه‌ی ردیف‌های TESTED بالا). در این اجرا چند باگ واقعی پیدا و رفع شد؛ فهرست در `VERSION` و
-`docs/RELEASE-3.3.0-AUDIT.md`. هنوز: `php artisan test` **کامل** (کل پروژه)، Staging،
+`docs/history/RELEASE-3.3.0-AUDIT.md`. هنوز: `php artisan test` **کامل** (کل پروژه)، Staging،
 Zarinpal Sandbox و Review امنیتی مستقل انجام نشده؛ پس هیچ ردیفی PRODUCTION VERIFIED نیست.
 
 ## به‌روزرسانی ۳.۳.۰
 
 اجرای واقعی کل پروژه (`php artisan test`): **۴۱۶ تست، ۱۳۹۸ assertion، همه سبز**. هیچ ردیفی هنوز
-PRODUCTION VERIFIED نیست؛ مرحله‌ی بعد Staging است (`docs/STAGING-RUNBOOK.md`).
+PRODUCTION VERIFIED نیست؛ مرحله‌ی بعد Staging است (`docs/operations/STAGING-RUNBOOK.md`).

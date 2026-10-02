@@ -1,7 +1,7 @@
 # فاز A3 (سند v2.1) — بخش دوم: error، started_at، finished_at (اقلام ۵ تا ۷)
 
 مرجع: بند ۶۹ سند و ادامه‌ی
-[docs/PHASE-A3-PROVISIONING-ATTEMPT-TRACKING.md](./PHASE-A3-PROVISIONING-ATTEMPT-TRACKING.md)
+[docs/history/PHASE-A3-PROVISIONING-ATTEMPT-TRACKING.md](./PHASE-A3-PROVISIONING-ATTEMPT-TRACKING.md)
 (اقلام ۱ تا ۴).
 
 > **دامنه‌ی این پچ:** فقط سه قلمِ بعدیِ فازِ A3:
@@ -87,5 +87,5 @@ php artisan test tests/Feature/Provisioning/ProvisioningAttemptTrackingTest.php
 اینکه retry هیچ Debit جدیدی نمی‌سازد.
 
 **به‌روزرسانی:** این سه مورد در
-[docs/PHASE-A3-PART3-RETRY-TESTS.md](./PHASE-A3-PART3-RETRY-TESTS.md)
+[docs/history/PHASE-A3-PART3-RETRY-TESTS.md](./PHASE-A3-PART3-RETRY-TESTS.md)
 اضافه شدند — فازِ A3 دیگر بخشِ باقی‌مانده ندارد.

@@ -69,7 +69,7 @@ class PurchaseService
         ?string $customUsername = null,
         ?string $idempotencyKey = null,
     ): Account {
-        // Master 2.7 G11 (فاز ۴): Userی که Email ثبت کرده ولی Verify نکرده
+        // Master 2.7 G11: Userی که Email ثبت کرده ولی Verify نکرده
         // نمی‌تواند خرید کند. قبل از ساخت Operation تا هیچ ردی از خرید ردشده
         // نماند. تمدید (RenewalService) و retryProvisioning (سفارش از قبل
         // پرداخت‌شده) عمداً مشمول این Gate نیستند.
@@ -138,7 +138,7 @@ class PurchaseService
             ? $product->customersPrice($store->reseller)
             : null;
 
-        // تصمیم بند ۱۸ (docs/PHASE-14-FINAL-MODEL-TESTS.md): اگر خریدار
+        // تصمیم بند ۱۸ (docs/history/PHASE-14-FINAL-MODEL-TESTS.md): اگر خریدار
         // شخصاً صاحب یک نماینده باشد و از فروشگاه اصلی بخرد، Context
         // همچنان main است (Rule 13) ولی مبلغ reseller_price است، نه
         // main_price.

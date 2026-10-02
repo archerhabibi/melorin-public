@@ -11,7 +11,7 @@
 | **دامنه** | Core + Main/Reseller Store + Telegram Bots + Website + Admin + Wallet + Payment + Purchase + Provisioning + Renewal + Referral + Commission |
 
 > این سند **یکپارچه‌شده (Consolidated)** است. هر Rule فقط یک‌بار و فقط یک‌جا تعریف شده است.
-> تناقض‌های نسخه‌های قبل (به‌خصوص Guest، Payment Purpose، Payment States، Direct Payment) در این نسخه حل شده‌اند؛ فهرست کامل تغییرات در `PHASE-1-2-CHANGELOG.md`.
+> تناقض‌های نسخه‌های قبل (به‌خصوص Guest، Payment Purpose، Payment States، Direct Payment) در این نسخه حل شده‌اند؛ فهرست کامل تغییرات در `../history/PHASE-1-2-CHANGELOG.md`.
 
 ---
 

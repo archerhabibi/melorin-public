@@ -7,7 +7,7 @@ use Closure;
 use Filament\Forms\Components\TextInput;
 
 /**
- * فیلد مبلغ در Filament (فاز ۵): کاربر به «واحد اصلی ارز» می‌نویسد (۱۰۰۰۰ تومان، 5.50 دلار)
+ * فیلد مبلغ در Filament : کاربر به «واحد اصلی ارز» می‌نویسد (۱۰۰۰۰ تومان، 5.50 دلار)
  * و فرم فقط «Minor Unit به‌صورت int» برمی‌گرداند (getState / $data).
  *
  *   Hydrate  : Minor Unit از مدل/fillForm → رشته‌ی واحد اصلی برای نمایش (Money::toMajorString)

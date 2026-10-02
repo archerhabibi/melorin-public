@@ -10,10 +10,10 @@
 | `php artisan test` (کل پروژه) | ✅ ۴۱۶ تست، ۱۳۹۸ assertion، همه سبز (اجرای واقعی روی ماشین صاحب پروژه) |
 | `VERSION` | ✅ 3.3.0 |
 | `npm run build` | ⏳ روی ماشین شما؛ `update-git.sh` از این نسخه خودش build می‌زند، `install.sh` از قبل می‌زد |
-| Migration روی Staging | ⏳ نیاز به Staging — `docs/STAGING-RUNBOOK.md` |
+| Migration روی Staging | ⏳ نیاز به Staging — `docs/operations/STAGING-RUNBOOK.md` |
 | Zarinpal Sandbox واقعی | ⏳ نیاز به merchant sandbox — `ZARINPAL_SANDBOX=true` حالا واقعاً اثر دارد (قبلاً بی‌اثر بود) |
 | Review امنیتی مستقل (Telegram/Guest/Reseller isolation) | ⏳ نیاز به شخص مستقل؛ self-audit در PHASE-W6-PART5 |
-| Backup/Restore و Rollback واقعی | ⏳ نیاز به Staging — `docs/STAGING-RUNBOOK.md` (update-git.sh خودکار rollback دارد، هنوز تمرین نشده) |
+| Backup/Restore و Rollback واقعی | ⏳ نیاز به Staging — `docs/operations/STAGING-RUNBOOK.md` (update-git.sh خودکار rollback دارد، هنوز تمرین نشده) |
 | Refund/Retry UI برای مشتری | عمداً وجود ندارد (Admin-only، طبق تصمیم W4) |
 
 ## رفع‌شده در این Audit (علاوه بر فهرست VERSION)

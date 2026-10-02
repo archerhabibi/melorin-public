@@ -14,27 +14,24 @@ use Telegram\Bot\Api;
  * دو منبع ممکن است: رسید ارسالی از ربات (`receipt_image` = یک
  * Telegram file_id) یا رسید آپلودشده از سایت (`receipt_image` با
  * پیشوند `website:`، ذخیره‌شده روی دیسک خصوصی `local` توسط
- * `App\Channels\Website\Http\Controllers\Shared\ReceiptController` —
- * پچ 3.2.2، فاز W2). این تغییر روی کد مشترک پنل ادمین است، نه داخل
- * کانال Website — چون نمایش رسید برای ادمین باید مستقل از این باشد
- * که رسید از کدام کانال آمده (بند ۱: «هیچ کانالی نباید منطق مشترک را
- * دوباره پیاده کند»).
+ * `App\Channels\Website\Http\Controllers\Shared\ReceiptController`).
+ * این کد مشترکِ پنل ادمین است، نه بخشی از کانال Website — چون نمایش رسید
+ * برای ادمین باید مستقل از کانالِ مبدأ باشد («هیچ کانالی نباید منطق
+ * مشترک را دوباره پیاده کند»).
  *
  * چون receipt_image تلگرام فقط یک file_id است (نه URL عمومی)، پنل
  * Filament نمی‌تواند مستقیم <img src="..."> بدهد — این route فایل را
  * از منبع درست واکشی/استریم می‌کند.
  *
- * باگ نسخه‌ی قبلی (بخش تلگرام): از یک متد $telegram->download()
- * استفاده می‌کرد که اصلاً در irazasyed/telegram-bot-sdk وجود ندارد
- * (خطای واقعی روی سرور: «Method [download] does not exist»). روش
- * درست طبق خودِ SDK: getFile() فقط file_path را برمی‌گرداند؛ دانلود
- * واقعی باید با یک درخواست HTTP جدا به
+ * دانلود فایل تلگرام: در irazasyed/telegram-bot-sdk متدِ `download()`
+ * وجود ندارد؛ `getFile()` فقط file_path را برمی‌گرداند و دانلود واقعی
+ * باید با یک درخواست HTTP جدا به
  * https://api.telegram.org/file/bot<TOKEN>/<path> انجام شود.
  *
  * محافظت‌شده با میدل‌ور auth:admin (در routes/admin.php ثبت شده).
  *
- * پچ 3.2.8 (نفر ۴، فاز W6 بند ۳): دو لایه‌ی دفاعی اضافه شد که مستقل از
- * اعتبارسنجی آپلود (بند `mimes:` در ReceiptController) عمل می‌کند —
+ * دو لایه‌ی دفاعی، مستقل از اعتبارسنجی آپلود (`mimes:` در
+ * ReceiptController):
  * چون هیچ اعتبارسنجی‌ای ۱۰۰٪ غیرقابل‌دور‌زدن نیست:
  * (۱) `Content-Type` واقعاً واکشی‌شده فقط اگر در فهرست مجاز
  *     (image/jpeg, image/png, image/webp, application/pdf) باشد

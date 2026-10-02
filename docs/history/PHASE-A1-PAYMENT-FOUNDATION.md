@@ -44,7 +44,7 @@ status هر دو دست‌نخورده می‌مانند.
 - `PaymentCallbackController` از قبل `\Throwable` را می‌گرفت، دست‌نخورده ماند.
 
 ### مستندسازی صریح (بند ۵۱، ۵۲، ۵۵)
-بخش ۱۰ جدید در `ARCHITECTURE.md`: چرا سه وضعیت نظری (`created`/`processing`/
+بخش ۱۰ جدید در `docs/history/ARCHITECTURE-3.1.1-SUPERSEDED.md`: چرا سه وضعیت نظری (`created`/`processing`/
 `partially_refunded`) پیاده نشده‌اند، `purpose=order` چرا کد مرده است، و مرز دقیق
 Wallet Payment در برابر Direct Payment — با یادداشت صریح که «Direct Payment → Purchase»
 (پرداخت مستقیم برای یک سفارش، بدون Wallet) هنوز ساخته نشده و یک قابلیت جدید و

@@ -8,9 +8,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
- * پچ 3.2.13 (نفر 5) - بستن نکته‌ی باز پچ 3.2.12 (نفر 2):
- * «ثبت‌نام سایت هنوز ?ref= را نمی‌خواند».
- * مرجع: docs/VERIFICATION-MATRIX.md
+ * ثبت‌نام سایت پارامتر ?ref= را می‌خواند و referrer را ثبت می‌کند.
  */
 class ReferralRegistrationTest extends TestCase
 {

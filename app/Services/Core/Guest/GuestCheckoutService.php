@@ -19,7 +19,7 @@ use Illuminate\Support\Str;
  *   - G7: تطابق با User موجود ⇒ فقط Audit + هدایت به Login؛ هرگز Merge/Login خودکار.
  *   - G9: pending → consumed | expired؛ حذف فیزیکی ۶۰ روز بعد (DATA-RETENTION.md).
  *
- * (مدل قدیمی «ساخت User از Guest + Auth::login» DEPRECATED است — فاز ۴.)
+ * (مدل قدیمی «ساخت User از Guest + Auth::login» DEPRECATED است.)
  */
 class GuestCheckoutService
 {

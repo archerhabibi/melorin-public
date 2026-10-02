@@ -16,7 +16,7 @@ use Tests\Concerns\InteractsWithWebsiteFixtures;
 use Tests\TestCase;
 
 /**
- * فاز ۴ — Master 2.7 §3: G3–G7 (Pending → Login/Register → ادامه‌ی همان خرید،
+ * Master 2.7 §3: G3–G7 (Pending → Login/Register → ادامه‌ی همان خرید،
  * بدون User/CustomerAccount/Purchase تکراری، بدون Merge/Login خودکار).
  * جایگزین نسخه‌ی قدیمی این فایل (که ساخت User از Guest را تأیید می‌کرد).
  */

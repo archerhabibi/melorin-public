@@ -11,8 +11,8 @@ use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
- * پچ 3.2.9 - فاز W6 بند 4: Audit.
- * مرجع: docs/PHASE-W6-PART4-AUDIT.md
+ * Audit.
+ * مرجع: docs/history/PHASE-W6-PART4-AUDIT.md
  */
 class AuditLoggingTest extends TestCase
 {
@@ -40,7 +40,7 @@ class AuditLoggingTest extends TestCase
     #[Test]
     public function a_guest_email_collision_is_audited_at_the_guest_form_step(): void
     {
-        // فاز ۴: مسیر «ساخت User از Guest» (identity.guest_account_created) حذف شد؛
+        // مسیر «ساخت User از Guest» (identity.guest_account_created) حذف شد؛
         // تنها رویداد Audit مربوط به Guest، تشخیص تصادم با User موجود است (G7).
         $existing = User::factory()->create(['telegram_id' => null, 'email' => 'someone@example.test']);
         $product = $this->makeProduct();
@@ -63,9 +63,9 @@ class AuditLoggingTest extends TestCase
         $secretKey = hash('sha256', $this->botToken, true);
         $data['hash'] = hash_hmac('sha256', $checkString, $secretKey);
 
-        // پچ ۳.۲.۱۰: از این پس callback تلگرام به یک state معتبر در
+        // callback تلگرام به یک state معتبر در
         // Session نیاز دارد (ضد Login/Link CSRF) - جزئیات در
-        // docs/PHASE-W6-PART5-TELEGRAM-REVIEW.md.
+        // docs/history/PHASE-W6-PART5-TELEGRAM-REVIEW.md.
         $state = 'audit-test-state';
         $this->withSession(['telegram_link_state' => $state]);
         $data['state'] = $state;

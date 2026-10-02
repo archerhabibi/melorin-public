@@ -1,10 +1,8 @@
 {{--
-    فاز W4 — نوار زیرمنوی پنل کاربری. عمداً یک partial محلی زیر
-    views/website/account/ است، نه ویرایش layouts/app.blade.php: طبق
-    بخش ۱۰ Roadmap («نقاط اشتراکی») آن Layout مالکیت نفر ۳ است و بقیه
-    فقط از آن Extend می‌کنند، بازطراحی‌اش نمی‌کنند. این partial همان
-    Layout مشترک را extend می‌کند (@extends در هر صفحه) و فقط داخل
-    ناحیه‌ی محتوای خودش یک نوار ساده اضافه می‌کند.
+    نوار زیرمنوی پنل کاربری. عمداً یک partial محلی زیر views/website/account/
+    است، نه بخشی از layouts/app.blade.php: Layout مشترک فقط Extend می‌شود،
+    نه بازطراحی. هر صفحه‌ی پنل Layout را @extends می‌کند و این نوار را
+    داخل ناحیه‌ی محتوای خودش include می‌کند.
 --}}
 @php
     $accountNavRoute = fn (string $name) => $store->isReseller()

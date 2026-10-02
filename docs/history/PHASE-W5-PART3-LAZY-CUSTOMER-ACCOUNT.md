@@ -1,6 +1,6 @@
 # تصمیم صاحب پروژه: CustomerAccount فقط در لحظه‌ی خرید (v3.2.17)
 
-مرجع: docs/PHASE-W5-PART2-COMPLETION-AND-SECURITY-NOTE.md (تحلیل نفر ۳) +
+مرجع: docs/history/PHASE-W5-PART2-COMPLETION-AND-SECURITY-NOTE.md (تحلیل نفر ۳) +
 دستور صریح صاحب پروژه در همین گفتگو: **«تا خرید انجام نشود نباید
 CustomerAccount جدید بسازد.»**
 
@@ -58,7 +58,7 @@ CustomerAccount» — کلید Wallet ترکیب `user_id`+`scope_key` است). 
 
 ## به‌روزرسانی مستندات
 
-`docs/PHASE-W5-PART2-COMPLETION-AND-SECURITY-NOTE.md` یک بخش
+`docs/history/PHASE-W5-PART2-COMPLETION-AND-SECURITY-NOTE.md` یک بخش
 «به‌روزرسانی» گرفت که به این پچ ارجاع می‌دهد — نتیجه‌گیری قبلی نفر ۳
 حذف نشد (برای شفافیتِ تاریخچه‌ی تصمیم)، فقط علامت‌گذاری شد که override
 شده.

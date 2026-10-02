@@ -5,11 +5,9 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * فاز W5 (نفر ۳) — بند ۴۶ زیرسند: «Reseller Website Branding — Name,
- * Logo, Contact Information». تا امروز این اطلاعات اصلاً جایی ذخیره
- * نمی‌شد؛ Layout سایت (فاز W0) برای Context نماینده فقط از
- * `Reseller::getFilamentName()` (که خودش یک fallback به slug است)
- * استفاده می‌کرد.
+ * «Reseller Website Branding — Name, Logo, Contact Information».
+ * بدون این جدول، Layout سایت برای Context نماینده فقط از
+ * `Reseller::getFilamentName()` (با fallback به slug) استفاده می‌کرد.
  *
  * جدولِ جدا (نه ستونِ اضافه روی `resellers`) — دقیقاً هم‌الگو با
  * `reseller_bot_settings`: تفکیکِ دغدغه‌ها (این یکی مخصوصِ کانالِ

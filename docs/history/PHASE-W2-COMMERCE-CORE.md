@@ -1,7 +1,7 @@
 # فاز W2 (بخشی) — Commerce هسته‌ای: Checkout بدون Cart + Wallet Payment (v3.2.1)
 
 مرجع: `ROADMAP-WEBSITE-v1.md` (فاز W2) + `Melorin_Website_Architecture_Subdocument_v1_1.md`
-+ TBD Decision Register (بخش ۹ همان سند) + `docs/PHASE-W0-W1-WEBSITE-CHANNEL.md`
++ TBD Decision Register (بخش ۹ همان سند) + `docs/history/PHASE-W0-W1-WEBSITE-CHANNEL.md`
 («قدم بعدی» همان سند).
 
 پچ متناظر: `melorin-website-v3.2.1.patch`.
@@ -53,7 +53,7 @@
 ## محدودیت این پچ — مهم، حتماً قبل از merge بخوانید
 
 این کد در یک محیط sandbox **بدون PHP/Composer قابل‌اجرا** نوشته شده
-(دقیقاً همان محدودیتی که `docs/PHASE-W0-W1-WEBSITE-CHANNEL.md` هم به
+(دقیقاً همان محدودیتی که `docs/history/PHASE-W0-W1-WEBSITE-CHANNEL.md` هم به
 آن اشاره کرده بود). یعنی:
 
 - `composer install`، `php artisan migrate`، `php artisan route:list`

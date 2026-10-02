@@ -9,10 +9,9 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * بند ۳ فاز W0 Roadmap: از روی prefix مسیر، StoreContext درست را bind
- * می‌کند — یک بار، اینجا، به‌جای این‌که هر Controller خودش
- * `if (request()->route('slug'))` بنویسد (همان چیزی که بند ۹۳ و بند ۲
- * Roadmap صراحتاً منع کرده: تکرار پراکنده‌ی منطق تشخیص فروشگاه).
+ * از روی prefix مسیر، StoreContext درست را bind می‌کند — یک بار، اینجا،
+ * به‌جای این‌که هر Controller خودش `if (request()->route('slug'))`
+ * بنویسد (تکرار پراکنده‌ی منطق تشخیص فروشگاه ممنوع است).
  *
  * سه کار این میان‌افزار:
  *   ۱) اگر route پارامتر {slug} دارد → Reseller متناظر را پیدا کن.

@@ -19,8 +19,8 @@ use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
- * پچ 3.2.5 — فاز W4 بخش دوم (نفر ۲: پنل کاربری). مرجع:
- * docs/PHASE-W4-PART2-RENEWAL-REFERRAL.md
+ * پنل کاربری: Renewal + Referral. پیشینه:
+ * docs/history/PHASE-W4-PART2-RENEWAL-REFERRAL.md
  *
  * طبق تصمیم صریح («همه دقیقاً همانند Core و ربات تلگرام باید باشند؛
  * Refund/Retry کاملاً Admin-only می‌مانند»):

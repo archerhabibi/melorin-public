@@ -5,10 +5,10 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * فاز W3 بند ۱ (Roadmap) + بخش ۹.۳ TBD Decision Register:
+ * بخش ۹.۳ TBD Decision Register:
  * «Guest Checkout Token — بدون نیاز به CustomerAccount برای شروع خرید».
  *
- * این جدول هیچ معادلی در VPNMarket ندارد (بند ۳ Roadmap: «در VPNMarket
+ * این جدول هیچ معادلی در VPNMarket ندارد («در VPNMarket
  * هیچ Guest Checkout واقعی وجود ندارد») — طراحی کاملاً بر پایه‌ی جدول
  * تصمیمات بخش ۹.۳ است، نه قرض‌گرفته از پروژه‌ی مرجع.
  *
@@ -21,8 +21,8 @@ use Illuminate\Support\Facades\Schema;
  *   Identity نیستند»؛ به همین دلیل نه IP نه User-Agent اینجا ذخیره
  *   نمی‌شود).
  * - expires_at: بند ۹.۳ («اگر ظرف مثلاً ۳۰-۶۰ دقیقه پرداخت نشود منقضی
- *   می‌شود؛ عدد دقیق در Implementation»). این پچ ۴۵ دقیقه را در
- *   GuestCheckoutService ثابت کرده — قابل‌تغییر با UX نهایی، نه اینجا.
+ *   می‌شود؛ عدد دقیق در Implementation»). ۴۵ دقیقه در
+ *   GuestCheckoutService ثابت شده — قابل‌تغییر با UX نهایی، نه اینجا.
  * - reseller_id: nullable، برای رعایت StoreContext هم در Main هم در
  *   فروشگاه نماینده (بند ۹.۴: «Reseller Website باید فقط Context همان
  *   Reseller را استفاده کند»).

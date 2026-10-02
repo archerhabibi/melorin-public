@@ -10,8 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 /**
- * فاز W4 بند ۵ Roadmap («Referral/Commission — دقیقاً همانند Core و
- * ربات تلگرام»، طبق تصمیم صریح). دقیقاً هم‌مضمون با
+ * Referral/Commission — دقیقاً همانند Core و ربات تلگرام؛ هم‌مضمون با
  * `MiscHandler::referral()` (ربات تلگرام اصلی):
  *   - لینک دعوت + تعداد زیرمجموعه‌ها (سطح User، نه Context — طبق
  *     همان منطق ربات، چون معرفی یک رابطه‌ی سراسری بین دو User است،
@@ -25,10 +24,8 @@ use Illuminate\View\View;
  * کیف‌پول همان Contextی که خرید در آن رخ داده پرداخت می‌شود»)، پس با
  * `referrer_customer_account_id` فیلتر می‌شود، نه `referrer_id` خام.
  *
- * نکته‌ی مهم که عمداً در این پچ نیست: ثبتِ referrer_id هنگام
- * ثبت‌نام سایت (پارامتر ?ref=) — RegisteredUserController خارج از
- * مالکیت این پچ (Controllers/Account/) است و باید با صاحبِ همان
- * کنترلر هماهنگ شود؛ جزئیات در PHASE-W4-PART2 doc.
+ * ثبتِ referrer_id هنگام ثبت‌نام سایت (پارامتر ?ref=) اینجا نیست؛ در
+ * RegisteredUserController انجام می‌شود.
  */
 class ReferralController
 {

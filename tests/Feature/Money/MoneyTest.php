@@ -10,7 +10,7 @@ use RuntimeException;
 use Tests\TestCase;
 
 /**
- * فاز ۵ — Money: تنها نقطه‌ی تبدیل/نمایش/محاسبه‌ی مبلغ.
+ * Money: تنها نقطه‌ی تبدیل/نمایش/محاسبه‌ی مبلغ.
  * پیش‌فرض تست‌ها تومان (IRT، decimals=0)؛ ارز دلاری با config() در همان تست تنظیم می‌شود.
  */
 class MoneyTest extends TestCase

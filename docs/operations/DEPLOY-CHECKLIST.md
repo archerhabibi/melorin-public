@@ -39,6 +39,6 @@ Core (تکمیل‌شده)
 
 ## این Roadmap چه زمانی واقعا Done است
 
-طبق بند 128 سند مادر: وقتی همه‌ی ردیف‌های docs/VERIFICATION-MATRIX.md
+طبق بند 128 سند مادر: وقتی همه‌ی ردیف‌های docs/history/VERIFICATION-MATRIX.md
 به PRODUCTION VERIFIED برسند. تا امروز (پچ 3.2.13)، هیچ ردیفی به آن‌جا
 نرسیده - چون هنوز حتی یک بار روی محیط Staging واقعی اجرا نشده‌اند.

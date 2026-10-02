@@ -9,11 +9,10 @@ use App\Services\Resellers\ResellerPricingService;
 use Illuminate\Database\Eloquent\Collection;
 
 /**
- * فاز W0 بند ۵ Roadmap: «لایه‌ی نازک Website Facade Services — فقط
- * متدهای موجود Core را صدا می‌زند، هیچ منطق تصمیم‌گیری در این لایه
- * نیست». این کلاس مشخصاً معادل بند ۱۴/۱۵/۱۶ زیرسند (Home + Product
- * Detail) است: فقط Query و صدا زدن متدهای قیمتِ خودِ مدل‌ها — هیچ
- * محاسبه‌ی قیمتی در Client/Controller انجام نمی‌شود (بند ۱ Roadmap).
+ * «لایه‌ی نازک Website Facade Services — فقط متدهای موجود Core را صدا
+ * می‌زند، هیچ منطق تصمیم‌گیری در این لایه نیست». این کلاس برای Home و
+ * Product Detail است: فقط Query و صدا زدن متدهای قیمتِ خودِ مدل‌ها —
+ * هیچ محاسبه‌ی قیمتی در Client/Controller انجام نمی‌شود.
  */
 class WebsiteCatalogFacade
 {
@@ -57,8 +56,8 @@ class WebsiteCatalogFacade
 
     /**
      * قیمت نمایشی یک محصول در این Context — دقیقاً همان متدهای موجود
-     * روی Product، بدون هیچ محاسبه‌ی اضافه (بند ۱ Roadmap:
-     * «هیچ Price محاسبه‌شده در Client»).
+     * روی Product، بدون هیچ محاسبه‌ی اضافه («هیچ Price محاسبه‌شده در
+     * Client»).
      */
     public function displayPrice(Product $product, StoreContext $store): int
     {

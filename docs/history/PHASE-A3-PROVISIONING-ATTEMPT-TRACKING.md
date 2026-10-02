@@ -2,9 +2,9 @@
 
 > **به‌روزرسانی:** اقلامِ ۵ تا ۷ (error/started_at/finished_at) در پچِ
 > بعدی اضافه شدند — ر.ک.
-> [docs/PHASE-A3-PART2-ERROR-AND-TIMESTAMPS.md](./PHASE-A3-PART2-ERROR-AND-TIMESTAMPS.md).
+> [docs/history/PHASE-A3-PART2-ERROR-AND-TIMESTAMPS.md](./PHASE-A3-PART2-ERROR-AND-TIMESTAMPS.md).
 > اقلامِ ۸ تا ۱۰ (تستِ Retry/Duplicate Retry/عدمِ Debit مجدد) هم در
-> [docs/PHASE-A3-PART3-RETRY-TESTS.md](./PHASE-A3-PART3-RETRY-TESTS.md)
+> [docs/history/PHASE-A3-PART3-RETRY-TESTS.md](./PHASE-A3-PART3-RETRY-TESTS.md)
 > اضافه شدند — با آن پچ، فازِ A3 کامل می‌شود.
 
 مرجع: بند ۶۹ سند («Provisioning Attempt Tracking») و «Phase A3 — Provisioning

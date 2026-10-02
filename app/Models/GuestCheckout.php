@@ -6,8 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * فاز W3 بند ۱ — Guest Checkout Token. مرجع کامل تصمیم در
- * docs/PHASE-W3-PART1-GUEST-CHECKOUT-TOKEN.md.
+ * Guest Checkout Token. مرجع کامل تصمیم در
+ * docs/history/PHASE-W3-PART1-GUEST-CHECKOUT-TOKEN.md.
  */
 class GuestCheckout extends Model
 {

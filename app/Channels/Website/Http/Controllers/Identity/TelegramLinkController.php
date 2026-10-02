@@ -11,18 +11,16 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 
 /**
- * فاز W3 بند ۵ (نیمه‌ی دوم) — Telegram-linking. مرجع کامل تصمیم:
- * docs/PHASE-W3-PART3-TELEGRAM-LINKING.md.
+ * Telegram-linking. پیشینه‌ی تصمیم: docs/history/PHASE-W3-PART3-TELEGRAM-LINKING.md.
  *
  * **این کنترلر «ورود با تلگرام» برای بازدیدکننده‌ی ناشناس نیست** —
- * عمداً پشت `auth` است. طبق متن دقیق Roadmap («Guest-to-Telegram
+ * عمداً پشت `auth` است. طبق Contract («Guest-to-Telegram
  * linking ... یک قابلیت اختیاریِ بعدی برای همین CustomerAccount، نه
  * پیش‌نیاز خرید»)، این فقط «وصل‌کردن» تلگرام به یک حساب از‌قبل‌موجود
- * است (User احراز‌شده با Register/Login؛ فاز ۴: مسیر ساخت User از Guest حذف شد)، نه
+ * است (User احراز‌شده با Register/Login؛ ساخت User از Guest وجود ندارد)، نه
  * یک مسیر ثبت‌نام/ورود جدید.
  *
- * فقط Main Context — دلیل در «خارج از Scope» مستند پچ (نبود ستون
- * bot_username برای نمایندگان).
+ * فقط Main Context — برای نمایندگان ستون bot_username وجود ندارد.
  */
 class TelegramLinkController
 {
@@ -43,15 +41,12 @@ class TelegramLinkController
             return redirect($back)->withErrors(['telegram' => 'اتصال تلگرام در حال حاضر پیکربندی نشده است.']);
         }
 
-        // پچ ۳.۲.۱۰ — Review امنیتی: یافته‌ی اصلی این Review این بود که
-        // نسخه‌ی ۳.۲.۵ در برابر «Login/Link CSRF» محافظت نداشت — یک
-        // مهاجم می‌توانست یک callback URL معتبر و امضاشده برای حساب
-        // تلگرام *خودش* بگیرد (چون HMAC روی محتوای تلگرام است، نه روی
-        // این‌که «چه کسی» را قصد وصل‌کردن دارد) و آن را برای قربانی
-        // بفرستد؛ اگر قربانی لاگین‌کرده روی آن کلیک می‌کرد، تلگرام
-        // مهاجم به حساب قربانی وصل می‌شد. `state` یک‌بارمصرفِ
-        // Session-bound همین را می‌بندد: یک لینک کپی‌شده از Session
-        // مهاجم، در Session قربانی مقدار متفاوتی (یا خالی) پیدا می‌کند.
+        // ضد «Login/Link CSRF»: HMAC تلگرام روی محتوای تلگرام است، نه روی
+        // این‌که «چه کسی» قصد وصل‌کردن دارد. بدون `state`، مهاجم می‌توانست
+        // callback معتبر حساب تلگرام *خودش* را برای یک قربانیِ لاگین‌کرده
+        // بفرستد و تلگرام مهاجم به حساب قربانی وصل شود. `state` یک‌بارمصرفِ
+        // Session-bound این را می‌بندد: لینکِ کپی‌شده از Session مهاجم، در
+        // Session قربانی مقدار متفاوتی (یا خالی) پیدا می‌کند.
         $expectedState = $request->session()->pull('telegram_link_state');
 
         if (! $expectedState || ! hash_equals($expectedState, (string) $request->query('state', ''))) {
@@ -75,10 +70,8 @@ class TelegramLinkController
             // تلگرام از قبل به یک User دیگر وصل است، خودکار جابه‌جا/ادغام
             // نمی‌کنیم — چون معلوم نیست کدام طرف واقعاً صاحب همین
             // Session فعلی است.
-            // فاز W6 بند ۴ (پچ ۳.۲.۹): این یک تلاش رد‌شده برای وصل‌کردن
-            // یک هویت تلگرامیِ از‌قبل‌مالکیت‌دار است — دقیقاً همان نوع
-            // رویدادی که Audit باید ثبت کند، چون یا یک سوءتفاهم کاربر
-            // است یا یک تلاش سوءاستفاده.
+            // تلاشِ ردشده برای وصل‌کردن یک هویت تلگرامیِ از‌قبل‌مالکیت‌دار:
+            // یا سوءتفاهم کاربر است یا سوءاستفاده؛ در هر دو حالت باید Audit شود.
             $this->audit->record(
                 'identity.telegram_link_rejected_owned_by_other',
                 $currentUser,
@@ -108,9 +101,9 @@ class TelegramLinkController
             ]);
         }
 
-        // بند ۴ فاز W6 — Audit روی «Identity Linking». طبق همان اصل
+        // Audit روی «Identity Linking». طبق همان اصل
         // «Website چیزی جدید ثبت نمی‌کند، فقط AuditService موجود را صدا
-        // می‌زند» (بند ۴ Roadmap) — نه یک جدول/مکانیزم لاگ جداگانه.
+        // می‌زند» (Website Contract) — نه یک جدول/مکانیزم لاگ جداگانه.
         $this->audit->record(
             'identity.telegram_linked',
             $currentUser,

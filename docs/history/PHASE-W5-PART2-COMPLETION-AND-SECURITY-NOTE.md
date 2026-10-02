@@ -1,6 +1,6 @@
 # فاز W5 (بخش دوم) — Audit تکمیلی + بستنِ سؤال باز امنیتی (v3.2.16)
 
-مرجع: `ROADMAP-WEBSITE-v1.md` فاز W5 + `docs/PHASE-W5-PART1-RESELLER-STORE.md` (نفر ۳).
+مرجع: `ROADMAP-WEBSITE-v1.md` فاز W5 + `docs/history/PHASE-W5-PART1-RESELLER-STORE.md` (نفر ۳).
 
 ## نتیجه‌ی Audit: هر ۵ بند فاز W5 کامل است
 
@@ -71,7 +71,7 @@ Management). این پچ (بخش دوم) فقط دو چیز را می‌بندد
 
 **Guest Checkout نماینده (بخشی از آیتم ۴):** طبق تشخیص خودِ نفر ۳،
 این وابسته به تکمیلِ واقعیِ Guest Checkout توسط نفر ۱ است — که هنوز
-فقط بخش «صدور Token» (`docs/PHASE-W3-PART1-GUEST-CHECKOUT-TOKEN.md`)
+فقط بخش «صدور Token» (`docs/history/PHASE-W3-PART1-GUEST-CHECKOUT-TOKEN.md`)
 انجام شده، نه تکمیلِ واقعیِ خرید. ساختنِ نسخه‌ی نماینده‌ایِ چیزی که
 هنوز برای Main هم کامل نیست، کاری بی‌پایه و بالقوه دوباره‌کاری است —
 چون همان‌طور که نفر۳ درست تشخیص داده، کنترلرهای Guest از نوع `Shared`
@@ -108,4 +108,4 @@ php artisan test
 نشد؛ قاعده‌ی سخت‌گیرانه‌تری انتخاب شد: حتی همان CustomerAccount خالی هم
 نباید صرفاً از بازدید ساخته شود - فقط در لحظه‌ی یک اقدام مالی واقعی
 (Checkout، شارژ کیف‌پول، تمدید). پیاده‌سازی این تصمیم و تست‌هایش در
-docs/PHASE-W5-PART3-LAZY-CUSTOMER-ACCOUNT.md (پچ 3.2.17).
+docs/history/PHASE-W5-PART3-LAZY-CUSTOMER-ACCOUNT.md (پچ 3.2.17).

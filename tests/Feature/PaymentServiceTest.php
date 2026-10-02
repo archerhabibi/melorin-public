@@ -13,7 +13,6 @@ use Mockery;
 use PHPUnit\Framework\Attributes\Test;
 use Telegram\Bot\Api;
 use App\Services\Core\Payments\InvalidPaymentTransitionException;
-use App\Services\Core\Payments\PaymentGatewayFactory;
 use App\Services\Core\Payments\PaymentStateMachine;
 use Telegram\Bot\Objects\Message;
 use Tests\TestCase;

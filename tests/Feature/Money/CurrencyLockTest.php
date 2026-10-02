@@ -10,7 +10,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
- * فاز ۵ — قفل ارز: بعد از Migration مبالغ، تغییر code/decimals در config رد می‌شود.
+ * قفل ارز: بعد از Migration مبالغ، تغییر code/decimals در config رد می‌شود.
  */
 class CurrencyLockTest extends TestCase
 {

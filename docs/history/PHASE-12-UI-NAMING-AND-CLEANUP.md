@@ -4,7 +4,7 @@
 
 ## نتیجه‌ی Audit
 جستجوی Legacy (`base_price|core_price|sold_price|custom_price|corePrice|soldPrice|sellingPriceForReseller`) در
-`app/ resources/ routes/ config/ tests/ database/(غیر از migrationهای تاریخی)` نتیجه‌ی صفر داشت — فقط ARCHITECTURE.md
+`app/ resources/ routes/ config/ tests/ database/(غیر از migrationهای تاریخی)` نتیجه‌ی صفر داشت — فقط docs/history/ARCHITECTURE-3.1.1-SUPERSEDED.md
 بند ۷ هنوز `core_price/sold_price` را به‌عنوان مفهوم قیمت آموزش می‌داد. اما «مفهوم قیمتِ خارج از سه نام» هنوز در
 UI و Handlerها زنده بود و یک باگ واقعی هم پیدا شد.
 
@@ -44,7 +44,7 @@ UI و Handlerها زنده بود و یک باگ واقعی هم پیدا شد.
 حالا فقط `wallet_charge` می‌پذیرد و کامنت‌های گمراه‌کننده‌ی `PaymentConfirmed` و Listener اصلاح شد.
 مقدار `order` در enum دیتابیس عمداً دست‌نخورده ماند (تغییر enum در MySQL/SQLite ریسک بی‌فایده است).
 
-### ARCHITECTURE.md بند ۷
+### docs/history/ARCHITECTURE-3.1.1-SUPERSEDED.md بند ۷
 به سه قیمت نهایی و `reseller_profit` بازنویسی شد.
 
 ## تست‌ها

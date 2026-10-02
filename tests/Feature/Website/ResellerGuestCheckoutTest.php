@@ -18,11 +18,10 @@ use Tests\Concerns\InteractsWithWebsiteFixtures;
 use Tests\TestCase;
 
 /**
- * پچ 3.2.15 - Guest Checkout نماینده (آیتم 4 فاز W5 که نفر 3 به کار
- * نفر 1 واگذار کرده بود). مسیرهای Guest از نوع Shared هستند و زیر
+ * Guest Checkout نماینده. مسیرهای Guest از نوع Shared هستند و زیر
  * /store/{slug} هم ثبت می‌شوند؛ این فایل «ادعا» را «تست‌شده» می‌کند:
  * قیمت، Scope توکن، پیام‌های Login، و خرید کامل با Debit دوگانه.
- * مرجع: docs/PHASE-W5-PART2-RESELLER-GUEST-CHECKOUT.md
+ * مرجع: docs/history/PHASE-W5-PART2-RESELLER-GUEST-CHECKOUT.md
  */
 class ResellerGuestCheckoutTest extends TestCase
 {
@@ -173,7 +172,7 @@ class ResellerGuestCheckoutTest extends TestCase
         $this->assertAuthenticatedAs($user);
         $this->assertEquals('pending', $guest->fresh()->status);
 
-        // طبق پچ 3.2.17 (Lazy)، GET هیچ CustomerAccount نمی‌سازد.
+        // GET هیچ CustomerAccount نمی‌سازد (Lazy).
         $this->get(route('website.store.checkout.show', [$reseller->slug, $product->id]))->assertOk();
         $this->assertNull(app(IdentityService::class)->findCustomerAccount($user, StoreContext::reseller($reseller)));
 

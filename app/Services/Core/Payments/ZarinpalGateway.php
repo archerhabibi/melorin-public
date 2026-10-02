@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Http;
  *   "sandbox": false            // اختیاری، برای تست روی sandbox.zarinpal.com
  * }
  *
- * توجه واحد پول (فاز ۵): مبالغ داخل ملورین Integer Minor Unit در ارزِ config('melorin.currency')
+ * توجه واحد پول : مبالغ داخل ملورین Integer Minor Unit در ارزِ config('melorin.currency')
  * هستند. زرین‌پال فقط ریال می‌شناسد؛ بنابراین این درگاه فقط با ارز IRT (تومان، ×۱۰) یا
  * IRR (ریال، ×۱) و decimals=0 کار می‌کند و با هر ارز دیگری (مثل USD) رد می‌شود.
  */

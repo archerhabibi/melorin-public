@@ -1,6 +1,6 @@
 # فاز W5 (بخش دوم) - Guest Checkout نماینده (v3.2.15)
 
-مرجع: ROADMAP-WEBSITE-v1.md فاز W5 آیتم 4 + فاز W3 + docs/PHASE-W5-PART1-RESELLER-STORE.md
+مرجع: ROADMAP-WEBSITE-v1.md فاز W5 آیتم 4 + فاز W3 + docs/history/PHASE-W5-PART1-RESELLER-STORE.md
 (بخش «عمدا در این پچ نیست» نفر 3). طبق درخواست شما، این بخش را (به‌عنوان مالک
 Guest، نفر 1) خودم انجام دادم.
 

@@ -9,7 +9,7 @@ use RecursiveIteratorIterator;
 use Tests\TestCase;
 
 /**
- * فاز ۵ — Guard دائمی مالی (Master Contract §4.1):
+ * Guard دائمی مالی (Master Contract §4.1):
  *
  *   M5  float برای پول ممنوع است (فقط حجم/آمار/درصدِ نمایشی مجاز است).
  *   M2  Core بدون برچسب ارز؛ UI فقط از Money::format()/number() می‌نویسد.

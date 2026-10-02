@@ -17,10 +17,10 @@
         </dl>
 
         {{--
-            فاز W2 بند ۸ — Provisioning Status Display از Core: این صفحه
+            Provisioning Status Display از Core: این صفحه
             هیچ محاسبه‌ای انجام نمی‌دهد، فقط ستون account روی همان Order
             را نشان می‌دهد. اطلاعات اتصال (Config/QR) عمداً اینجا نیست —
-            آن بخشِ «Accounts» است (فاز W4 بند ۳)، نه Order Display.
+            آن بخشِ «Accounts» است ، نه Order Display.
         --}}
         @if($order->account)
             <div class="mt-4 rounded border border-green-200 bg-green-50 text-green-800 px-4 py-3 text-sm">

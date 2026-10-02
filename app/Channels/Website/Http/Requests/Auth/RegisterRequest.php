@@ -6,7 +6,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rules\Password;
 
 /**
- * فاز W1 — تصمیم ۹.۷: «Laravel FormRequest (مرجع نهایی، سمت سرور)».
+ * تصمیم ۹.۷: «Laravel FormRequest (مرجع نهایی، سمت سرور)».
  * این تنها مرز واقعی اعتبارسنجی ثبت‌نام است؛ هر کمکی که سمت Client با
  * Alpine انجام شود صرفاً UX است، نه مرز امنیتی (بند ۹۰ سند مادر).
  */

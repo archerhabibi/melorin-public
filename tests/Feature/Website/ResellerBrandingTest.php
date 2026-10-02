@@ -13,7 +13,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
- * فاز W5 (نفر ۳) — بند ۴۶ زیرسند: «Reseller Website Branding — Name,
+ * «Reseller Website Branding — Name,
  * Logo, Contact Information».
  */
 class ResellerBrandingTest extends TestCase

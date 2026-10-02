@@ -58,9 +58,9 @@
 ```text
 docs/canonical/MASTER-ARCHITECTURE-CONTRACT.md      ← جایگزین Master v2.3
 docs/canonical/WEBSITE-ARCHITECTURE-CONTRACT.md     ← جایگزین Website v1.2
-docs/canonical/VERIFICATION-MATRIX.md               ← جایگزین docs/VERIFICATION-MATRIX.md
+docs/canonical/VERIFICATION-MATRIX.md               ← جایگزین docs/history/VERIFICATION-MATRIX.md
 ```
-فایل‌های قدیمی Master/Website را حذف نکنید؛ بالای هرکدام بنویسید `Status: DEPRECATED — superseded by Master 2.4 / Website 1.3`. `ARCHITECTURE.md` ریشه و README هم باید به مسیر جدید ارجاع بدهند (فاز ۶).
+فایل‌های قدیمی Master/Website را حذف نکنید؛ بالای هرکدام بنویسید `Status: DEPRECATED — superseded by Master 2.4 / Website 1.3`. `docs/history/ARCHITECTURE-3.1.1-SUPERSEDED.md` ریشه و README هم باید به مسیر جدید ارجاع بدهند (فاز ۶).
 
 ## ۸. گام بعدی
 فاز ۲: هماهنگ‌سازی نهایی Website Contract (اکثر آن در همین فاز انجام شد؛ باقی‌مانده: تأیید D-1 و بستن TBDهای Route/Email Verification). سپس فاز ۳ (Code/Docs Reconciliation) و فاز ۴ (Guest Cleanup: C1–C4).

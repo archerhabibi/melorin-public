@@ -12,7 +12,7 @@ use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 
 /**
- * فاز W1 بند ۱ + تصمیم ۹.۲ (Session-based / Cookie، نه Token).
+ * تصمیم ۹.۲ (Session-based / Cookie، نه Token).
  */
 class AuthenticatedSessionController
 {
@@ -27,7 +27,7 @@ class AuthenticatedSessionController
 
     public function store(LoginRequest $request, StoreContext $store): RedirectResponse
     {
-        // G6 (فاز ۴): اگر نشست Guest فعال است و مقصد دیگری (url.intended) در
+        // G6: اگر نشست Guest فعال است و مقصد دیگری (url.intended) در
         // کار نیست، Login همان خرید Pending را ادامه می‌دهد. Login خودکار /
         // ساخت User در هیچ مسیری وجود ندارد؛ فقط credential واقعی.
         $guestCheckoutUrl = $request->session()->has('url.intended')

@@ -16,11 +16,17 @@
 
 ## معماری
 
-از نسخه‌ی ۳.۱.۰ هسته‌ی ملورین به معماری چندفروشگاهی منتقل شده است.
-برای درک ساختار (CustomerAccount، مرز تراکنش، سقف بدهی نماینده،
-Idempotency و قوانین مالی) پیش از هر تغییری در کد، این را بخوانید:
+هسته‌ی ملورین چندفروشگاهی است. برای درک ساختار (CustomerAccount، مرز تراکنش،
+سقف بدهی نماینده، Idempotency و قوانین مالی) پیش از هر تغییری در کد، این را بخوانید:
 
-**[ARCHITECTURE.md](ARCHITECTURE.md)**
+**[docs/canonical/MASTER-ARCHITECTURE-CONTRACT.md](docs/canonical/MASTER-ARCHITECTURE-CONTRACT.md)**
+
+| سند | مسیر |
+|---|---|
+| Contract کانال Website | [docs/canonical/WEBSITE-ARCHITECTURE-CONTRACT.md](docs/canonical/WEBSITE-ARCHITECTURE-CONTRACT.md) |
+| وضعیت راستی‌آزمایی (Contract→Code→Test) | [docs/canonical/VERIFICATION-MATRIX.md](docs/canonical/VERIFICATION-MATRIX.md) |
+| Deploy و Staging | [docs/operations/](docs/operations/) |
+| تاریخچه (منبع تصمیم نیست) | [docs/history/](docs/history/) |
 
 ## نصب و بروز رسانی
 

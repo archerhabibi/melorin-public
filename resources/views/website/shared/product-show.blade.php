@@ -23,10 +23,10 @@
         </div>
 
         {{--
-            پچ 3.2.1 — W2 بند ۳: Checkout مستقیم بدون Cart، بدون
-            Guest (Guest Checkout فاز W3 است، هنوز نیست). کاربر مهمان
-            به login هدایت می‌شود؛ بعد از ورود Laravel خودش او را به
-            همین صفحه برمی‌گرداند (intended URL استاندارد).
+            Checkout مستقیم بدون Cart. کاربرِ وارد‌شده مستقیم به Checkout
+            می‌رود؛ مهمان از مسیر Guest Checkout (فقط Email الزامی) و بعد
+            Login/Register ادامه می‌دهد و Laravel او را به همین خرید
+            برمی‌گرداند (intended URL استاندارد).
         --}}
         @auth
             <a href="{{ $store->isReseller()

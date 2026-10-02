@@ -13,8 +13,8 @@ use Tests\Concerns\InteractsWithWebsiteFixtures;
 use Tests\TestCase;
 
 /**
- * فاز W7 (نفر 5) - E2E صریح بند 61 زیرسند: Main Website E2E.
- * مرجع: docs/VERIFICATION-MATRIX.md
+ * Main Website E2E.
+ * مرجع: docs/history/VERIFICATION-MATRIX.md
  *
  * مسیر کامل: ثبت‌نام -> صفحه‌ی محصول -> Checkout -> (موجودی ناکافی،
  * پس با WalletService مستقیم شارژ می‌شود - معادل همان چیزی که
@@ -41,7 +41,7 @@ class MainWebsiteE2ETest extends TestCase
         $user = User::query()->where('email', 'sara@example.test')->firstOrFail();
         $this->assertAuthenticatedAs($user);
 
-        // فاز ۴ (Master G11): تا Verify نشدن Email خرید مسدود است؛ بقیه‌ی سایت آزاد.
+        // Master G11: تا Verify نشدن Email خرید مسدود است؛ بقیه‌ی سایت آزاد.
         $this->get(route('website.products.show', $product->id))->assertOk();
         $this->get(route('website.wallet.show'))->assertOk();
         $this->post(route('website.checkout.store', $product->id), ['idempotency_token' => 'e2e-main-blocked'])

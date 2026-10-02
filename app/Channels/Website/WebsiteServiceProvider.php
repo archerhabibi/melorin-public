@@ -9,7 +9,7 @@ use Illuminate\Support\ServiceProvider;
 
 /**
  * Provider اختصاصیِ Channel جدید «Website» — دقیقاً هم‌الگو با
- * TelegramBotServiceProvider (بند ۲ Roadmap، تقارن با ساختار موجود).
+ * TelegramBotServiceProvider (تقارن با ساختار موجود).
  *
  * طبق بند ۹۳ زیرسند («Website = Channel»)، این Provider و هر چیزی که
  * زیرمجموعه‌ی app/Channels/Website است فقط Adapter است: هیچ Business

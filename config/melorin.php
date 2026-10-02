@@ -23,7 +23,7 @@ return [
     ],
 
     /*
-     * واحد پولی سیستم (فاز ۵ — Money Representation).
+     * واحد پولی سیستم (Money Representation).
      *
      * همه‌ی مبالغ در دیتابیس و Core به‌صورت «عدد صحیحِ واحد کوچک» (Minor Unit)
      * ذخیره می‌شوند. decimals تعیین می‌کند هر ۱ واحد اصلی چند واحد کوچک دارد:
@@ -53,7 +53,7 @@ return [
         'decimals' => (int) env('MELORIN_CURRENCY_DECIMALS', 0),
         'symbol_position' => env('MELORIN_CURRENCY_POSITION', 'after'),
 
-        // Migration فاز ۵: اگر داده‌ی موجود اعشارِ بیش از decimals ارز دارد، پیش‌فرض متوقف می‌شود.
+        // Migration مبالغ: اگر داده‌ی موجود اعشارِ بیش از decimals ارز دارد، پیش‌فرض متوقف می‌شود.
         // با true شدن، Half-Up گرد می‌شود (تصمیم آگاهانه‌ی صاحب پروژه).
         'allow_migration_rounding' => (bool) env('MELORIN_MONEY_ALLOW_ROUNDING', false),
 

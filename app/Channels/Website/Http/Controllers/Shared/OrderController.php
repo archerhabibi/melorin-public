@@ -10,14 +10,13 @@ use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * فاز W2 بند ۶ و ۸: «Order creation/Display — فقط Request/Display» و
- * «Provisioning Status Display — از Core». این کنترلر هیچ تصمیمی
+ * «Order creation/Display — فقط Request/Display» و «Provisioning Status
+ * Display — از Core». این کنترلر هیچ تصمیمی
  * نمی‌گیرد و هیچ وضعیتی را تغییر نمی‌دهد؛ فقط سفارشی که همین لحظه با
  * CheckoutController ساخته شده (یا هر سفارش قبلی همین مشتری) را
  * نمایش می‌دهد.
  *
- * فهرست کامل سفارش‌ها («Orders» با مالکیت و Context، بند ۳۲ زیرسند)
- * عمداً اینجا نیست — طبق Roadmap آن بخشِ فاز W4 است، نه W2. این کنترلر
+ * فهرست کامل سفارش‌ها در `Account\OrdersController` است؛ این کنترلر
  * فقط صفحه‌ی تک‌سفارشیِ بعد از Checkout را پوشش می‌دهد.
  */
 class OrderController
@@ -25,9 +24,9 @@ class OrderController
     /**
      * مالکیت (بند ۳۲: «فقط Context و مالکیت مجاز») اینجا با یک شرط
      * ساده سنجیده می‌شود، نه یک Policy جدا — چون تنها مصرف‌کننده‌ی
-     * فعلی همین یک متد است؛ اگر W4 فهرست کامل سفارش‌ها را اضافه کرد و
-     * این شرط در جای دوم تکرار شد، آن‌جا باید به یک Policy واقعی
-     * تبدیل شود.
+     * فعلی همین یک متد است؛ فهرست سفارش‌ها (`Account\OrdersController`) همین
+     * الگو را تکرار می‌کند؛ اگر جای سومی پیدا شد، باید به یک Policy
+     * واقعی تبدیل شود.
      */
     public function show(Request $request, int $order, StoreContext $store): View|Response
     {

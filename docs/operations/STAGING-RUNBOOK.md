@@ -43,4 +43,4 @@ php artisan migrate:rollback --step=N --pretend     # N = تعداد migration �
 gunzip -c backup-*.sql.gz | mysql -u USER -p DB
 ```
 و برای کد: `git reset --hard <commit قبلی>` + `composer install` (همان کاری که `update-git.sh` در خطا خودکار می‌کند).
-نتیجه هر ردیف را در `docs/VERIFICATION-MATRIX.md` ثبت کنید.
+نتیجه هر ردیف را در `docs/history/VERIFICATION-MATRIX.md` ثبت کنید.

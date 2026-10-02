@@ -17,7 +17,7 @@ use Tests\Concerns\InteractsWithWebsiteFixtures;
 use Tests\TestCase;
 
 /**
- * فاز ۴ — Email Verification + Gate (Master 2.7 G11، D-7، D-8؛ شکاف C10).
+ * Email Verification + Gate (Master 2.7 G11، D-7، D-8؛ شکاف C10).
  * فقط Purchase و Wallet Charge مسدود می‌شوند؛ Enforcement در Core است.
  */
 class EmailVerificationTest extends TestCase

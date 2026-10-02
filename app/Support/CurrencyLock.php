@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Schema;
 use Throwable;
 
 /**
- * قفل ارز (فاز ۵): «code:decimals» در لحظه‌ی Migration مبالغ در جدول
+ * قفل ارز : «code:decimals» در لحظه‌ی Migration مبالغ در جدول
  * system_meta ثبت می‌شود و از آن به بعد هر مقدار متفاوتِ config با خطای صریح
  * رد می‌شود. مبالغ Minor Unit هستند؛ عوض‌کردن decimals روی داده‌ی موجود
  * (مثلاً ۱۰۰۰ → ۱۰.۰۰) یا عوض‌کردن ارز، موجودی همه را بی‌صدا تغییر می‌دهد.

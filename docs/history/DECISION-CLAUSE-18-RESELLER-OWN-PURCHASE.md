@@ -1,7 +1,7 @@
 # تصمیم بند ۱۸ ↔ Rule 2/13 — خرید شخصی صاحب نماینده از Main
 
 مرجع: بند ۱۸ سند معماری v2.0، بخش «یافته‌های نیازمند تصمیم» در
-`docs/PHASE-14-FINAL-MODEL-TESTS.md` (مورد ۲)، تست
+`docs/history/PHASE-14-FINAL-MODEL-TESTS.md` (مورد ۲)، تست
 `FinalModelSpecTest::open_decision_a_reseller_buying_directly_from_main_pays_which_price`
 (قبلاً Skipped).
 

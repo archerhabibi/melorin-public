@@ -11,7 +11,7 @@ use Tests\Concerns\InteractsWithWebsiteFixtures;
 use Tests\TestCase;
 
 /**
- * فاز ۴ — Guest Retention (Master 2.7 G9، D-4؛ DATA-RETENTION.md؛ شکاف C11):
+ * Guest Retention (Master 2.7 G9، D-4؛ DATA-RETENTION.md؛ شکاف C11):
  * حذف فیزیکی ۶۰ روز پس از انقضا/مصرف.
  */
 class GuestRetentionTest extends TestCase

@@ -8,10 +8,9 @@ use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
- * پچ 3.2.5 (ساخت) + 3.2.10 (Review امنیتی، افزودن state ضد-CSRF) -
- * فاز W3 بند 5 (نیمه‌ی دوم): Telegram-linking.
- * مرجع: docs/PHASE-W3-PART3-TELEGRAM-LINKING.md,
- *       docs/PHASE-W6-PART5-TELEGRAM-REVIEW.md
+ * Telegram-linking (شامل state ضد-CSRF).
+ * پیشینه: docs/history/PHASE-W3-PART3-TELEGRAM-LINKING.md,
+ *       docs/history/PHASE-W6-PART5-TELEGRAM-REVIEW.md
  */
 class TelegramLinkingTest extends TestCase
 {
@@ -113,7 +112,7 @@ class TelegramLinkingTest extends TestCase
             ->assertRedirect(route('website.login'));
     }
 
-    // --- پچ 3.2.10: تست‌های یافته‌ی اصلی Review (ضد Login/Link CSRF) ---
+    // --- ضد Login/Link CSRF (state) ---
 
     #[Test]
     public function a_callback_with_no_session_state_is_rejected_even_with_a_valid_signature(): void

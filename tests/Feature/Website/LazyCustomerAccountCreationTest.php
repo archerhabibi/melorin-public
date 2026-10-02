@@ -14,10 +14,9 @@ use Tests\Concerns\InteractsWithWebsiteFixtures;
 use Tests\TestCase;
 
 /**
- * پچ 3.2.17 - تصمیم صریح صاحب پروژه، override تحلیل قبلی نفر 3
- * (docs/PHASE-W5-PART2-COMPLETION-AND-SECURITY-NOTE.md): «تا خرید
- * انجام نشود نباید CustomerAccount جدید بسازد».
- * مرجع: docs/PHASE-W5-PART3-LAZY-CUSTOMER-ACCOUNT.md
+ * تصمیم صریح صاحب پروژه: «تا خرید انجام نشود نباید CustomerAccount جدید
+ * بسازد». پیشینه: docs/history/PHASE-W5-PART2-COMPLETION-AND-SECURITY-NOTE.md
+ * مرجع: docs/history/PHASE-W5-PART3-LAZY-CUSTOMER-ACCOUNT.md
  */
 class LazyCustomerAccountCreationTest extends TestCase
 {
@@ -42,8 +41,8 @@ class LazyCustomerAccountCreationTest extends TestCase
         $reseller = Reseller::factory()->create(['status' => 'active']);
         $user = User::factory()->create();
 
-        // این دقیقا همان سناریوی «بازدید بدون قصد خرید» است که سؤال
-        // امنیتی نفر 3 را ایجاد کرد - یک GET ساده به یک صفحه‌ی
+        // این دقیقا همان سناریوی «بازدید بدون قصد خرید» است
+        // (ریسک امنیتی عضویت ناخواسته) - یک GET ساده به یک صفحه‌ی
         // auth-only زیر فروشگاه یک نماینده که کاربر هیچ ارتباط قبلی‌ای
         // با آن ندارد.
         $this->actingAs($user)

@@ -16,11 +16,10 @@ use Symfony\Component\HttpFoundation\Response;
 use App\Exceptions\InsufficientBalanceException;
 
 /**
- * فاز W4 بند ۳ Roadmap («Accounts — نمایش اکانت‌های VPN از Core»، بند
- * ۳۳ زیرسند: «بر اساس CustomerAccount و Context Core نمایش داده
- * می‌شوند»). مالکیت اینجا با همان `customer_account_id` سنجیده
- * می‌شود که `EnsureCustomerAccountResolved` (میان‌افزار store.customer،
- * فاز W1) از قبل برای همین User در همین Context Resolve کرده — پس
+ * Accounts — نمایش اکانت‌های VPN از Core («بر اساس CustomerAccount و
+ * Context Core نمایش داده می‌شوند»). مالکیت اینجا با همان `customer_account_id` سنجیده
+ * می‌شود که `EnsureCustomerAccountResolved` (میان‌افزار store.customer)
+ * از قبل برای همین User در همین Context Resolve کرده — پس
  * این کوئری خودش‌به‌خود Context-isolated است (بند ۳۱)، بدون نیاز به
  * فیلتر reseller_id جداگانه‌ای که Order نیاز دارد.
  *
@@ -65,8 +64,7 @@ class AccountsController
     }
 
     /**
-     * فاز W4 بند ۴ Roadmap («Renewal — دقیقاً همانند Core و ربات
-     * تلگرام»، طبق تصمیم صریح). این متد عمداً هیچ منطق مالی/تصمیمی
+     * Renewal — دقیقاً همانند Core و ربات تلگرام. این متد عمداً هیچ منطق مالی/تصمیمی
      * ندارد — فقط همان سه‌تکه که `AccountsHandler::renew()` (ربات
      * تلگرام اصلی) دارد را روی یک درخواست HTTP تکرار می‌کند:
      *   ۱) یک پیش‌بررسیِ UX (نه دروازه‌ی واقعی — آن داخل

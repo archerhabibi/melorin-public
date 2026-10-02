@@ -6,7 +6,7 @@ use InvalidArgumentException;
 use RuntimeException;
 
 /**
- * Money — تنها نقطه‌ی تبدیل، نمایش و محاسبه‌ی مبلغ در Melorin (فاز ۵).
+ * Money — تنها نقطه‌ی تبدیل، نمایش و محاسبه‌ی مبلغ در Melorin .
  *
  * قاعده‌ی نهایی:
  *

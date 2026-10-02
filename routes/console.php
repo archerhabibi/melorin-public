@@ -24,7 +24,7 @@ Artisan::command('provisioning:retry-failed {--limit=25 : حداکثر تعدا�
 
 Schedule::command('provisioning:retry-failed')->everyMinute()->withoutOverlapping(10);
 
-// فاز ۴ (شکاف C11) — Master 2.7 G9 / DATA-RETENTION.md: حذف فیزیکی
+// Master 2.7 G9 / DATA-RETENTION.md: حذف فیزیکی
 // guest_checkouts با وضعیت expired/consumed (و pending گذشته از expires_at)
 // ۶۰ روز پس از انقضا/مصرف. روزانه؛ یک Audit یک‌خطی (تعداد حذف‌شده) می‌نویسد.
 Artisan::command('guest:prune', function () {

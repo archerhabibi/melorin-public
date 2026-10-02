@@ -8,7 +8,7 @@ use App\Services\Core\WalletService;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 /**
- * فاز W0 بند ۵ Roadmap — Adapter نازک روی WalletService. هیچ منطقی
+ * Adapter نازک روی WalletService. هیچ منطقی
  * غیر از صدا زدن مستقیم Core اینجا نیست.
  */
 class WebsiteWalletFacade
@@ -21,7 +21,7 @@ class WebsiteWalletFacade
     }
 
     /**
-     * فاز W4 بند ۱ (پنل کاربری → Wallet): «مشاهده‌ی گردش حساب» — بند
+     * پنل کاربری → Wallet: «مشاهده‌ی گردش حساب» — بند
      * ۳۰ زیرسند. این متد هیچ تصمیمی نمی‌گیرد؛ فقط تراکنش‌های همان
      * Wallet‌ای که Core از قبل برای این User+Context ساخته را
      * صفحه‌بندی‌شده برمی‌گرداند (بند ۳۱: Isolation از طریق همان

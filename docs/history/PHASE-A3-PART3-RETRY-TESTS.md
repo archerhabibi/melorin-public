@@ -1,9 +1,9 @@
 # فاز A3 (سند v2.1) — بخش سوم: تست Retry، Duplicate Retry، عدم Debit مجدد (اقلام ۸ تا ۱۰)
 
 مرجع: بند ۶۹ سند و ادامه‌ی
-[docs/PHASE-A3-PROVISIONING-ATTEMPT-TRACKING.md](./PHASE-A3-PROVISIONING-ATTEMPT-TRACKING.md)
+[docs/history/PHASE-A3-PROVISIONING-ATTEMPT-TRACKING.md](./PHASE-A3-PROVISIONING-ATTEMPT-TRACKING.md)
 (اقلام ۱ تا ۴) و
-[docs/PHASE-A3-PART2-ERROR-AND-TIMESTAMPS.md](./PHASE-A3-PART2-ERROR-AND-TIMESTAMPS.md)
+[docs/history/PHASE-A3-PART2-ERROR-AND-TIMESTAMPS.md](./PHASE-A3-PART2-ERROR-AND-TIMESTAMPS.md)
 (اقلام ۵ تا ۷).
 
 > **دامنه‌ی این پچ:** سه قلمِ آخرِ فازِ A3:

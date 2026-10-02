@@ -1,3 +1,6 @@
+> **Status: DEPRECATED — superseded by `docs/canonical/MASTER-ARCHITECTURE-CONTRACT.md` (Master 2.8).**
+> این سند فقط برای تاریخچه نگهداری می‌شود (قبلاً `ARCHITECTURE.md` در ریشه بود).
+
 # معماری هسته‌ی ملورین (نسخه ۳.۱.۱)
 
 این سند وضعیت واقعی کد بعد از اجرای فازهای A تا G بلوپرینت را توصیف

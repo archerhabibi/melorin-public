@@ -11,7 +11,7 @@ use RuntimeException;
 use Tests\TestCase;
 
 /**
- * فاز ۵ — Migration مبالغ: اعشارِ غیرصفر نباید بی‌صدا گرد شود، و ارز باید قفل شود.
+ * Migration مبالغ: اعشارِ غیرصفر نباید بی‌صدا گرد شود، و ارز باید قفل شود.
  * (RefreshDatabase خودش یک‌بار Migration را روی دیتابیس خالی اجرا کرده؛ این تست‌ها دوباره up() را صدا می‌زنند.)
  */
 class MoneyMigrationTest extends TestCase

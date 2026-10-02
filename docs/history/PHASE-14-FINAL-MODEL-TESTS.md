@@ -47,7 +47,7 @@
 رفعش یک فاز جدا است (برداشتن وابستگی کانال‌ها و پنل به `users.reseller_id` و عبور همه‌چیز از `CustomerAccount`). تست Skipped `known_gap_…` تا آن زمان نشانگر آن است.
 
 ### ۲) تناقض داخل سند: بند ۱۸ ↔ Rule 2 و Rule 13 — ✅ حل شد
-**تصمیم‌گیری و پیاده‌سازی در `docs/DECISION-CLAUSE-18-RESELLER-OWN-PURCHASE.md`.**
+**تصمیم‌گیری و پیاده‌سازی در `docs/history/DECISION-CLAUSE-18-RESELLER-OWN-PURCHASE.md`.**
 خلاصه: Context همچنان `main` می‌ماند (Rule 13)، ولی مبلغ `reseller_price` است (بند ۱۸). تست Skipped به
 `a_reseller_owner_buying_directly_from_main_pays_reseller_price_not_main_price` تبدیل شد.
 

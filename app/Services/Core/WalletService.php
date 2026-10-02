@@ -211,7 +211,7 @@ class WalletService
             $newBalance = (int) $wallet->balance + $signedAmount;
 
             // کف مجاز برای مشتری صفر است و برای نماینده منفیِ سقف بدهی
-            // (بند ۲۰ بلوپرینت). از فاز ۵ همه‌چیز عدد صحیحِ Minor Unit است؛
+            // (بند ۲۰ بلوپرینت). اکنون همه‌چیز عدد صحیحِ Minor Unit است؛
             // مقایسه‌ی دقیق است و epsilon لازم نیست.
             if ($newBalance < $floor) {
                 throw new InsufficientBalanceException;

@@ -16,7 +16,7 @@ use Tests\Concerns\InteractsWithWebsiteFixtures;
 use Tests\TestCase;
 
 /**
- * فاز ۴ — E2E مدل جدید Guest (Master 2.7 §3.2):
+ * E2E مدل Guest (Master 2.7 §3.2):
  * Product → Guest Form (email) → Pending → Register → Verify Email →
  * ادامه‌ی همان خرید → CustomerAccount (Lazy) → Checkout → Order.
  * جایگزین GuestE2ETest و GuestPostPurchaseE2ETest قدیمی (X1/X2/X4 DEPRECATED).

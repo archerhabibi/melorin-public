@@ -19,15 +19,14 @@ use Illuminate\View\View;
 use InvalidArgumentException;
 
 /**
- * فاز W5 (نفر ۳) — بند ۴۹ زیرسند: «Reseller Management سبک روی وب:
- * مشاهده‌ی Customerها/Walletها، Enable/Disable Product، مدیریت
- * Pricingهای مجاز» + بند ۴۶ (ویرایش Branding).
+ * Reseller Management سبک روی وب: مشاهده‌ی Customerها/Walletها،
+ * Enable/Disable Product، مدیریت Pricingهای مجاز، و ویرایش Branding
+ * (Website Contract، بخش Reseller Management).
  *
- * طبق جمله‌ی پایانیِ همان بند («enforcement کامل از Core؛ Website فقط
- * UI است»)، این کنترلر هیچ Business Rule خودش ندارد — دقیقاً همان
- * `ResellerPricingService`/`ResellerCustomerService`/`WalletService`ی
- * را صدا می‌زند که پنل Filament نماینده هم استفاده می‌کند (همان الگوی
- * تکرارشده در کل این فاز: Core یکی است، فقط UI عوض می‌شود).
+ * این کنترلر هیچ Business Rule خودش ندارد («enforcement کامل از Core؛
+ * Website فقط UI است») — همان `ResellerPricingService`/
+ * `ResellerCustomerService`/`WalletService`ی را صدا می‌زند که پنل
+ * Filament نماینده هم استفاده می‌کند.
  *
  * این کنترلر عمداً پشتِ `store.customer` نیست: خودِ نماینده لازم نیست
  * «مشتریِ» فروشگاهِ خودش باشد تا بتواند مدیریتش کند؛ فقط `auth` +

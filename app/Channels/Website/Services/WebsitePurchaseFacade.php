@@ -9,14 +9,14 @@ use App\Services\Core\Purchase\PurchaseService;
 use App\Services\Core\Store\StoreContext;
 
 /**
- * فاز W2 بند ۵: «Payment: Wallet Payment». دقیقاً هم‌الگو با
- * WebsiteWalletFacade و WebsiteCatalogFacade (بند ۵ Roadmap، بخش ۲) —
+ * «Payment: Wallet Payment». هم‌الگو با WebsiteWalletFacade و
+ * WebsiteCatalogFacade —
  * هیچ تصمیم مالی/امنیتی‌ای اینجا گرفته نمی‌شود، فقط صدا زدن مستقیم
  * PurchaseService::purchase() که خودش Guard، PriceSnapshot، تراکنش
  * اتمیک و Provisioning را مدیریت می‌کند (بند ۱۴ بلوپرینت: «تنها نقطه‌ی
  * ورود خرید در کل سیستم»).
  *
- * idempotencyKey را کنترلر از توکن فرم Checkout می‌گیرد (بند ۷ فاز W2:
+ * idempotencyKey را کنترلر از توکن فرم Checkout می‌گیرد (
  * «idempotencyKey از الگوی موجود Bot/Core استفاده شود»)، نه اینکه این
  * لایه خودش چیزی بسازد.
  */
