@@ -18,6 +18,24 @@ class MoneyMigrationTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * این تست‌ها عمداً up() را روی دیتابیسی که از قبل migrate شده دوباره اجرا
+     * می‌کنند و مقدار اعشاری را در ستونی می‌ریزند که قبلاً integer شده؛ این فقط
+     * روی sqlite (typing شل) معنا دارد. روی MySQL/MariaDB ستون BIGINT مقدار
+     * را بی‌صدا گرد می‌کند و DDL هم commit ضمنی می‌زند، یعنی قفل ارز (USD:2)
+     * از rollback تست فرار می‌کند و تمام تست‌های بعدی را مسموم می‌کند.
+     * رفتار واقعی migration روی MySQL با migrate:fresh و migrate روی دیتای
+     * قدیمی (مرحله Staging) بررسی می‌شود، نه با این تست.
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        if (DB::connection()->getDriverName() !== 'sqlite') {
+            $this->markTestSkipped('MoneyMigrationTest فقط روی sqlite معتبر است؛ روی MySQL با Staging تأیید می‌شود.');
+        }
+    }
+
     protected function migration(): object
     {
         return require base_path('database/migrations/2026_10_01_000001_convert_money_columns_to_integer_minor_unit.php');

@@ -1,10 +1,10 @@
 # Melorin — Verification Matrix
 
-**Contract:** Master 2.8 · Website 1.8 · **Code baseline:** 3.3.3 (بعد از فاز ۶ — Cleanup)
+**Contract:** Master 2.8 · Website 1.8 · **Code baseline:** 3.3.4 (بعد از فاز ۷ — Full Test Environment)
 
 **راهنما:** ✅ انجام و مستند · ⚠️ ناقص یا **مغایر Contract** · ☐ انجام نشده · — نامربوط · ⛔ DEPRECATED
 
-**قاعده‌ی صداقت:** ستون *Unit/Feature* فقط وقتی ✅ است که تست‌ها روی یک محیط واقعی اجرا و سبز شده باشند. آخرین اجرا (پس از فاز ۵ و دوباره پس از فاز ۶): `php artisan test` ← **۴۸۳ تست، ۱۶۵۸ assertion، همه سبز** (اجرای مالک پروژه روی Windows/MySQL-migrate + اجرای مستقل روی PHP 8.3/SQLite). این فقط سطح Unit/Feature است؛ E2E روی محیط واقعی، Security، Staging و Production هنوز ☐ هستند.
+**قاعده‌ی صداقت:** ستون *Unit/Feature* فقط وقتی ✅ است که تست‌ها روی یک محیط واقعی اجرا و سبز شده باشند. آخرین اجرا (پس از فاز ۵ و دوباره پس از فاز ۶): `php artisan test` ← **SQLite: ۴۸۵ تست سبز؛ MariaDB 10.11: ۴۷۶ سبز + ۹ skip** (فاز ۷؛ PHP 8.3 لینوکس، `migrate:fresh` بدون خطا). قبل از آن: ۴۸۳ تست (اجرای مالک روی Windows + اجرای مستقل SQLite). این فقط سطح Unit/Feature است؛ E2E روی محیط واقعی، Security، Staging و Production هنوز ☐ هستند.
 
 ## ۱. ماتریس اصلی
 

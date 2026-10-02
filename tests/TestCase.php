@@ -37,20 +37,46 @@ abstract class TestCase extends BaseTestCase
         return $app;
     }
 
+    /**
+     * مسیر اختیاریِ تست روی MySQL/MariaDB واقعی (برای تست‌های concurrency و
+     * lockForUpdate که sqlite توان بررسی‌شان را ندارد). پیش‌فرض بسته است و
+     * فقط وقتی باز می‌شود که *هر چهار* شرط هم‌زمان برقرار باشد:
+     *   1) متغیر محیطی MELORIN_TEST_ALLOW_MYSQL دقیقاً برابر 1 باشد
+     *      (در phpunit.xml تنظیم نشده؛ فقط با export در shell/CI)
+     *   2) اتصال mysql یا mariadb باشد
+     *   3) نام دیتابیس دقیقاً melorin_ci_test باشد (نه prefix، نه شبیه آن)
+     *   4) میزبان فقط محلی باشد: 127.0.0.1 ، localhost یا ::1
+     * هیچ‌کدام از این‌ها با .env یا phpunit.xml ست نمی‌شود، پس یک اشتباه در
+     * پیکربندی نمی‌تواند تست‌ها را به دیتابیس تولید برساند.
+     */
+    private function isExplicitCiDatabase($app, string $connection, string $database): bool
+    {
+        if (getenv('MELORIN_TEST_ALLOW_MYSQL') !== '1') {
+            return false;
+        }
+
+        $host = (string) $app['config']->get("database.connections.{$connection}.host");
+
+        return in_array($connection, ['mysql', 'mariadb'], true)
+            && $database === 'melorin_ci_test'
+            && in_array($host, ['127.0.0.1', 'localhost', '::1'], true);
+    }
+
     private function guardAgainstNonTestDatabase($app): void
     {
         $connection = $app['config']->get('database.default');
         $database = (string) $app['config']->get("database.connections.{$connection}.database");
 
-        $isSafe = $connection === 'sqlite' && $database === ':memory:';
+        $isSafe = ($connection === 'sqlite' && $database === ':memory:')
+            || $this->isExplicitCiDatabase($app, $connection, $database);
 
         if (! $isSafe) {
             throw new RuntimeException(
                 "🔴 SAFETY ABORT: تست‌ها می‌خواستند با اتصال '{$connection}' به دیتابیس ".
                 "'{$database}' وصل شوند که دیتابیس واقعی/تولید به‌نظر می‌رسد. ".
                 'برای جلوگیری از پاک‌شدن اطلاعات واقعی، اجرای تست متوقف شد. '.
-                'تنها اتصال مجاز برای تست، sqlite :memory: است — عمداً هیچ نام '.
-                'دیتابیس دیگری (حتی مثل melorin_testing) پذیرفته نمی‌شود. '.
+                'تنها اتصال مجاز برای تست، sqlite :memory: است؛ استثنا فقط با '.
+                'MELORIN_TEST_ALLOW_MYSQL=1 روی دیتابیس محلیِ melorin_ci_test. '.
                 "phpunit.xml را بررسی کنید — باید داشته باشد:\n".
                 "  <env name=\"DB_CONNECTION\" value=\"sqlite\"/>\n".
                 '  <env name="DB_DATABASE" value=":memory:"/>'

@@ -36,3 +36,59 @@ jobs:
 
       - name: Run tests
         run: php artisan test
+
+  tests-mariadb:
+    # همان suite روی MariaDB واقعی: ستون‌های varchar/text، strict mode، قفل ردیف
+    # (lockForUpdate) و DDL واقعی را می‌سنجد که sqlite توان بررسی‌شان را ندارد.
+    # Guard ایمنی tests/TestCase.php فقط با این flag و دیتابیس melorin_ci_test روی localhost باز می‌شود.
+    runs-on: ubuntu-latest
+
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_DATABASE: melorin_ci_test
+          MARIADB_ROOT_PASSWORD: ci_root_pw
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      MELORIN_TEST_ALLOW_MYSQL: '1'
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: melorin_ci_test
+      DB_USERNAME: root
+      DB_PASSWORD: ci_root_pw
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, xml, ctype, iconv, intl, pdo, pdo_mysql
+          coverage: none
+
+      - name: Install Composer dependencies
+        uses: ramsey/composer-install@v3
+        with:
+          dependency-versions: locked
+
+      - name: Prepare Laravel application
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Fresh migrate on MariaDB
+        run: php artisan migrate:fresh --force
+
+      - name: Run tests on MariaDB
+        run: php artisan test

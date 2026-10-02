@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('resellers', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->string('bot_token')->nullable(); // encrypted via model cast
+            $table->text('bot_token')->nullable(); // encrypted via model cast؛ payload رمزنگاری‌شده >255 کاراکتر است، پس text (نه varchar)
             $table->enum('status', ['active', 'inactive'])->default('active');
             $table->json('min_sale_price_rule')->nullable();
             $table->timestamps();

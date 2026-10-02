@@ -207,9 +207,10 @@ class WalletContextStructureTest extends TestCase
         // شخصیِ مالک در Main (شکل جدید-قدیمی) + اعتبار نماینده (owner=Reseller)
         $w1 = $insert(['owner_type' => CustomerAccount::class, 'owner_id' => $ownerMain->id, 'balance' => 300]);
         $w2 = $insert(['owner_type' => Reseller::class, 'owner_id' => $reseller->id, 'balance' => 1000]);
+        // (مبالغ صحیح؛ مدل پولی integer است و ستون legacy روی MySQL کسر را گرد می‌کند)
         // Wallet قدیمیِ User (owner=User) + Walletی که بعداً برای همان CustomerAccount ساخته شده
-        $w3 = $insert(['owner_type' => User::class, 'owner_id' => $ali->id, 'customer_account_id' => $aliInStore->id, 'balance' => 45.50]);
-        $w4 = $insert(['owner_type' => CustomerAccount::class, 'owner_id' => $aliInStore->id, 'balance' => 4.50]);
+        $w3 = $insert(['owner_type' => User::class, 'owner_id' => $ali->id, 'customer_account_id' => $aliInStore->id, 'balance' => 45]);
+        $w4 = $insert(['owner_type' => CustomerAccount::class, 'owner_id' => $aliInStore->id, 'balance' => 5]);
         // غیرقابل‌نگاشت: نماینده‌ای که وجود ندارد
         $w5 = $insert(['owner_type' => Reseller::class, 'owner_id' => 999999, 'balance' => 7]);
 

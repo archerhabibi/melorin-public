@@ -55,12 +55,12 @@ class ResellerBrandingTest extends TestCase
     public function an_invalid_stored_color_falls_back_to_the_default_instead_of_reaching_the_stylesheet(): void
     {
         $reseller = Reseller::factory()->create();
-        ResellerWebsiteSetting::create(['reseller_id' => $reseller->id, 'brand_color' => 'red;} body{display:none']);
+        ResellerWebsiteSetting::create(['reseller_id' => $reseller->id, 'brand_color' => 'red;}a{']); // ۷ کاراکتر: حداکثر طول ستون؛ بلندتر را خود MySQL رد می‌کند
 
         $response = $this->get(route('website.store.home', $reseller->slug))->assertOk();
 
         $response->assertSee('--brand: #2563eb', false);
-        $response->assertDontSee('display:none', false);
+        $response->assertDontSee('red;}a{', false);
     }
 
     #[Test]

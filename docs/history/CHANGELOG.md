@@ -5,6 +5,12 @@
 
 ---
 
+3.3.4 - فاز ۷ (Full Test Environment): suite روی MariaDB 10.11 هم اجرا شد (۴۷۶ سبز + ۹ skip) و SQLite ۴۸۵ سبز. باگ `resellers.bot_token` (varchar برای مقدار encrypted) در Migration اصلی به text اصلاح شد؛ guard برای همه‌ی ستون‌های encrypted؛ job `tests-mariadb` در CI.
+
+جزئیات: docs/history/PHASE-7-TEST-ENVIRONMENT.md
+
+---
+
 3.3.3 - فاز ۶ (Cleanup): ساختار docs (canonical/operations/history)، VERSION تک‌شماره، حذف کامنت‌های تاریخچه‌ای/کد مرده/import بلااستفاده/هلپر تکراری تست. بدون تغییر رفتار؛ ۴۸۳ تست سبز.
 
 جزئیات: docs/history/PHASE-6-CLEANUP.md
