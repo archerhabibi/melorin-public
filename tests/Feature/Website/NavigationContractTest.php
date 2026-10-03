@@ -57,6 +57,16 @@ class NavigationContractTest extends TestCase
         $this->actingAs($this->customer())
             ->get(route('website.home'))
             ->assertOk()
-            ->assertSee(route('website.wallet.show'), false);
+            ->assertSee(route('website.dashboard'), false);
+    }
+
+    #[Test]
+    public function the_dashboard_is_the_first_account_menu_item_and_the_breadcrumb_root(): void
+    {
+        $this->actingAs($this->customer())
+            ->get(route('website.wallet.show'))
+            ->assertOk()
+            ->assertSeeInOrder(['داشبورد', 'کیف‌پول'])
+            ->assertSee('<a href="'.route('website.dashboard').'" class="link">حساب من</a>', false);
     }
 }

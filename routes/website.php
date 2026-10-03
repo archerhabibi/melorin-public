@@ -1,6 +1,7 @@
 <?php
 
 use App\Channels\Website\Http\Controllers\Account\AccountsController;
+use App\Channels\Website\Http\Controllers\Account\DashboardController;
 use App\Channels\Website\Http\Controllers\Account\OrdersController;
 use App\Channels\Website\Http\Controllers\Account\ReferralController;
 use App\Channels\Website\Http\Controllers\Account\WalletController;
@@ -172,6 +173,9 @@ $registerSharedRoutes = function () {
             // بخش ۹.۶: «Upload رسید: ۵/دقیقه».
             ->middleware('throttle:5,1')
             ->name('wallet.receipt.store');
+
+        // --- B3.1 Customer Dashboard: نقطه‌ی ورود پنل کاربری ---
+        Route::get('/dashboard', [DashboardController::class, 'show'])->name('dashboard');
 
         // --- پنل کاربری: Wallet + Orders + Accounts ---
         Route::get('/wallet', [WalletController::class, 'show'])->name('wallet.show');

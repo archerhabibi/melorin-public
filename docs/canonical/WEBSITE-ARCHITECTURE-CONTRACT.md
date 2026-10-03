@@ -127,7 +127,7 @@ TBD ≠ اجازه‌ی تصمیم در Channel. هر TBD: `Analyze → Check Ma
 | عمومی | `/`، `/products/{product}` | — |
 | Guest | `GET/POST /products/{product}/guest-checkout`، `GET /guest-checkout/pending`، `POST /guest-checkout/cancel` (B2.3) | `throttle:10,1` روی POST |
 | Auth (guest-only) | `/register`، `/login`، `/forgot-password`، `/reset-password` | Login `5/min`؛ Forgot GET `3/hr`؛ Forgot POST IP `30/hr` + per-email `3/hr` |
-| مشتری | `/products/{product}/checkout`، `/orders/{order}`، `/wallet`، `/wallet/charge`، `/wallet/charge/{payment}/receipt`، `/orders`، `/accounts`، `/accounts/{account}/renew`، `/referral`، `/profile`، `/identity/telegram/callback`، `/sign-out` | `auth` + `store.customer` |
+| مشتری | `/dashboard` (B3.1)، `/products/{product}/checkout`، `/orders/{order}`، `/wallet`، `/wallet/charge`، `/wallet/charge/{payment}/receipt`، `/orders`، `/accounts`، `/accounts/{account}/renew`، `/referral`، `/profile`، `/identity/telegram/callback`، `/sign-out` | `auth` + `store.customer` |
 
 Email Verification (فقط Context اصلی، پشت `auth`): `GET /email/verify` (notice)، `GET /email/verify/{id}/{hash}` (`signed` + `throttle:6,1`)، `POST /email/verification-notification` (`throttle:6,1`).
 

@@ -59,7 +59,7 @@
                 </button>
 
                 @auth
-                    <a href="{{ $storeContext->isReseller() ? route('website.store.wallet.show', $storeContext->reseller->slug) : route('website.wallet.show') }}"
+                    <a href="{{ $storeContext->isReseller() ? route('website.store.dashboard', $storeContext->reseller->slug) : route('website.dashboard') }}"
                        class="nav-link flex items-center gap-1.5">
                         <x-ui.icon name="user" :size="16" />
                         <span class="hidden sm:inline">{{ auth()->user()->full_name }}</span>

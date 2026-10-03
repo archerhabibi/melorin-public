@@ -39,6 +39,7 @@
 | Guest Identity Flow (B2.3: جایگزینی/لغو نشست، کاربر واردشده، تصادم Case-insensitive، Audit مصرف) | ✅ | — | ✅ *(نوشته‌شده؛ اجرا نشده)* | — | — | ☐ | ☐ |
 | Account Linking (B2.4: Google link/unlink، Telegram unlink، اولین رمز، ضد Lock-out، بدون Merge) | ✅ | — | ✅ *(نوشته‌شده؛ اجرا نشده)* | — | — | ☐ | ☐ |
 | Session Security (B2.5: سیاست نشست، سقف مطلق، کاربر غیرفعال، فهرست/بستن دستگاه‌ها، تغییر رمز، Preflight) | ✅ | — | ✅ | — | — | ☐ | ☐ |
+| Customer Dashboard (B3.1: سرویس‌های فعال، کیف‌پول، اعلان‌های مشتق‌شده، Context-isolation، بدون نوشتن روی GET) | ✅ | — | ✅ *(نوشته‌شده؛ اجرا نشده)* | — | — | ☐ | ☐ |
 | بازگشت به Checkout پس از شارژ (D-3) | ✅ | ✅ *(لینک بازگشت)* | ✅ | ☐ | — | ☐ | ☐ |
 | Security Headers/CSP/Rate Limit/Trusted Proxies | ✅ *(Website §22، §25)* | ✅ | ✅ *(`Phase8SecurityTest`)* | — | ⚠️ *Self-audit فاز ۸* | ☐ | ☐ |
 | Money Representation (بدون float، ارز قابل‌تنظیم) | ✅ *(M1–M8)* | ✅ | ✅ | — | — | ☐ *(Migration روی کپی DB)* | ☐ |

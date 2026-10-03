@@ -64,6 +64,52 @@ class Account extends Model
     }
 
     /**
+     * سرویسِ «فعالِ این لحظه»: status=active و هنوز منقضی نشده (expires_at خالی = بدون انقضا).
+     * مرجع واحد برای شمارش/فهرست داشبورد؛ شرط‌ها در Controller/View تکرار نمی‌شوند.
+     */
+    public function scopeActiveNow($query)
+    {
+        return $query->where('status', 'active')
+            ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()));
+    }
+
+    /** سرویسِ منقضی: status=expired، یا هنوز active ولی تاریخ انقضا گذشته (sync با پنل عقب است). */
+    public function scopeLapsed($query)
+    {
+        return $query->where(fn ($q) => $q->where('status', 'expired')
+            ->orWhere(fn ($q2) => $q2->where('status', 'active')->where('expires_at', '<=', now())));
+    }
+
+    /**
+     * روزهای باقی‌مانده (گردشده به بالا؛ هیچ‌وقت منفی نیست). null = بدون تاریخ انقضا.
+     * محاسبه با timestamp است تا به نسخه‌ی Carbon (علامتِ diffIn*) وابسته نباشد.
+     */
+    public function remainingDays(): ?int
+    {
+        if ($this->expires_at === null) {
+            return null;
+        }
+
+        return max(0, (int) ceil(($this->expires_at->getTimestamp() - now()->getTimestamp()) / 86400));
+    }
+
+    /**
+     * درصد حجم مصرف‌شده (۰ تا ۱۰۰). null = نامحدود. اگر مصرف از کل بیشتر ثبت شده
+     * (تأخیر sync) ۱۰۰ برمی‌گردد؛ ۹۹٫۹٪ به ۱۰۰ گرد نمی‌شود تا «تمام‌شده» دقیق بماند.
+     */
+    public function trafficUsagePercent(): ?int
+    {
+        if ($this->traffic_gb === null || (float) $this->traffic_gb <= 0) {
+            return null;
+        }
+
+        $used = (float) ($this->traffic_used_gb ?? 0);
+        $total = (float) $this->traffic_gb;
+
+        return $used >= $total ? 100 : max(0, (int) floor($used / $total * 100));
+    }
+
+    /**
      * محدودسازی اکانت‌ها به آن‌هایی که سفارش‌شان متعلق به یک نماینده‌ی
      * مشخص است — طبق «اصل طلایی مشتری نماینده» (سند نیازمندی، بند ۲):
      * حتی وقتی مشتری خودش عضو یک Reseller است، در بستر یک ربات/پنل

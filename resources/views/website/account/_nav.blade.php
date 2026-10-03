@@ -16,6 +16,7 @@
         : route('website.'.$name);
 
     $items = [
+        ['route' => 'dashboard',     'active' => '*dashboard',     'icon' => 'home',     'label' => 'داشبورد'],
         ['route' => 'wallet.show',   'active' => '*wallet.show',   'icon' => 'wallet',   'label' => 'کیف‌پول'],
         ['route' => 'orders.index',  'active' => '*orders.index',  'icon' => 'orders',   'label' => 'سفارش‌ها'],
         ['route' => 'accounts.index', 'active' => '*accounts.*',   'icon' => 'server',   'label' => 'اکانت‌های من'],
@@ -28,7 +29,7 @@
     $deeper = $crumbs ?? [];
     $trail = [
         ['label' => 'خانه', 'url' => $store->isReseller() ? route('website.store.home', $store->reseller->slug) : route('website.home')],
-        ['label' => 'حساب من', 'url' => $accountNavRoute('wallet.show')],
+        ['label' => 'حساب من', 'url' => $accountNavRoute('dashboard')],
     ];
     if ($activeItem) {
         $trail[] = ['label' => $activeItem['label'], 'url' => $deeper ? $accountNavRoute($activeItem['route']) : null];
