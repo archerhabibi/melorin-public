@@ -2,6 +2,7 @@
 
 namespace App\Channels\Website\Http\Controllers\Auth;
 
+use App\Services\Core\Identity\EmailAuthService;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -22,6 +23,8 @@ use Illuminate\View\View;
  */
 class EmailVerificationController
 {
+    public function __construct(protected EmailAuthService $emailAuth) {}
+
     public function notice(Request $request): RedirectResponse|View
     {
         if ($request->user()->hasVerifiedEmail()) {
@@ -34,7 +37,12 @@ class EmailVerificationController
     public function verify(EmailVerificationRequest $request): RedirectResponse
     {
         // fulfill(): علامت‌گذاری + رویداد Verified؛ برای کاربر تأییدشده بی‌اثر است.
+        $wasVerified = $request->user()->hasVerifiedEmail();
+
         $request->fulfill();
+
+        // E3: Audit فقط برای گذار واقعی «تأییدنشده ⇒ تأییدشده».
+        $this->emailAuth->recordLinkVerification($request->user(), $wasVerified);
 
         return redirect()
             ->intended(route('website.home'))

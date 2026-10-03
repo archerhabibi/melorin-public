@@ -172,11 +172,14 @@ class ResellerGuestCheckoutTest extends TestCase
         $this->assertAuthenticatedAs($user);
         $this->assertEquals('pending', $guest->fresh()->status);
 
-        // GET هیچ CustomerAccount نمی‌سازد (Lazy).
+        // G21: خودِ ورود موفق، عضویت همین فروشگاه را ساخته؛ GET بعدی چیز اضافه‌ای نمی‌سازد.
+        $before = app(IdentityService::class)->findCustomerAccount($user, StoreContext::reseller($reseller));
+        $this->assertNotNull($before);
         $this->get(route('website.store.checkout.show', [$reseller->slug, $product->id]))->assertOk();
-        $this->assertNull(app(IdentityService::class)->findCustomerAccount($user, StoreContext::reseller($reseller)));
+        $this->assertSame(1, \App\Models\CustomerAccount::query()->where('user_id', $user->id)->count());
 
         $customer = app(IdentityService::class)->resolveCustomerAccount($user, StoreContext::reseller($reseller));
+        $this->assertEquals($before->id, $customer->id);
         $this->assertEquals($reseller->id, $customer->reseller_id);
 
         app(WalletService::class)->credit($customer, 200000);

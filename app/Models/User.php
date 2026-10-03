@@ -55,6 +55,12 @@ class User extends Authenticatable implements FilamentUser, HasName, HasTenants,
         return $this->hasMany(CustomerAccount::class);
     }
 
+    /** هویت‌های بیرونی (Google، ...) — B2.1. */
+    public function identities(): HasMany
+    {
+        return $this->hasMany(UserIdentity::class);
+    }
+
     public function referrer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'referrer_id');

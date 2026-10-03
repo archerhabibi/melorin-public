@@ -7,6 +7,8 @@
 | MASTER-ARCHITECTURE-CONTRACT.md | 2.8 | تنها مرجع معماری (CANONICAL) |
 | WEBSITE-ARCHITECTURE-CONTRACT.md | 1.9 (Parent: Master 2.8) | Contract کانال Website |
 | VERIFICATION-MATRIX.md | Contract 2.8 / 1.9 | وضعیت Contract→Code→Test→Production + شکاف‌ها |
+| GOOGLE-SIGNIN-CONTRACT.md | 1.2 (Parent: Master 2.8 / Website 1.9) | Google Sign-In (B2.1؛ G12–G21) |
+| EMAIL-AUTH-CONTRACT.md | 1.0 (Parent: Master 2.8 / Website 1.9 / Google 1.2) | Email Authentication (B2.2؛ E1–E6) |
 | DATA-RETENTION.md | — | Retention (Guest ۶۰ روز؛ بقیه تأییدشده) |
 
 ## سایر پوشه‌ها

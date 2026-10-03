@@ -6,6 +6,7 @@ use App\Channels\Website\Http\Controllers\Account\ReferralController;
 use App\Channels\Website\Http\Controllers\Account\WalletController;
 use App\Channels\Website\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Channels\Website\Http\Controllers\Auth\EmailVerificationController;
+use App\Channels\Website\Http\Controllers\Auth\GoogleAuthController;
 use App\Channels\Website\Http\Controllers\Auth\NewPasswordController;
 use App\Channels\Website\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Channels\Website\Http\Controllers\Auth\RegisteredUserController;
@@ -73,6 +74,12 @@ $registerSharedRoutes = function () {
         Route::post('/login', [AuthenticatedSessionController::class, 'store'])
             ->middleware('throttle:5,1')
             ->name('login.store');
+
+        // B2.1 — Google Sign-In (GOOGLE-SIGNIN-CONTRACT.md). شروع در هر دو Context؛ callback ثابت و فقط Main
+        // (پایین‌تر). بدون GOOGLE_CLIENT_ID/SECRET هر دو 404 می‌دهند.
+        Route::get('/auth/google', [GoogleAuthController::class, 'redirect'])
+            ->middleware('throttle:10,1')
+            ->name('auth.google.redirect');
 
         Route::get('/forgot-password', [PasswordResetLinkController::class, 'create'])
             ->middleware('throttle:3,60')
@@ -184,6 +191,17 @@ Route::middleware(['web', 'store.context', 'website.csp', 'auth'])->group(functi
     Route::post('/email/verification-notification', [EmailVerificationController::class, 'send'])
         ->middleware('throttle:6,1')
         ->name('verification.send');
+});
+
+/*
+ * Google Sign-In callback (B2.1). Redirect URI گوگل باید یک آدرس ثابت باشد، پس فقط روی Context اصلی
+ * ثبت می‌شود؛ مقصد برگشت (نماینده/ادامه‌ی خرید) سمت سرور در Session نگه داشته شده است.
+ * `guest`: کاربر واردشده نیازی به این مسیر ندارد (Link کردن برای کاربر واردشده = B2.4).
+ */
+Route::middleware(['web', 'store.context', 'website.csp', 'guest'])->group(function () {
+    Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])
+        ->middleware('throttle:10,1')
+        ->name('auth.google.callback');
 });
 
 // CSP فقط روی هر دو گروه Website اعمال می‌شود — نه سراسری روی 'web'

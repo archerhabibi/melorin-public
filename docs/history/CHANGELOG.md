@@ -5,6 +5,16 @@
 
 ---
 
+3.3.10 - B2.2 Email Authentication (Contract مستقل `EMAIL-AUTH-CONTRACT.md`، بدون تغییر Schema): (E1) Email در Register/Login/Forgot/Reset trim+lowercase و تطبیق Case-insensitive (`Identity\EmailIdentity`)، یکتایی Register شامل Soft-deleted، Rate Limit روی Email نرمال‌شده؛ (E2) Reset موفق: Email تأییدنشده ⇒ تأییدشده + remember_token جدید + ابطال Sessionهای User (ضد Pre-hijack؛ فقط `SESSION_DRIVER=database`) + Audit `identity.password_reset`؛ (E3) Audit تأیید با لینک (`identity.email_verified`)؛ منطق در `Identity\EmailAuthService`. کاربر Google بدون رمز از Reset اولین رمزش را می‌گیرد (تست). خارج از دامنه: Change Email (D-12)، Set Password از Profile (D-13/B2.4)، پیام Register (D-11). تست‌ها: `EmailAuthTest` ۱۵ تست سبز (SQLite).
+
+---
+
+3.3.9 - B2.1.1 (G21 گسترش): ورود موفق با **Email+Password** هم مثل Google، CustomerAccount فروشگاه مبدأ را Resolve/می‌سازد (`Identity\LoginMembershipService`، مشترک بین دو روش؛ Audit: `identity.password_customer_account_created`). Register همچنان نمی‌سازد. تست `ResellerGuestCheckoutTest` که Lazy بعد از ورود را قفل می‌کرد، مطابق تصمیم جدید اصلاح شد.
+
+3.3.9 - B2.1 Google Sign-In (Opt-in): OIDC Authorization Code + PKCE + state + nonce بدون Socialite؛ جدول `user_identities` (کلید `(provider, sub)`)؛ `ExternalIdentityService` در Core (Link فقط با Email تأییدشده‌ی دو طرف، رد Email محلی تأییدنشده، رد کاربر غیرفعال/حذف‌شده)؛ callback ثابت روی Context اصلی با مقصد برگشت سمت سرور (نماینده/ادامه‌ی خرید Guest)؛ `LoginRequest`: کاربر بدون رمز دیگر 500 نمی‌دهد و کاربر غیرفعال/مسدود وارد نمی‌شود. Contract مستقل: `docs/canonical/GOOGLE-SIGNIN-CONTRACT.md` (D-6 بازگشایی و بسته شد؛ D-9/D-10 باز). **G21 (تصمیم صاحب پروژه، استثنای R7):** ورود/ثبت‌نام/Link موفق با Google، CustomerAccount همان User را در فروشگاه مبدأ (اصلی یا نماینده؛ سمت سرور در Session) Resolve/می‌سازد؛ Idempotent، بدون Wallet/Order، مسیر رد‌شده چیزی نمی‌سازد، شکست ساخت ورود را نمی‌شکند؛ Audit: `identity.google_customer_account_created`. اصلاح: متد کمکی `callback()` در `GoogleLoginTest` با متد `final` خود PHPUnit تداخل داشت و کل فایل لود نمی‌شد ⇒ `hitCallback()`. تست‌ها: `GoogleLoginTest` ۴۰ تست سبز (SQLite).
+
+---
+
 3.3.8 - تکمیل فاز ۹: `StuckOrderWatchdog` + `php artisan provisioning:recover-stuck` (هر ۵ دقیقه) برای بستن G-9-1 — سفارشِ گیرکرده در `provisioning` بیش از ۱۵ دقیقه: اگر اکانت ثبت شده باشد ← `account_created`، وگرنه ← `provision_failed` **بدون Retry خودکار و بدون هیچ حرکت مالی** (تصمیم Retry اجباری/Refund با ادمین)؛ بستن G-9-3 — `update-git.sh` از `storage/app` (رسیدها/لوگوها) هم Backup می‌گیرد. ۶ تست جدید. اجرای واقعی Staging و G-9-2 (Adopt اکانت یتیم) هنوز باز است.
 
 ---

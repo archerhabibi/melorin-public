@@ -44,6 +44,8 @@
             <button type="submit" class="bg-brand w-full py-2 rounded text-on-brand">ثبت‌نام</button>
         </form>
 
+        @include('website.auth.partials.google-button')
+
         <div class="mt-4 text-sm text-center">
             <a href="{{ $storeContext->isReseller() ? route('website.store.login', $storeContext->reseller->slug) : route('website.login') }}" class="text-muted hover:text-text">حساب دارید؟ وارد شوید</a>
         </div>

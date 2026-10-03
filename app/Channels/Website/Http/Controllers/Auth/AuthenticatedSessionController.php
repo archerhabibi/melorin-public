@@ -5,6 +5,7 @@ namespace App\Channels\Website\Http\Controllers\Auth;
 use App\Channels\Website\Http\Requests\Auth\LoginRequest;
 use App\Channels\Website\Support\GuestCheckoutContinuation;
 use App\Channels\Website\Support\ResolvesWebsiteRouteNames;
+use App\Services\Core\Identity\LoginMembershipService;
 use App\Services\Core\Store\StoreContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -13,12 +14,17 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 
 /**
  * تصمیم ۹.۲ (Session-based / Cookie، نه Token).
+ *
+ * G21: ورود موفق ⇒ CustomerAccount فروشگاه مبدأ (استثنای R7؛ هم‌تراز Google).
  */
 class AuthenticatedSessionController
 {
     use ResolvesWebsiteRouteNames;
 
-    public function __construct(protected GuestCheckoutContinuation $guestContinuation) {}
+    public function __construct(
+        protected GuestCheckoutContinuation $guestContinuation,
+        protected LoginMembershipService $membership,
+    ) {}
 
     public function create(): View
     {
@@ -37,6 +43,10 @@ class AuthenticatedSessionController
         $request->authenticate();
 
         $request->session()->regenerate();
+
+        // G21: ورود موفق با Email+Password هم مثل Google، CustomerAccount فروشگاه مبدأ
+        // (Context همین درخواست) را Resolve/می‌سازد. ورودِ ردشده تا اینجا نمی‌رسد.
+        $this->membership->ensure($request->user(), $store, 'password');
 
         return redirect()->intended($guestCheckoutUrl ?? $this->websiteRoute($request, 'home'));
     }

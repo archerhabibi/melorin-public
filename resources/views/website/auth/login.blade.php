@@ -19,6 +19,8 @@
             <x-ui.button type="submit" block>ورود</x-ui.button>
         </form>
 
+        @include('website.auth.partials.google-button')
+
         <div class="mt-4 flex justify-between text-sm">
             <a href="{{ $storeContext->isReseller() ? route('website.store.password.request', $storeContext->reseller->slug) : route('website.password.request') }}" class="link">فراموشی رمز عبور</a>
             <a href="{{ $storeContext->isReseller() ? route('website.store.register', $storeContext->reseller->slug) : route('website.register') }}" class="link">ساخت حساب جدید</a>

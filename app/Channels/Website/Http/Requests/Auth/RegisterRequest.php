@@ -2,6 +2,7 @@
 
 namespace App\Channels\Website\Http\Requests\Auth;
 
+use App\Services\Core\Identity\EmailIdentity;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rules\Password;
 
@@ -17,11 +18,25 @@ class RegisterRequest extends FormRequest
         return true;
     }
 
+    /** E1: Email قبل از اعتبارسنجی و ذخیره trim + lowercase می‌شود. */
+    protected function prepareForValidation(): void
+    {
+        if (is_string($this->input('email'))) {
+            $this->merge(['email' => EmailIdentity::normalize($this->input('email'))]);
+        }
+    }
+
     public function rules(): array
     {
         return [
             'full_name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+            'email' => [
+                'required', 'string', 'email', 'max:255',
+                // E1: یکتایی Case-insensitive و شامل Soft-deleted (مثل Unique Index).
+                fn (string $attribute, mixed $value, \Closure $fail) => EmailIdentity::isTaken((string) $value)
+                    ? $fail('این ایمیل قبلاً ثبت شده است.')
+                    : null,
+            ],
             'phone' => ['nullable', 'string', 'max:20'],
             'password' => ['required', 'confirmed', Password::defaults()],
         ];

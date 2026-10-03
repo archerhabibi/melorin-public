@@ -92,9 +92,10 @@ class CheckoutController
             return $this->redirectToVerification($request, $productModel->id);
         }
 
-        // CustomerAccount فقط در همین لحظه
-        // (یک خرید واقعی) ساخته می‌شود — نه زودتر توسط میان‌افزار روی
-        // صرفِ یک GET. این تنها نقطه‌ای‌ست که مجاز است آن را بسازد.
+        // CustomerAccount در لحظه‌ی خرید (Lazy) Resolve/ساخته می‌شود — نه
+        // توسط میان‌افزار روی یک GET. تنها استثنا: ورود موفق (Google یا Email+Password) که
+        // عضویت فروشگاه مبدأ را از قبل می‌سازد (G21)؛ این Resolve آن را
+        // بی‌تکرار پیدا می‌کند.
         $customer = $this->identity->resolveCustomerAccount($request->user(), $store);
 
         try {

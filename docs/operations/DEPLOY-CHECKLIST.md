@@ -42,3 +42,17 @@ Core (تکمیل‌شده)
 طبق بند 128 سند مادر: وقتی همه‌ی ردیف‌های docs/history/VERIFICATION-MATRIX.md
 به PRODUCTION VERIFIED برسند. تا امروز (پچ 3.2.13)، هیچ ردیفی به آن‌جا
 نرسیده - چون هنوز حتی یک بار روی محیط Staging واقعی اجرا نشده‌اند.
+
+## Email Authentication (B2.2)
+
+1. `.env`: `SESSION_DRIVER=database` (وگرنه ابطال Sessionها پس از Reset عمل نمی‌کند — E4) و Mail/Queue برای ایمیل تأیید و بازیابی.
+2. Migration جدیدی ندارد.
+3. Staging: Register با Email مخلوط‌حروف، ورود با حروف متفاوت، Reset و ورود با رمز جدید، و خروج Sessionهای دیگر را دستی بزنید.
+
+## Google Sign-In (B2.1 — اختیاری)
+
+1. Google Cloud Console → OAuth Client (Web). **Authorized redirect URI** دقیقاً: `{APP_URL}/auth/google/callback` (فقط یکی؛ نمایندگان هم از همین استفاده می‌کنند).
+2. `.env`: `GOOGLE_CLIENT_ID`، `GOOGLE_CLIENT_SECRET` (و در صورت پشت Proxy بودن/URL متفاوت: `GOOGLE_REDIRECT_URI`). بدون این دو، قابلیت کاملاً خاموش است.
+3. `php artisan migrate` (جدول `user_identities`؛ Additive) و `php artisan config:clear` (یا `config:cache` مجدد).
+4. Consent Screen: حداقل اسکوپ‌ها `openid email profile`.
+5. Staging: ورود کاربر جدید، کاربر موجود با Email تأییدشده، رد شدن Email تأییدنشده‌ی محلی، و شروع از یک فروشگاه نماینده را دستی بزنید (ردیف Matrix: Staging ☐).

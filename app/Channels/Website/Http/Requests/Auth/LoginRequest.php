@@ -2,9 +2,11 @@
 
 namespace App\Channels\Website\Http\Requests\Auth;
 
+use App\Services\Core\Identity\EmailIdentity;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -22,6 +24,14 @@ class LoginRequest extends FormRequest
         return true;
     }
 
+    /** E1: Email قبل از اعتبارسنجی و کلید Rate Limit نرمال می‌شود. */
+    protected function prepareForValidation(): void
+    {
+        if (is_string($this->input('email'))) {
+            $this->merge(['email' => EmailIdentity::normalize($this->input('email'))]);
+        }
+    }
+
     public function rules(): array
     {
         return [
@@ -34,7 +44,26 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::guard('web')->attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        // B2.1: User ساخته‌شده با Google «رمز ندارد» (password = NULL). Hash::check روی NULL در برخی
+        // پیکربندی‌ها Exception می‌دهد (⇒ 500 و نشت وجود حساب). پس اگر Email هیچ User دارای رمزی ندارد،
+        // همان مسیر شکست یکسان (پیام عمومی + Rate Limit + هزینه‌ی زمانیِ مشابه) اجرا می‌شود.
+        // E1: یافتن User Case-insensitive؛ Auth::attempt با Email ذخیره‌شده‌ی همان User صدا زده می‌شود.
+        $user = EmailIdentity::findUser($this->string('email')->toString());
+        $hasPassword = $user !== null && $user->getRawOriginal('password') !== null;
+
+        if (! $hasPassword) {
+            try {
+                // هزینه‌ی زمانیِ مشابه؛ Hash معتبر Bcrypt (۶۰ کاراکتر) تا Hash::check با `hashing.verify` پرتاب نکند.
+                Hash::check((string) $this->input('password'), '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi');
+            } catch (\Throwable) {
+                // فقط برای هم‌زمانی؛ شکست آن نباید مسیر خطای عمومی را عوض کند.
+            }
+        }
+
+        // `status => active`: کاربر غیرفعال/مسدود نباید از Website وارد شود (همتای Google در G17).
+        $credentials = ['email' => $user?->email ?? $this->input('email'), 'password' => $this->input('password'), 'status' => 'active'];
+
+        if (! $hasPassword || ! Auth::guard('web')->attempt($credentials, $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([

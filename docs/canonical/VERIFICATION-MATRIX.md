@@ -1,6 +1,6 @@
 # Melorin — Verification Matrix
 
-**Contract:** Master 2.8 · Website 1.9 · **Code baseline:** 3.3.8 (فاز ۹ — Staging Tooling تکمیل‌شده)
+**Contract:** Master 2.8 · Website 1.9 · **Code baseline:** 3.3.10 (B2.2 — Email Authentication؛ 3.3.9 = B2.1 Google Sign-In؛ فاز ۹ Staging Tooling تکمیل‌شده در 3.3.8)
 
 **راهنما:** ✅ انجام و مستند · ⚠️ ناقص یا **مغایر Contract** · ☐ انجام نشده · — نامربوط · ⛔ DEPRECATED
 
@@ -31,6 +31,8 @@
 | Reseller Isolation (Main / A / B) | ✅ | ✅ | ✅ | ☐ | ☐ | ☐ | ☐ |
 | Reseller Website + Branding + Management | ✅ | ✅ | ✅ | ☐ | ☐ | ☐ | ☐ |
 | Telegram Linking | ✅ | ✅ | ✅ | ☐ | ⚠️ *Self-audit فقط* | ☐ | ☐ |
+| **Google Sign-In (B2.1؛ `GOOGLE-SIGNIN-CONTRACT.md`)** | ✅ | ✅ | ✅ *`GoogleLoginTest` (۴۵ تست، شامل G21 برای Google و Email+Password) روی SQLite سبز* | ☐ | ☐ *(Review مستقل OAuth)* | ☐ *(Google Console واقعی)* | ☐ |
+| **Email Authentication (B2.2؛ `EMAIL-AUTH-CONTRACT.md`)** | ✅ | ✅ | ✅ *`EmailAuthTest` (۱۵ تست) روی SQLite سبز* | ☐ | ☐ | ☐ | ☐ |
 | Email Verification + Gate (Purchase/Wallet Charge فقط) | ✅ | ✅ | ✅ | ☐ | ☐ | ☐ | ☐ |
 | Discount (No Stacking، Eligibility از سابقه) | ✅ | ☐ *(موتور وجود ندارد، C12)* | ☐ | ☐ | — | ☐ | ☐ |
 | Guest Retention (۶۰ روز) | ✅ | ✅ *(`guest:prune` روزانه)* | ✅ | — | — | ☐ | ☐ |
@@ -67,7 +69,7 @@
 | C2 | Guest Form باید: `email` الزامی و `name`/`phone` **اختیاری** شوند. اکنون برعکس است: `guest_name`/`guest_phone` الزامی (Validation، `GuestCheckoutService::start` که Exception می‌دهد، ستون‌های NOT NULL) و `guest_email` nullable. ویوی Pending هم name/phone را بی‌شرط نمایش می‌دهد | `GuestCheckoutController::store`، `GuestCheckoutService::start`، Migration جدید (ALTER)، `checkout-pending.blade.php` | ✅ بسته شد (فاز ۴) |
 | C3 | Login/Register پس از Pending، خرید را ادامه نمی‌دهد (`url.intended` فقط برای حالت تصادم) | Auth Controllers | ✅ بسته شد (فاز ۴) |
 | C4 | تست‌های Guest مدل قدیم را تأیید می‌کنند | `GuestPurchaseFlowTest`, `GuestE2ETest`, `GuestPostPurchaseE2ETest` | ✅ بسته شد (فاز ۴) |
-| C7 | ~~Google Sign-In~~ ← **بسته شد** (D-6: از Release اول حذف شد؛ کد و Contract هم‌راستا) | — | — |
+| C7 | ~~Google Sign-In~~ ← **بسته شد** (D-6 بازگشایی و در B2.1 با Contract مستقل پیاده شد؛ کد و Contract هم‌راستا) | — | ✅ (3.3.9) |
 | C8 | `.env.example` `SESSION_DRIVER=file` ↔ config پیش‌فرض `database`؛ `SESSION_SECURE_COOKIE` تعریف‌نشده | `.env.example`, `config/session.php` | ✅ بسته شد (فاز ۴) |
 | C9 | `/complete-profile` و `POST /guest-checkout/purchase` وابسته به مدل قدیم Guest | `routes/website.php` | ✅ بسته شد (فاز ۴) |
 | C10 | Email Verification در Contract (G11) هست ولی در کد نیست: `User` بدون `MustVerifyEmail`، بدون Route/Notification، بدون Gate روی Checkout/Wallet Charge، بدون تست | Auth + `User` + Middleware + تست | ✅ بسته شد (فاز ۴) |

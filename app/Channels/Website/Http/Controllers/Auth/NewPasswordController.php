@@ -4,11 +4,11 @@ namespace App\Channels\Website\Http\Controllers\Auth;
 
 use App\Channels\Website\Support\ResolvesWebsiteRouteNames;
 use App\Models\User;
+use App\Services\Core\Identity\EmailAuthService;
+use App\Services\Core\Identity\EmailIdentity;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password as PasswordRule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -18,6 +18,8 @@ class NewPasswordController
 {
     use ResolvesWebsiteRouteNames;
 
+    public function __construct(protected EmailAuthService $emailAuth) {}
+
     public function create(Request $request): View
     {
         return view('website.auth.reset-password', ['token' => $request->route('token')]);
@@ -25,6 +27,9 @@ class NewPasswordController
 
     public function store(Request $request): RedirectResponse
     {
+        // E1: Email نرمال‌سازی و به شکل ذخیره‌شده در DB تبدیل می‌شود (Broker تطبیق دقیق دارد).
+        $request->merge(['email' => EmailIdentity::canonical($request->input('email'))]);
+
         $request->validate([
             'token' => ['required'],
             'email' => ['required', 'email'],
@@ -34,10 +39,8 @@ class NewPasswordController
         $status = Password::broker('users')->reset(
             $request->only('email', 'password', 'password_confirmation', 'token'),
             function (User $user, string $password) {
-                $user->forceFill([
-                    'password' => Hash::make($password),
-                    'remember_token' => Str::random(60),
-                ])->save();
+                // E2: رمز + تأیید Email + ابطال Sessionها + Audit (Core).
+                $this->emailAuth->completePasswordReset($user, $password);
 
                 event(new PasswordReset($user));
             }

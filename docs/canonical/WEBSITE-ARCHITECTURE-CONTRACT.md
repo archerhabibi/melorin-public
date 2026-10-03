@@ -28,7 +28,7 @@ Input → Core (Facade) → Result → UI
 هر دو از Core مشترک استفاده می‌کنند. هر Reseller Website: URL (`/store/{slug}`)، Branding (Name/Logo/Contact)، Menu، Customers، Products مجاز و Pricing اختصاصی دارد. کاربر در هر Website فقط در StoreContext همان Website فعال است، ولی می‌تواند Customer چند Store باشد.
 
 ## 4. هویت (ارجاع به Master بخش ۲)
-`User ≠ CustomerAccount` · `CustomerAccount = User + StoreContext` · Reseller = User موجود + Context · **CustomerAccount فقط در لحظه‌ی خرید ساخته می‌شود** (GET هیچ CustomerAccount نمی‌سازد؛ `EnsureCustomerAccountResolved` فقط می‌خواند).
+`User ≠ CustomerAccount` · `CustomerAccount = User + StoreContext` · Reseller = User موجود + Context · **CustomerAccount فقط در لحظه‌ی خرید ساخته می‌شود** (GET هیچ CustomerAccount نمی‌سازد؛ `EnsureCustomerAccountResolved` فقط می‌خواند)؛ **تنها استثنا:** ورود موفق (Google یا Email+Password)، عضویت فروشگاه مبدأ را می‌سازد (G21).
 
 ## 5. Guest Checkout (مطابق Master بخش ۳)
 
@@ -50,7 +50,7 @@ Product → «خرید به‌عنوان مهمان» → Guest Form (email* · 
 - Guest Menu با Customer Menu متفاوت است.
 
 ## 6. Authentication
-فقط Email+Password (**IMPLEMENTED**). Google Sign-In از Release اول **حذف شد** (D-6). **Email Verification (IMPLEMENTED در فاز ۴):** Register یک Email تأیید می‌فرستد (لینک امضاشده، یک‌بارمصرف، Expiration)؛ تا Verify نشدن، **فقط** Purchase و Wallet Charge مسدود است (بقیه‌ی سایت آزاد؛ D-8 بسته شد) و کاربر به صفحه‌ی «تأیید Email» (با امکان ارسال مجدد لینک) هدایت می‌شود. Enforcement در Core است؛ Website فقط پیام/Redirect نشان می‌دهد (Master G11؛ Routeها: `verification.notice/verify/send` فقط Context اصلی؛ Gate: `EmailVerificationGate` داخل `PurchaseService::purchase` و `PaymentService::initiate`. تفسیر: Gate فقط برای User با Email تأییدنشده؛ User بدون Email — مثل Userهای ربات — مشمول نیست). Session: `Secure`، `HttpOnly`، Expiration، Revocation، مقاوم در برابر Fixation (Regenerate پس از Login). Password Reset بدون User Enumeration؛ Rate Limit طبق Matrix.
+Email+Password (**IMPLEMENTED**) و **Google Sign-In** (B2.1، Opt-in با Config؛ مرجع: `GOOGLE-SIGNIN-CONTRACT.md`؛ Routeها: `website.auth.google.redirect`، `website.store.auth.google.redirect`، `auth.google.callback` فقط Context اصلی). **Email Authentication (B2.2؛ مرجع: `EMAIL-AUTH-CONTRACT.md`):** Email نرمال و Case-insensitive؛ Reset موفق Email را تأیید و Sessionها را باطل می‌کند. **Email Verification (IMPLEMENTED در فاز ۴):** Register یک Email تأیید می‌فرستد (لینک امضاشده، یک‌بارمصرف، Expiration)؛ تا Verify نشدن، **فقط** Purchase و Wallet Charge مسدود است (بقیه‌ی سایت آزاد؛ D-8 بسته شد) و کاربر به صفحه‌ی «تأیید Email» (با امکان ارسال مجدد لینک) هدایت می‌شود. Enforcement در Core است؛ Website فقط پیام/Redirect نشان می‌دهد (Master G11؛ Routeها: `verification.notice/verify/send` فقط Context اصلی؛ Gate: `EmailVerificationGate` داخل `PurchaseService::purchase` و `PaymentService::initiate`. تفسیر: Gate فقط برای User با Email تأییدنشده؛ User بدون Email — مثل Userهای ربات — مشمول نیست). Session: `Secure`، `HttpOnly`، Expiration، Revocation، مقاوم در برابر Fixation (Regenerate پس از Login). Password Reset بدون User Enumeration؛ Rate Limit طبق Matrix.
 
 ## 7. Telegram Linking
 فقط برای User **احراز‌شده** (پشت `auth`). HMAC رسمی Telegram با `hash_equals`، `auth_date` ≤ ۲۴ ساعت، `state` یک‌بارمصرف Session-bound (ضد CSRF). Telegram متعلق به User دیگر ⇒ رد، بدون Merge. Audit: `identity.telegram_linked`, `identity.telegram_link_rejected_owned_by_other`.
@@ -167,7 +167,7 @@ Email Verification (فقط Context اصلی، پشت `auth`): `GET /email/verify
 
 | کد | سؤال | پیشنهاد |
 |---|---|---|
-| D-6 | Google Sign-In | **بسته شد:** از Release اول حذف |
+| D-6 | Google Sign-In | **بسته شد (B2.1):** فعال با Contract مستقل `GOOGLE-SIGNIN-CONTRACT.md` |
 | D-7 | Email Verification در Register | **بسته شد:** بله (Master G11) |
 | D-8 | کاربر Verify‌نشده فقط از Purchase و Wallet Charge منع شود؟ | **بسته:** بله |
 | D-2 / D-3 | Discount / ادامه‌ی خودکار Purchase | **بسته** (Master ۱۶، ۷.۲) |

@@ -68,11 +68,11 @@ Channel → Application Service / Facade → Domain Service → Model/Repository
 | R4 | `StoreContext = {store_type: main|reseller, reseller_id}`؛ API حداقل: `isMain()`, `isReseller()`, `resellerId()`, `isOperational()`, `equals()`. |
 | R5 | یک User می‌تواند هم‌زمان Customer Main و چند Reseller باشد. Unique مفهومی: `(user_id, StoreContext)`؛ **نه** `UNIQUE(user_id)`. |
 | R6 | Customer بودن در Reseller A به معنی Customer بودن در Reseller B نیست؛ تغییر `reseller_id` نباید عضویت بسازد. Scope در Core enforce می‌شود. |
-| R7 | **CustomerAccount فقط در لحظه‌ی خرید ساخته می‌شود** (Lazy). بازدید/GET صفحه هرگز CustomerAccount نمی‌سازد. (تصمیم صاحب پروژه، Release 3.2.17؛ اکنون Contract.) |
+| R7 | **CustomerAccount فقط در لحظه‌ی خرید ساخته می‌شود** (Lazy). بازدید/GET صفحه هرگز CustomerAccount نمی‌سازد. (تصمیم صاحب پروژه، Release 3.2.17؛ اکنون Contract.) **تنها استثنا (تصمیم صاحب پروژه، B2.1/3.3.9):** ورود موفق با Google یا با Email+Password، CustomerAccount همان User را در فروشگاه مبدأ ورود می‌سازد (`GOOGLE-SIGNIN-CONTRACT.md` G21). Register، GET و Guest همچنان نمی‌سازند. |
 | R8 | CustomerAccountهای Storeهای مختلف بدون احراز و قاعده‌ی مشخص Merge نمی‌شوند. |
 | R9 | Merge هویت‌ها فقط با اثبات معتبر مجاز است. `email`، `phone`، `telegram_id` خام، Cookie، IP و Session به‌تنهایی **Proof of Identity نیستند**. |
 
-**Identity Resolution** (`IdentityService`): User را شناسایی می‌کند، StoreContext جاری را می‌گیرد، CustomerAccount موجود را Resolve یا (در صورت مجاز بودن و فقط در لحظه‌ی خرید) می‌سازد؛ تکراری نمی‌سازد؛ Idempotent است.
+**Identity Resolution** (`IdentityService`): User را شناسایی می‌کند، StoreContext جاری را می‌گیرد، CustomerAccount موجود را Resolve یا (در صورت مجاز بودن و فقط در لحظه‌ی خرید یا ورود موفق با Google — R7/G21) می‌سازد؛ تکراری نمی‌سازد؛ Idempotent است.
 
 ---
 
@@ -316,7 +316,7 @@ Core-only؛ Website/Bot هرگز Discount محاسبه نمی‌کنند.
 **Production** (همه باید Verified باشند): Backup DB · Migrations · Data Backfill · Tests (کل پروژه) · Secrets Rotated · Webhook Secured · Audit · Payment/Purchase/Provisioning/Retry/Refund/Reseller Debt Tested · **Guest Checkout (مدل جدید) Tested** · Rollback Plan Verified · Independent Security Review · Backup Restore Test.
 
 ## 19. خارج از Scope فعلی
-Advanced RBAC · Full Financial Reconciliation · Advanced Monitoring · Mobile App · Public API · Multi-language · Multi-currency هم‌زمان/نرخ تبدیل (ارز قابل‌تنظیم برای کل نصب مجاز است، M6) · Object Storage · Wallet Transfer · **Partial Wallet + Direct Payment** · Reseller Product Creation · **Google Sign-In (D-6)** · Cart · Payment States `created/processing/partially_refunded` · ادامه‌ی خودکار Purchase پس از شارژ Direct Payment.
+Advanced RBAC · Full Financial Reconciliation · Advanced Monitoring · Mobile App · Public API · Multi-language · Multi-currency هم‌زمان/نرخ تبدیل (ارز قابل‌تنظیم برای کل نصب مجاز است، M6) · Object Storage · Wallet Transfer · **Partial Wallet + Direct Payment** · Reseller Product Creation · ~~Google Sign-In (D-6)~~ *(فعال‌شده در 3.3.9 با Contract مستقل: `GOOGLE-SIGNIN-CONTRACT.md`)* · Cart · Payment States `created/processing/partially_refunded` · ادامه‌ی خودکار Purchase پس از شارژ Direct Payment.
 این موارد حذف دائمی نیستند؛ فعال‌سازی هرکدام = Contract مستقل + Verification.
 
 ---
@@ -348,7 +348,7 @@ Advanced RBAC · Full Financial Reconciliation · Advanced Monitoring · Mobile 
 | D-3 | ادامه‌ی خودکار Purchase پس از شارژ | **بسته:** ممنوع؛ بازگشت به Checkout (بخش ۷.۲) |
 | D-4 | Retention | **بسته:** Guest = ۶۰ روز؛ بقیه طبق `DATA-RETENTION.md` (تأییدشده توسط صاحب پروژه؛ تأیید حقوقی/حسابداری توصیه می‌شود) |
 | D-5 | Money بدون float | **بسته و اجرا‌شده (فاز ۵):** Integer Minor Unit (بخش ۴.۱)؛ D-5a: پیش‌فرض تومان؛ D-5b: ارز قابل‌تنظیم |
-| D-6 | Google Sign-In | **بسته:** حذف از Release اول |
+| D-6 | Google Sign-In | **بسته (بازگشایی‌شده در B2.1):** از 3.3.9 فعال و Opt-in؛ مرجع: `GOOGLE-SIGNIN-CONTRACT.md` (G12–G20) |
 | D-7 | Email Verification | **بسته:** بله (G11) |
 | D-8 | Gate کاربر Verify‌نشده | **بسته:** فقط Purchase و Wallet Charge (G11) |
 
@@ -357,7 +357,7 @@ Advanced RBAC · Full Financial Reconciliation · Advanced Monitoring · Mobile 
 | D-2 | Discount Stacking و Eligibility | تصمیم قبل از Implementation |
 | D-3 | ادامه‌ی خودکار Purchase پس از شارژ Direct Payment | خارج از Scope؛ فعلاً کاربر به Checkout برمی‌گردد |
 | D-4 | Retention رکوردهای Guest/Audit/Receipt | باید در `DATA-RETENTION.md` تعیین شود |
-| ~~D-6~~ | ~~Google Sign-In~~ | **بسته شد:** حذف از Release اول |
+| ~~D-6~~ | ~~Google Sign-In~~ | **بسته شد:** Contract مستقل `GOOGLE-SIGNIN-CONTRACT.md` (D-9/D-10 باز) |
 | ~~D-7~~ | ~~Email Verification در Register~~ | **بسته شد:** بله، Register Email را Verify می‌کند (G11) |
 | D-8 | کاربر Verify‌نشده فقط از Purchase و Wallet Charge منع شود (بقیه‌ی سایت آزاد)؟ | بله |
 | ~~D-5~~ | ~~Money Integer Minor Unit~~ | **بسته شد (فاز ۵)** |

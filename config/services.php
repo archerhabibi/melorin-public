@@ -48,4 +48,22 @@ return [
         'sandbox' => env('ZARINPAL_SANDBOX', false),
     ],
 
+    /*
+     * Google Sign-In (B2.1؛ GOOGLE-SIGNIN-CONTRACT.md). OIDC Authorization Code + PKCE،
+     * بدون Socialite. تا وقتی هر دو کلید تنظیم نشده‌اند، قابلیت کاملاً خاموش است
+     * (دکمه نمایش داده نمی‌شود و Routeها 404 می‌دهند).
+     *
+     * redirect: باید دقیقاً با «Authorized redirect URI» در Google Cloud Console یکی باشد.
+     * فقط یک آدرس ثابت روی Context اصلی (نمایندگان هم از همین callback استفاده می‌کنند).
+     * auto_link: اگر true باشد و User محلی با همان Email «تأییدشده» وجود داشته باشد،
+     * هویت Google به آن User وصل می‌شود (G14)؛ اگر false باشد، کاربر باید ابتدا با رمز وارد شود.
+     */
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_REDIRECT_URI'),
+        'enabled' => filled(env('GOOGLE_CLIENT_ID')) && filled(env('GOOGLE_CLIENT_SECRET')),
+        'auto_link' => env('GOOGLE_AUTO_LINK_VERIFIED_EMAIL', true),
+    ],
+
 ];

@@ -19,6 +19,8 @@ use Symfony\Component\HttpFoundation\Response;
  * می‌کرد. پس این میان‌افزار فقط **می‌خواند** (`findCustomerAccount`،
  * nullable) و هرگز نمی‌سازد.
  *
+ * (تنها استثنا: ورود موفق با Google یا Email+Password، G21، که در Core عضویت را می‌سازد؛ نه اینجا.)
+ *
  * ساختنِ واقعی فقط در لحظه‌ی یک اقدام مالی واقعی (POST) است:
  * `CheckoutController::store` (خرید) و `AccountsController::renew`
  * (تمدید) — هرکدام صریحاً `IdentityService::resolveCustomerAccount()`

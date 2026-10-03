@@ -2,6 +2,7 @@
 
 namespace App\Channels\Website\Http\Controllers\Auth;
 
+use App\Services\Core\Identity\EmailIdentity;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\RateLimiter;
@@ -34,7 +35,9 @@ class PasswordResetLinkController
             'email.required' => 'ایمیل را وارد کنید.',
         ]);
 
-        $key = 'password-reset:'.Str::transliterate(Str::lower($request->string('email')));
+        // E1: کلید Rate Limit و Broker هر دو روی Email نرمال‌شده؛ «A@x.com» و «a@x.com» یک سقف مشترک دارند.
+        $normalized = EmailIdentity::normalize($request->input('email'));
+        $key = 'password-reset:'.Str::transliterate($normalized);
 
         if (RateLimiter::tooManyAttempts($key, 3)) {
             $seconds = RateLimiter::availableIn($key);
@@ -50,7 +53,7 @@ class PasswordResetLinkController
         // ناموجود به مهاجم اجازه می‌داد ثبت‌نام بودن ایمیل‌ها را حدس بزند
         // (User Enumeration). پاسخ همیشه یکسان است؛ تنها خطای مجاز همان
         // محدودیت تعداد درخواست بالاست.
-        Password::broker('users')->sendResetLink($request->only('email'));
+        Password::broker('users')->sendResetLink(['email' => EmailIdentity::canonical($normalized)]);
 
         return back()->with('status', 'اگر این ایمیل در سیستم ثبت باشد، لینک بازیابی رمز عبور برای آن ارسال می‌شود.');
     }
