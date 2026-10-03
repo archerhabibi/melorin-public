@@ -31,6 +31,12 @@ class GuestCheckout extends Model
         return $this->belongsTo(Reseller::class);
     }
 
+    /** دقیقه‌های باقی‌مانده تا انقضا (برای Pending Page)؛ هرگز منفی نیست. */
+    public function minutesLeft(): int
+    {
+        return max(0, (int) ceil(now()->diffInMinutes($this->expires_at, false)));
+    }
+
     public function isExpired(): bool
     {
         return $this->status === 'expired' || $this->expires_at->isPast();

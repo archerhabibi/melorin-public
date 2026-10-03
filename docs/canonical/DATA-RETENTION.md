@@ -11,6 +11,6 @@
 | فایل رسید Card-to-Card (Storage خصوصی) | مصوب: **۲۴ ماه** پس از وضعیت نهایی؛ ردیف `payments` باقی می‌ماند | ✅ تأییدشده | Job حذف فایل |
 | `operations`، `provisioning_attempts` | مصوب: **۱۲ ماه** | ✅ تأییدشده | — |
 | `failed_jobs` | مصوب: **۳۰ روز** | ✅ تأییدشده | `queue:prune-failed --hours=720` |
-| `sessions` | طبق `SESSION_LIFETIME` (۱۲۰ دقیقه) | موجود | GC خودکار |
+| `sessions` | طبق `SESSION_LIFETIME` (۱۲۰ دقیقه Idle) و `SESSION_ABSOLUTE_LIFETIME` (۷ روز از ورود؛ B2.5) | موجود | GC خودکار + بستن توسط کاربر |
 
 قواعد: حذف داده‌ی شخصی نباید دفتر مالی را بشکند (ارجاع‌ها ناشناس‌سازی شوند، نه حذف). هر Job حذف باید Audit یک‌خطی (تعداد حذف‌شده) بنویسد و در Staging تست شود.

@@ -55,6 +55,7 @@ class RegisteredUserController
         $guest = $this->guestContinuation->activeFor($request, $store);
 
         return view('website.auth.register', [
+            'guestPending' => $guest?->loadMissing('product'),
             'guestPrefill' => $guest ? [
                 'email' => $guest->guest_email,
                 'name' => $guest->guest_name,

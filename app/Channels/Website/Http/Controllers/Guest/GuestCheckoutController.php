@@ -5,6 +5,8 @@ namespace App\Channels\Website\Http\Controllers\Guest;
 use App\Channels\Website\Services\WebsiteCatalogFacade;
 use App\Channels\Website\Services\WebsiteGuestCheckoutFacade;
 use App\Channels\Website\Support\ResolvesWebsiteRouteNames;
+use App\Models\GuestCheckout;
+use App\Services\Core\Guest\GuestCheckoutService;
 use App\Services\Core\Store\StoreContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -31,19 +33,25 @@ class GuestCheckoutController
 
     public const COOKIE_NAME = 'guest_checkout_token';
 
-    protected const COOKIE_MINUTES = 45;
+    /** عمر Cookie = TTL نشست در Core (یک منبع واحد). */
+    protected const COOKIE_MINUTES = GuestCheckoutService::TTL_MINUTES;
 
     public function __construct(
         protected WebsiteCatalogFacade $catalog,
         protected WebsiteGuestCheckoutFacade $guest,
     ) {}
 
-    public function show(int $product, StoreContext $store, Request $request): View|Response
+    public function show(int $product, StoreContext $store, Request $request): View|Response|RedirectResponse
     {
         $productModel = $this->catalog->findVisibleProduct($product, $store);
 
         if (! $productModel) {
             abort(404);
+        }
+
+        // B2.3: کاربرِ واردشده «مهمان» نیست؛ مستقیم به Checkout همان محصول می‌رود.
+        if ($request->user()) {
+            return redirect()->to($this->websiteRoute($request, 'checkout.show', ['product' => $productModel->id]));
         }
 
         return view('website.guest.checkout-start', [
@@ -68,12 +76,19 @@ class GuestCheckoutController
             abort(404);
         }
 
+        // B2.3: کاربر واردشده Guest نمی‌سازد (رکورد بی‌مصرف + دور زدن مسیر Auth).
+        if ($request->user()) {
+            return redirect()->to($this->websiteRoute($request, 'checkout.show', ['product' => $productModel->id]));
+        }
+
+        // B2.3: نشست Pending قبلیِ همین مرورگر (همین Context) با شروع نشست تازه باطل می‌شود.
         $guestCheckout = $this->guest->start(
             product: $productModel,
             store: $store,
             email: $data['guest_email'],
             name: $data['guest_name'] ?? null,
             phone: $data['guest_phone'] ?? null,
+            replacing: $this->activeSession($request, $store),
         );
 
         // Cookie از طریق EncryptCookies (گروه web) رمزنگاری می‌شود.
@@ -93,20 +108,64 @@ class GuestCheckoutController
             ->cookie($cookie);
     }
 
-    public function pending(Request $request, StoreContext $store): View|Response
+    public function pending(Request $request, StoreContext $store): View|Response|RedirectResponse
     {
-        $token = $request->cookie(self::COOKIE_NAME);
-        $guestCheckout = $token ? $this->guest->findActive($token, $store) : null;
+        $guestCheckout = $this->activeSession($request, $store);
 
         if (! $guestCheckout) {
             abort(404, 'نشست خرید مهمان پیدا نشد یا منقضی شده است.');
         }
 
-        $guestCheckout->load('product');
+        $productModel = $this->catalog->findVisibleProduct($guestCheckout->product_id, $store);
+
+        // B2.3: تعرفه بعد از شروع نشست غیرفعال/نامرئی شده ⇒ نشست بی‌معناست؛ باطل می‌شود.
+        if (! $productModel) {
+            $this->guest->discard($guestCheckout);
+
+            abort(404, 'این تعرفه دیگر در دسترس نیست.');
+        }
+
+        // B2.3: کاربر واردشده نیازی به Pending Page ندارد؛ همان خرید را ادامه می‌دهد.
+        if ($request->user()) {
+            return redirect()->to($this->websiteRoute($request, 'checkout.show', ['product' => $productModel->id]));
+        }
 
         return view('website.guest.checkout-pending', [
             'guestCheckout' => $guestCheckout,
+            'product' => $productModel,
+            'price' => $this->catalog->displayPrice($productModel, $store),
             'store' => $store,
         ]);
+    }
+
+    /**
+     * B2.3 — «لغو و شروع دوباره». نشست Pending را باطل و Cookie را پاک می‌کند و به
+     * صفحه‌ی همان تعرفه برمی‌گردد. هیچ User/CustomerAccount/Order ای دست نمی‌خورد (G3).
+     * نشست Context دیگر پیدا نمی‌شود (G5) پس چیزی باطل نمی‌شود.
+     */
+    public function cancel(Request $request, StoreContext $store): RedirectResponse
+    {
+        $guestCheckout = $this->activeSession($request, $store);
+
+        if ($guestCheckout) {
+            $this->guest->discard($guestCheckout);
+        }
+
+        $target = $guestCheckout
+            ? $this->websiteRoute($request, 'products.show', ['product' => $guestCheckout->product_id])
+            : $this->websiteRoute($request, 'home');
+
+        return redirect()
+            ->to($target)
+            ->with('status', 'خرید مهمان لغو شد.')
+            ->withoutCookie(self::COOKIE_NAME);
+    }
+
+    /** نشست Pending فعالِ همین Context از روی Cookie، یا null. */
+    protected function activeSession(Request $request, StoreContext $store): ?GuestCheckout
+    {
+        $token = $request->cookie(self::COOKIE_NAME);
+
+        return is_string($token) && $token !== '' ? $this->guest->findActive($token, $store) : null;
     }
 }

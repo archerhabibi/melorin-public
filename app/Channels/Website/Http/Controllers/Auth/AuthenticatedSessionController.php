@@ -26,9 +26,12 @@ class AuthenticatedSessionController
         protected LoginMembershipService $membership,
     ) {}
 
-    public function create(): View
+    public function create(Request $request, StoreContext $store): View
     {
-        return view('website.auth.login');
+        // B2.3: اگر نشست Guest فعال است، صفحه یادآور می‌شود که همین خرید ادامه پیدا می‌کند.
+        return view('website.auth.login', [
+            'guestPending' => $this->guestContinuation->activeFor($request, $store)?->loadMissing('product'),
+        ]);
     }
 
     public function store(LoginRequest $request, StoreContext $store): RedirectResponse

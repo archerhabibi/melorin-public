@@ -6,6 +6,8 @@
     <div class="max-w-sm mx-auto bg-surface border rounded-lg p-6">
         <h1 class="text-lg font-bold mb-6">ساخت حساب کاربری</h1>
 
+        @include('website.guest.continue-notice')
+
         @if($errors->any())
             <div class="mb-4 rounded border border-danger/30 bg-danger-soft text-danger px-3 py-2 text-sm">
                 @foreach($errors->all() as $error)

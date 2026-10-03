@@ -56,6 +56,11 @@ class MoneyIntegerGuardTest extends TestCase
                 continue; // حجم (GB) پول نیست
             }
 
+            // محاسبات رنگ/کنتراست (WCAG) float طبیعی دارند و هیچ ربطی به پول ندارند.
+            if (str_starts_with($path, 'app/Support/Branding/')) {
+                continue;
+            }
+
             if (preg_match('/\(float\)|\?float\b|:\s*float\b|\bfloat\s+\$|\bfloatval\(/', $line)) {
                 $offenders[] = "{$path}:{$number} → ".trim($line);
             }

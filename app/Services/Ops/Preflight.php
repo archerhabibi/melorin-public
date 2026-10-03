@@ -75,6 +75,46 @@ class Preflight
             ? CheckResult::ok($g, 'session_secure_cookie')
             : CheckResult::fail($g, 'session_secure_cookie', 'APP_URL https است ولی SESSION_SECURE_COOKIE=true نیست.');
 
+        // B2.5 — Session Security (docs/canonical/SESSION-SECURITY-CONTRACT.md §S7)
+        $sessionDriver = (string) config('session.driver');
+        $r[] = match (true) {
+            in_array($sessionDriver, ['array', 'cookie'], true) && $isLive => CheckResult::fail($g, 'session_driver', "SESSION_DRIVER={$sessionDriver}؛ نشست‌ها ماندگار/قابل‌ابطال نیستند (database یا redis لازم است)."),
+            $sessionDriver === 'file' && $isLive => CheckResult::warn($g, 'session_driver', 'SESSION_DRIVER=file؛ فهرست و ابطال نشست‌های کاربر (دستگاه‌ها) کار نمی‌کند. database پیشنهاد می‌شود.'),
+            default => CheckResult::ok($g, 'session_driver', $sessionDriver),
+        };
+
+        $r[] = config('session.http_only') === true
+            ? CheckResult::ok($g, 'session_http_only')
+            : ($isLive
+                ? CheckResult::fail($g, 'session_http_only', 'SESSION_HTTP_ONLY=true نیست؛ Cookie نشست برای JavaScript (XSS) خواندنی می‌شود.')
+                : CheckResult::warn($g, 'session_http_only', 'SESSION_HTTP_ONLY=true نیست.'));
+
+        $sameSite = strtolower((string) config('session.same_site'));
+        $r[] = match (true) {
+            $sameSite === 'none' => $isLive
+                ? CheckResult::fail($g, 'session_same_site', 'SESSION_SAME_SITE=none؛ Cookie نشست در درخواست‌های بین‌سایتی هم ارسال می‌شود (CSRF).')
+                : CheckResult::warn($g, 'session_same_site', 'SESSION_SAME_SITE=none.'),
+            $sameSite === 'strict' => $isLive
+                ? CheckResult::fail($g, 'session_same_site', 'SESSION_SAME_SITE=strict؛ برگشت از Google/Telegram نشست (state) را گم می‌کند و ورود/اتصال می‌شکند. lax لازم است.')
+                : CheckResult::warn($g, 'session_same_site', 'SESSION_SAME_SITE=strict ورود Google و اتصال Telegram را می‌شکند.'),
+            $sameSite === 'lax' => CheckResult::ok($g, 'session_same_site', 'lax'),
+            default => CheckResult::warn($g, 'session_same_site', 'SESSION_SAME_SITE روی lax تنظیم نیست.'),
+        };
+
+        $idle = (int) config('session.lifetime');
+        $absolute = (int) config('session.absolute_lifetime');
+        $r[] = match (true) {
+            $idle > 720 => CheckResult::warn($g, 'session_lifetime', "SESSION_LIFETIME={$idle} دقیقه؛ Idle Timeout بیش از ۱۲ ساعت برای فروشگاه مالی زیاد است."),
+            $absolute <= 0 && $isLive => CheckResult::warn($g, 'session_lifetime', 'SESSION_ABSOLUTE_LIFETIME=0؛ نشستی که مدام استفاده شود هرگز منقضی نمی‌شود.'),
+            $absolute > 43200 => CheckResult::warn($g, 'session_lifetime', "SESSION_ABSOLUTE_LIFETIME={$absolute} دقیقه؛ بیش از ۳۰ روز."),
+            default => CheckResult::ok($g, 'session_lifetime', "idle={$idle}m absolute={$absolute}m"),
+        };
+
+        // Cookie سراسری دامنه (مثلاً .example.com) بین زیردامنه‌ها (و دامنه‌های نماینده‌ها در B6) نشست را به اشتراک می‌گذارد.
+        $r[] = filled(config('session.domain'))
+            ? CheckResult::warn($g, 'session_domain', 'SESSION_DOMAIN تنظیم شده؛ نشست بین همه‌ی زیردامنه‌ها مشترک می‌شود. Cookie فقط-میزبان (خالی) امن‌تر است.')
+            : CheckResult::ok($g, 'session_domain');
+
         $r[] = filled(config('telegram.bots.main.token'))
             ? CheckResult::ok($g, 'telegram_main_bot_token')
             : CheckResult::fail($g, 'telegram_main_bot_token', 'TELEGRAM_MAIN_BOT_TOKEN خالی است.');

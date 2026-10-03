@@ -4,9 +4,8 @@ namespace App\Channels\Website\Http\Controllers\Identity;
 
 use App\Channels\Website\Support\ResolvesWebsiteRouteNames;
 use App\Channels\Website\Support\TelegramLoginVerifier;
-use App\Services\Core\AuditService;
-use App\Services\Core\Store\IdentityService;
-use Illuminate\Database\QueryException;
+use App\Services\Core\Identity\AccountLinkResult;
+use App\Services\Core\Identity\AccountLinkingService;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 
@@ -28,8 +27,7 @@ class TelegramLinkController
 
     public function __construct(
         protected TelegramLoginVerifier $verifier,
-        protected IdentityService $identity,
-        protected AuditService $audit,
+        protected AccountLinkingService $linking,
     ) {}
 
     public function callback(Request $request): RedirectResponse
@@ -61,55 +59,26 @@ class TelegramLinkController
         }
 
         $telegramId = (int) $payload['id'];
-        $currentUser = $request->user();
 
-        $ownedBy = $this->identity->findIdentity(telegramId: $telegramId);
+        // B2.4: تصمیم (مالکیت، جایگزینی بی‌صدا، Race، Audit) در Core است؛ اینجا فقط پیام نمایش داده می‌شود.
+        $result = $this->linking->linkTelegram(
+            $request->user(),
+            $telegramId,
+            trim(($payload['first_name'] ?? '').' '.($payload['last_name'] ?? '')),
+        );
 
-        if ($ownedBy && $ownedBy->id !== $currentUser->id) {
-            // بند ۸۷ سند مادر: حتی با امضای معتبر تلگرام، اگر این
-            // تلگرام از قبل به یک User دیگر وصل است، خودکار جابه‌جا/ادغام
-            // نمی‌کنیم — چون معلوم نیست کدام طرف واقعاً صاحب همین
-            // Session فعلی است.
-            // تلاشِ ردشده برای وصل‌کردن یک هویت تلگرامیِ از‌قبل‌مالکیت‌دار:
-            // یا سوءتفاهم کاربر است یا سوءاستفاده؛ در هر دو حالت باید Audit شود.
-            $this->audit->record(
-                'identity.telegram_link_rejected_owned_by_other',
-                $currentUser,
-                after: ['telegram_id' => $telegramId, 'owned_by_user_id' => $ownedBy->id],
-                actor: $currentUser,
-            );
-
-            return redirect($back)->withErrors([
-                'telegram' => 'این حساب تلگرام قبلاً به یک کاربر دیگر متصل است.',
-            ]);
+        if ($result->isRejected()) {
+            return redirect($back)->withErrors(['telegram' => match ($result->reason) {
+                AccountLinkResult::REASON_OWNED_BY_OTHER => 'این حساب تلگرام قبلاً به یک کاربر دیگر متصل است.',
+                AccountLinkResult::REASON_ALREADY_HAS_PROVIDER => 'به این حساب یک تلگرام دیگر وصل است. ابتدا آن را جدا کنید.',
+                AccountLinkResult::REASON_RACE => 'این حساب تلگرام هم‌اکنون به کاربر دیگری متصل شد.',
+                default => 'اتصال تلگرام انجام نشد.',
+            }]);
         }
 
-        if ($ownedBy && $ownedBy->id === $currentUser->id) {
+        if ($result->isAlready()) {
             return redirect($back)->with('status', 'این تلگرام از قبل به حساب شما وصل است.');
         }
-
-        try {
-            $currentUser->update([
-                'telegram_id' => $telegramId,
-                'full_name' => $currentUser->full_name ?? trim(($payload['first_name'] ?? '').' '.($payload['last_name'] ?? '')),
-            ]);
-        } catch (QueryException) {
-            // Race: بین findIdentity و update یک درخواست دیگر همین
-            // telegram_id را گرفت.
-            return redirect($back)->withErrors([
-                'telegram' => 'این حساب تلگرام هم‌اکنون به کاربر دیگری متصل شد.',
-            ]);
-        }
-
-        // Audit روی «Identity Linking». طبق همان اصل
-        // «Website چیزی جدید ثبت نمی‌کند، فقط AuditService موجود را صدا
-        // می‌زند» (Website Contract) — نه یک جدول/مکانیزم لاگ جداگانه.
-        $this->audit->record(
-            'identity.telegram_linked',
-            $currentUser,
-            after: ['telegram_id' => $telegramId],
-            actor: $currentUser,
-        );
 
         return redirect($back)->with('status', 'حساب تلگرام شما با موفقیت وصل شد.');
     }

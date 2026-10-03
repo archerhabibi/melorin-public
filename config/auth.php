@@ -13,6 +13,9 @@ return [
         'web' => [
             'driver' => 'session',
             'provider' => 'users',
+            // B2.5: مدت اعتبار Cookie «مرا به‌خاطر بسپار» (دقیقه). پیش‌فرض لاراول ۴۰۰ روز است که برای یک
+            // فروشگاه مالی زیاد است؛ پیش‌فرض اینجا ۳۰ روز. (SESSION-SECURITY-CONTRACT §S6)
+            'remember' => (int) env('AUTH_REMEMBER_MINUTES', 43200),
         ],
 
         // بند ۲۳ سند: پنل مدیریت Filament از این guard مجزا استفاده

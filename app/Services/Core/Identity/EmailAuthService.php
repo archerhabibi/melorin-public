@@ -4,11 +4,8 @@ namespace App\Services\Core\Identity;
 
 use App\Models\User;
 use App\Services\Core\AuditService;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use Throwable;
 
 /**
  * منطق Email Authentication در Core (EMAIL-AUTH-CONTRACT.md §E2–E4).
@@ -17,7 +14,10 @@ use Throwable;
  */
 class EmailAuthService
 {
-    public function __construct(protected AuditService $audit) {}
+    public function __construct(
+        protected AuditService $audit,
+        protected SessionSecurityService $sessions,
+    ) {}
 
     /**
      * E2: پس از Reset موفق (Token معتبر ⇒ کنترل صندوق Email اثبات شده):
@@ -61,20 +61,12 @@ class EmailAuthService
 
     /**
      * E4: ابطال همه‌ی Sessionهای User. فقط با Session Driver = database ممکن است؛
-     * با Driver دیگر (file/redis) این مرحله No-op است و فقط remember_token عوض می‌شود.
+     * با Driver دیگر (file/redis) این مرحله No-op است و فقط remember_token عوض می‌شود
+     * (و AuthenticateSession نشست‌های دیگر را با مقایسه‌ی Hash رمز می‌بندد).
+     * B2.5: پیاده‌سازی به SessionSecurityService منتقل شد؛ این متد برای سازگاری می‌ماند.
      */
     public function revokeSessions(User $user): int
     {
-        if (config('session.driver') !== 'database') {
-            return 0;
-        }
-
-        try {
-            return DB::table(config('session.table', 'sessions'))->where('user_id', $user->id)->delete();
-        } catch (Throwable $e) {
-            Log::warning('email_auth_session_revoke_failed', ['user_id' => $user->id, 'error' => $e->getMessage()]);
-
-            return 0;
-        }
+        return $this->sessions->revokeAll($user);
     }
 }

@@ -2,8 +2,12 @@
 
 namespace App\Channels\Website;
 
+use App\Channels\Website\Http\Middleware\EnforceSessionPolicy;
 use App\Channels\Website\Http\Middleware\EnsureCustomerAccountResolved;
 use App\Channels\Website\Http\Middleware\ResolveStoreContext;
+use App\Channels\Website\Listeners\StampSessionLogin;
+use Illuminate\Auth\Events\Login;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 
@@ -26,6 +30,9 @@ class WebsiteServiceProvider extends ServiceProvider
         // 'store.customer' نوشته شود — هم‌راستا با سبک الگوهای Laravel.
         Route::aliasMiddleware('store.context', ResolveStoreContext::class);
         Route::aliasMiddleware('store.customer', EnsureCustomerAccountResolved::class);
+        // B2.5: سیاست نشست (کاربر غیرفعال، سقف مطلق عمر) + مُهر شروع نشست روی هر ورود موفق.
+        Route::aliasMiddleware('website.session', EnforceSessionPolicy::class);
+        Event::listen(Login::class, StampSessionLogin::class);
 
         $this->loadRoutesFrom(__DIR__.'/../../../routes/website.php');
 

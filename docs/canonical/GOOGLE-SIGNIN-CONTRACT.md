@@ -11,7 +11,7 @@
 ## ۱. دامنه
 Google Sign-In **روش احراز هویت** است و علاوه بر آن (G21) **CustomerAccount** کاربر را در فروشگاه مبدأ ورود می‌سازد؛ Wallet و Order را هرگز نمی‌سازد.
 `User ≠ CustomerAccount` (R2). R7 («CustomerAccount فقط در لحظه‌ی خرید») با **تصمیم صاحب پروژه** یک استثنای صریح و محدود دارد: ورود موفق با Google و ورود موفق با Email+Password (G21؛ منطق مشترک `LoginMembershipService`). هیچ مسیر دیگری (GET، Guest، Register) CustomerAccount نمی‌سازد.
-Account Linking برای کاربر واردشده (Google/Telegram از Profile) = B2.4؛ Telegram Identity Bridge = T2؛ خارج از این سند.
+Account Linking برای کاربر واردشده (Google/Telegram از Profile) = B2.4، با Contract مستقل `ACCOUNT-LINKING-CONTRACT.md` (callback ثابت G15 با `mode=link` و بدون Middleware `guest`)؛ Telegram Identity Bridge = T2؛ خارج از این سند.
 
 ## ۲. قواعد
 

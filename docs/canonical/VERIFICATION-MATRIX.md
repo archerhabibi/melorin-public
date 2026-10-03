@@ -36,6 +36,9 @@
 | Email Verification + Gate (Purchase/Wallet Charge فقط) | ✅ | ✅ | ✅ | ☐ | ☐ | ☐ | ☐ |
 | Discount (No Stacking، Eligibility از سابقه) | ✅ | ☐ *(موتور وجود ندارد، C12)* | ☐ | ☐ | — | ☐ | ☐ |
 | Guest Retention (۶۰ روز) | ✅ | ✅ *(`guest:prune` روزانه)* | ✅ | — | — | ☐ | ☐ |
+| Guest Identity Flow (B2.3: جایگزینی/لغو نشست، کاربر واردشده، تصادم Case-insensitive، Audit مصرف) | ✅ | — | ✅ *(نوشته‌شده؛ اجرا نشده)* | — | — | ☐ | ☐ |
+| Account Linking (B2.4: Google link/unlink، Telegram unlink، اولین رمز، ضد Lock-out، بدون Merge) | ✅ | — | ✅ *(نوشته‌شده؛ اجرا نشده)* | — | — | ☐ | ☐ |
+| Session Security (B2.5: سیاست نشست، سقف مطلق، کاربر غیرفعال، فهرست/بستن دستگاه‌ها، تغییر رمز، Preflight) | ✅ | — | ✅ | — | — | ☐ | ☐ |
 | بازگشت به Checkout پس از شارژ (D-3) | ✅ | ✅ *(لینک بازگشت)* | ✅ | ☐ | — | ☐ | ☐ |
 | Security Headers/CSP/Rate Limit/Trusted Proxies | ✅ *(Website §22، §25)* | ✅ | ✅ *(`Phase8SecurityTest`)* | — | ⚠️ *Self-audit فاز ۸* | ☐ | ☐ |
 | Money Representation (بدون float، ارز قابل‌تنظیم) | ✅ *(M1–M8)* | ✅ | ✅ | — | — | ☐ *(Migration روی کپی DB)* | ☐ |

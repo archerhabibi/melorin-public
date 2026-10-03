@@ -8,6 +8,8 @@ use App\Channels\Website\Support\GuestCheckoutContinuation;
 use App\Channels\Website\Support\ResolvesWebsiteRouteNames;
 use App\Models\Reseller;
 use App\Models\User;
+use App\Services\Core\Identity\AccountLinkResult;
+use App\Services\Core\Identity\AccountLinkingService;
 use App\Services\Core\Identity\ExternalIdentityResult;
 use App\Services\Core\Identity\ExternalIdentityService;
 use App\Services\Core\Store\StoreContext;
@@ -46,7 +48,37 @@ class GoogleAuthController
         protected GoogleOAuthClient $google,
         protected ExternalIdentityService $identity,
         protected GuestCheckoutContinuation $guestContinuation,
+        protected AccountLinkingService $linking,
     ) {}
+
+    /**
+     * B2.4 — شروع «اتصال Google» برای User واردشده (از Profile). همان Redirect URI ثابت و همان
+     * Session؛ تفاوت فقط `mode = link` و `user_id` سمت سرور است. مقصد برگشت و خطاها همیشه
+     * Profile فروشگاه مبدأ است (هیچ URL از Client پذیرفته نمی‌شود).
+     */
+    public function linkRedirect(Request $request, StoreContext $store): RedirectResponse
+    {
+        abort_unless($this->google->enabled(), 404);
+
+        $state = Str::random(40);
+        $nonce = Str::random(40);
+        $verifier = Str::random(64);
+        $profileUrl = $this->websiteRoute($request, 'identity.profile.show');
+
+        $request->session()->put(self::SESSION_KEY, [
+            'mode' => 'link',
+            'user_id' => $request->user()->id,
+            'state' => $state,
+            'nonce' => $nonce,
+            'verifier' => $verifier,
+            'created_at' => time(),
+            'store' => $store->toArray(),
+            'login_url' => $profileUrl,
+            'continue_url' => $profileUrl,
+        ]);
+
+        return redirect()->away($this->google->authorizationUrl($state, $nonce, $verifier));
+    }
 
     public function redirect(Request $request, StoreContext $store): RedirectResponse
     {
@@ -87,6 +119,22 @@ class GoogleAuthController
         // یک‌بارمصرف: pull. هر Replay یا Session دیگری با state خالی روبه‌رو می‌شود.
         $ctx = $request->session()->pull(self::SESSION_KEY);
         $loginUrl = is_array($ctx) && isset($ctx['login_url']) ? $ctx['login_url'] : route('website.login');
+        $isLink = is_array($ctx) && ($ctx['mode'] ?? null) === 'link';
+
+        // کاربر واردشده فقط برای «اتصال» به این مسیر می‌آید (قبلاً Middleware `guest` این را می‌بست).
+        if ($request->user() && ! $isLink) {
+            return redirect($this->websiteRoute($request, 'home'));
+        }
+
+        // نشست اتصال بدون کاربر واردشده (Session منقضی/خروج وسط راه) ⇒ شکست عمومی، بدون هیچ اثر.
+        if ($isLink && ! $request->user()) {
+            return $this->fail(route('website.login'), 'درخواست اتصال Google منقضی شده است. دوباره وارد شوید.');
+        }
+
+        // نشست اتصال برای کاربر دیگری ساخته شده بود (تعویض حساب وسط راه) ⇒ رد.
+        if ($isLink && (int) ($ctx['user_id'] ?? 0) !== (int) $request->user()->id) {
+            return $this->fail($loginUrl, 'درخواست اتصال Google نامعتبر بود. دوباره تلاش کنید.');
+        }
 
         if (! is_array($ctx) || (time() - (int) ($ctx['created_at'] ?? 0)) > self::TTL_SECONDS) {
             return $this->fail($loginUrl, 'درخواست ورود با Google منقضی شده یا نامعتبر بود. دوباره تلاش کنید.');
@@ -115,6 +163,10 @@ class GoogleAuthController
             return $this->fail($loginUrl, 'ورود با Google انجام نشد. دوباره تلاش کنید.');
         }
 
+        if ($isLink) {
+            return $this->finishLink($request, $ctx, $profile);
+        }
+
         $result = $this->identity->resolve(
             provider: 'google',
             subject: $profile->subject,
@@ -140,6 +192,27 @@ class GoogleAuthController
         $request->session()->forget('url.intended');
 
         return redirect($ctx['continue_url']);
+    }
+
+    /** B2.4: نتیجه‌ی اتصال Google به کاربر واردشده؛ همیشه برگشت به Profile. */
+    protected function finishLink(Request $request, array $ctx, \App\Channels\Website\Support\GoogleProfile $profile): RedirectResponse
+    {
+        $result = $this->linking->linkGoogle($request->user(), $profile->subject, $profile->email, $profile->emailVerified);
+        $back = (string) $ctx['continue_url'];
+
+        if ($result->isRejected()) {
+            return redirect($back)->withErrors(['google' => match ($result->reason) {
+                AccountLinkResult::REASON_OWNED_BY_OTHER => 'این حساب Google قبلاً به کاربر دیگری متصل است.',
+                AccountLinkResult::REASON_ALREADY_HAS_PROVIDER => 'به این حساب یک Google دیگر وصل است. ابتدا آن را جدا کنید.',
+                AccountLinkResult::REASON_PROVIDER_EMAIL_NOT_VERIFIED => 'ایمیل حساب Google شما تأیید نشده است.',
+                AccountLinkResult::REASON_USER_NOT_ACTIVE => 'این حساب در حال حاضر قابل استفاده نیست.',
+                default => 'اتصال Google انجام نشد. دوباره تلاش کنید.',
+            }]);
+        }
+
+        return redirect($back)->with('status', $result->isAlready()
+            ? 'این حساب Google از قبل به حساب شما وصل است.'
+            : 'حساب Google شما با موفقیت وصل شد.');
     }
 
     /**

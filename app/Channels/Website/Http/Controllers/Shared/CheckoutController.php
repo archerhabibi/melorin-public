@@ -117,7 +117,7 @@ class CheckoutController
         $guest = $this->guestContinuation->activeFor($request, $store);
 
         if ($guest && $guest->product_id === $productModel->id) {
-            $this->guest->consume($guest);
+            $this->guest->consume($guest, $request->user());
         }
 
         $routeName = $store->isReseller() ? 'website.store.orders.show' : 'website.orders.show';

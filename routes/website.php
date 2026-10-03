@@ -11,7 +11,9 @@ use App\Channels\Website\Http\Controllers\Auth\NewPasswordController;
 use App\Channels\Website\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Channels\Website\Http\Controllers\Auth\RegisteredUserController;
 use App\Channels\Website\Http\Controllers\Guest\GuestCheckoutController;
+use App\Channels\Website\Http\Controllers\Identity\AccountLinkingController;
 use App\Channels\Website\Http\Controllers\Identity\ProfileController;
+use App\Channels\Website\Http\Controllers\Identity\SessionController;
 use App\Channels\Website\Http\Controllers\Identity\TelegramLinkController;
 use App\Channels\Website\Http\Controllers\Reseller\ManageController;
 use App\Channels\Website\Http\Controllers\Shared\ChargeController;
@@ -20,6 +22,7 @@ use App\Channels\Website\Http\Controllers\Shared\HomeController;
 use App\Channels\Website\Http\Controllers\Shared\OrderController;
 use App\Channels\Website\Http\Controllers\Shared\ProductController;
 use App\Channels\Website\Http\Controllers\Shared\ReceiptController;
+use Illuminate\Session\Middleware\AuthenticateSession;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -58,6 +61,10 @@ $registerSharedRoutes = function () {
         ->name('guest-checkout.store');
     Route::get('/guest-checkout/pending', [GuestCheckoutController::class, 'pending'])
         ->name('guest-checkout.pending');
+    // B2.3: لغو نشست Pending و شروع دوباره (باطل‌کردن + پاک‌کردن Cookie).
+    Route::post('/guest-checkout/cancel', [GuestCheckoutController::class, 'cancel'])
+        ->middleware('throttle:10,1')
+        ->name('guest-checkout.cancel');
 
     // --- Auth ---
     Route::middleware('guest')->group(function () {
@@ -98,7 +105,8 @@ $registerSharedRoutes = function () {
             ->name('password.store');
     });
 
-    Route::middleware(['auth', 'store.customer'])->group(function () {
+    // B2.5: AuthenticateSession نشست‌های دیگر را با تغییر Hash رمز می‌بندد (مستقل از Session Driver).
+    Route::middleware(['auth', AuthenticateSession::class, 'store.customer'])->group(function () {
         // آدرس '/sign-out' (نه '/logout'): مسیر POST /logout برای خروج
         // پنل نماینده‌ی Filament (path('')) رزرو است و ثابت است (قابل
         // تغییر نیست). نام route همچنان logout می‌ماند، پس فقط URI عوض شد.
@@ -116,6 +124,34 @@ $registerSharedRoutes = function () {
 
         // --- Profile / اتصال Telegram (Master G10) ---
         Route::get('/profile', [ProfileController::class, 'show'])->name('identity.profile.show');
+
+        // --- B2.4 Account Linking (ACCOUNT-LINKING-CONTRACT.md) ---
+        // اتصال Google: شروع از Profile (callback همان Redirect URI ثابت B2.1). بدون Google فعال ⇒ 404.
+        Route::get('/identity/google/link', [GoogleAuthController::class, 'linkRedirect'])
+            ->middleware('throttle:10,1')
+            ->name('identity.google.link');
+        // جداسازی و تعیین اولین رمز: POST + رمز فعلی (L5) + throttle سخت.
+        Route::post('/identity/google/unlink', [AccountLinkingController::class, 'unlinkGoogle'])
+            ->middleware('throttle:5,1')
+            ->name('identity.google.unlink');
+        Route::post('/identity/telegram/unlink', [AccountLinkingController::class, 'unlinkTelegram'])
+            ->middleware('throttle:5,1')
+            ->name('identity.telegram.unlink');
+        Route::post('/identity/password', [AccountLinkingController::class, 'setPassword'])
+            ->middleware('throttle:5,1')
+            ->name('identity.password.set');
+
+        // --- B2.5 Session Security (SESSION-SECURITY-CONTRACT.md) ---
+        // تغییر رمز موجود (رمز فعلی لازم) و پایان نشست‌های فعال؛ همه POST + throttle سخت (به‌ازای کاربر).
+        Route::post('/identity/password/update', [AccountLinkingController::class, 'updatePassword'])
+            ->middleware('throttle:5,1')
+            ->name('identity.password.update');
+        Route::post('/identity/sessions/revoke', [SessionController::class, 'revoke'])
+            ->middleware('throttle:5,1')
+            ->name('identity.sessions.revoke');
+        Route::post('/identity/sessions/revoke-others', [SessionController::class, 'revokeOthers'])
+            ->middleware('throttle:5,1')
+            ->name('identity.sessions.revoke-others');
 
         // --- Telegram-linking ---
         // throttle: هر تلاش یک درخواست HMAC-verify است؛ محدودیت جلوی
@@ -165,7 +201,7 @@ $registerSharedRoutes = function () {
  * Middleware — دلیلش در docblock همان کنترلر.
  */
 $registerResellerManagementRoutes = function () {
-    Route::prefix('manage')->name('manage.')->middleware('auth')->group(function () {
+    Route::prefix('manage')->name('manage.')->middleware(['auth', AuthenticateSession::class])->group(function () {
         Route::get('/', [ManageController::class, 'index'])->name('index');
         Route::get('/customers', [ManageController::class, 'customers'])->name('customers');
         Route::get('/products', [ManageController::class, 'products'])->name('products');
@@ -182,7 +218,7 @@ $registerResellerManagementRoutes = function () {
  * از Queue ارسال می‌شود و StoreContext ندارد)؛ نام‌های استاندارد Laravel.
  * Rate Limit: ۶/دقیقه (RATE-LIMIT در Website Contract §22).
  */
-Route::middleware(['web', 'store.context', 'website.csp', 'auth'])->group(function () {
+Route::middleware(['web', 'store.context', 'website.csp', 'website.session', 'auth', AuthenticateSession::class])->group(function () {
     Route::get('/email/verify', [EmailVerificationController::class, 'notice'])
         ->name('verification.notice');
     Route::get('/email/verify/{id}/{hash}', [EmailVerificationController::class, 'verify'])
@@ -196,9 +232,11 @@ Route::middleware(['web', 'store.context', 'website.csp', 'auth'])->group(functi
 /*
  * Google Sign-In callback (B2.1). Redirect URI گوگل باید یک آدرس ثابت باشد، پس فقط روی Context اصلی
  * ثبت می‌شود؛ مقصد برگشت (نماینده/ادامه‌ی خرید) سمت سرور در Session نگه داشته شده است.
- * `guest`: کاربر واردشده نیازی به این مسیر ندارد (Link کردن برای کاربر واردشده = B2.4).
+ * کاربر واردشده فقط با نشست اتصال (B2.4) به این مسیر وارد می‌شود؛ کنترلر آن را enforce می‌کند.
  */
-Route::middleware(['web', 'store.context', 'website.csp', 'guest'])->group(function () {
+Route::middleware(['web', 'store.context', 'website.csp', 'website.session'])->group(function () {
+    // `guest` برداشته شد (B2.4): کاربر واردشده برای «اتصال» (mode=link در Session) باید به همین
+    // callback ثابت برگردد. کاربر واردشده بدون نشست اتصال داخل کنترلر به Home هدایت می‌شود.
     Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])
         ->middleware('throttle:10,1')
         ->name('auth.google.callback');
@@ -206,11 +244,11 @@ Route::middleware(['web', 'store.context', 'website.csp', 'guest'])->group(funct
 
 // CSP فقط روی هر دو گروه Website اعمال می‌شود — نه سراسری روی 'web'
 // (پنل‌های ادمین/نماینده دست‌نخورده می‌مانند).
-Route::middleware(['web', 'store.context', 'website.csp'])
+Route::middleware(['web', 'store.context', 'website.csp', 'website.session'])
     ->name('website.')
     ->group($registerSharedRoutes);
 
-Route::middleware(['web', 'store.context', 'website.csp'])
+Route::middleware(['web', 'store.context', 'website.csp', 'website.session'])
     ->prefix('store/{slug}')
     ->name('website.store.')
     ->group(function () use ($registerSharedRoutes, $registerResellerManagementRoutes) {

@@ -30,7 +30,7 @@ Email Verification Gate (G11/D-8) و قواعد Google (G12–G21) تغییر ن
 |---|---|---|
 | D-11 | پیام Register برای Email تکراری (Enumeration) | بدون تغییر: «این ایمیل قبلاً ثبت شده است.» |
 | D-12 | Change Email با تأیید مجدد (و اثرش روی هویت Google) | خارج از B2.2؛ فاز جدا |
-| D-13 | Set Password از Profile برای کاربر Google (به‌جای فقط Reset) | خارج از B2.2؛ B2.4 |
+| ~~D-13~~ | ~~Set Password از Profile برای کاربر Google~~ | **بسته شد در B2.4** (`ACCOUNT-LINKING-CONTRACT.md` L9؛ فقط اولین رمز) |
 
 ## ۵. Verification
 تست‌ها: `tests/Feature/Website/EmailAuthTest.php`. اجرا روی SQLite سبز؛ MariaDB/MySQL و Staging هنوز لازم است.

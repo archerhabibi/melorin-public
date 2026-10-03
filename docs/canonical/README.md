@@ -9,6 +9,8 @@
 | VERIFICATION-MATRIX.md | Contract 2.8 / 1.9 | وضعیت Contract→Code→Test→Production + شکاف‌ها |
 | GOOGLE-SIGNIN-CONTRACT.md | 1.2 (Parent: Master 2.8 / Website 1.9) | Google Sign-In (B2.1؛ G12–G21) |
 | EMAIL-AUTH-CONTRACT.md | 1.0 (Parent: Master 2.8 / Website 1.9 / Google 1.2) | Email Authentication (B2.2؛ E1–E6) |
+| ACCOUNT-LINKING-CONTRACT.md | 1.0 (Parent: Master 2.8 / Website 1.9 / Google 1.2 / Email 1.0) | Account Linking: Google/Telegram/اولین رمز (B2.4؛ L1–L11) |
+| SESSION-SECURITY-CONTRACT.md | 1.0 (Parent: Master 2.8 / Website 1.9 / Email 1.0 / Linking 1.0) | Session Security: سیاست نشست، مدیریت دستگاه‌ها، تغییر رمز (B2.5؛ S1–S11) |
 | DATA-RETENTION.md | — | Retention (Guest ۶۰ روز؛ بقیه تأییدشده) |
 
 ## سایر پوشه‌ها

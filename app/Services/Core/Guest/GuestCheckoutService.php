@@ -6,6 +6,7 @@ use App\Models\GuestCheckout;
 use App\Models\Product;
 use App\Models\User;
 use App\Services\Core\AuditService;
+use App\Services\Core\Identity\EmailIdentity;
 use App\Services\Core\Store\IdentityService;
 use App\Services\Core\Store\StoreContext;
 use Illuminate\Support\Str;
@@ -23,8 +24,8 @@ use Illuminate\Support\Str;
  */
 class GuestCheckoutService
 {
-    /** G9: TTL نشست (پارامتر Implementation). */
-    protected const TTL_MINUTES = 45;
+    /** G9: TTL نشست (پارامتر Implementation). Cookie هم از همین مقدار استفاده می‌کند تا هیچ‌وقت ناهماهنگ نشوند. */
+    public const TTL_MINUTES = 45;
 
     /** G9 / D-4: نگهداری ردیف‌های expired و consumed پیش از حذف فیزیکی. */
     public const RETENTION_DAYS = 60;
@@ -43,11 +44,18 @@ class GuestCheckoutService
         string $email,
         ?string $name = null,
         ?string $phone = null,
+        ?GuestCheckout $replacing = null,
     ): GuestCheckout {
         $email = Str::lower(trim($email));
 
         if ($email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
             throw new \InvalidArgumentException('ایمیل مهمان الزامی و باید معتبر باشد.');
+        }
+
+        // B2.3: شروع نشست تازه، نشست Pending قبلیِ همین مرورگر را باطل می‌کند تا
+        // برای یک نفر چند خرید Pending هم‌زمان باقی نماند. فقط نشست همین Context.
+        if ($replacing && (int) $replacing->reseller_id === (int) $store->resellerId()) {
+            $this->discard($replacing);
         }
 
         // G8: فقط همین فیلدها؛ IP/User-Agent/Device عمداً پارامتر نیستند.
@@ -92,10 +100,10 @@ class GuestCheckoutService
      */
     public function detectCollision(GuestCheckout $guest): ?User
     {
-        $existing = $this->identity->findIdentity(
-            email: $guest->guest_email,
-            phone: $guest->guest_phone,
-        );
+        // B2.3: تطبیق Email بدون حساسیت به حروف (ردیف‌های قدیمیِ Mixed-case هم دیده شوند)،
+        // مستقل از Collation دیتابیس؛ phone فقط در صورت ارائه.
+        $existing = EmailIdentity::findUser($guest->guest_email)
+            ?? ($guest->guest_phone ? $this->identity->findIdentity(phone: $guest->guest_phone) : null);
 
         if ($existing) {
             $this->audit->record('identity.guest_collision_detected', $existing);
@@ -106,14 +114,41 @@ class GuestCheckoutService
 
     /**
      * G6/G9: پس از تکمیل همان خرید، نشست مصرف می‌شود. UPDATE شرطی است تا
-     * دو درخواست هم‌زمان هر دو «موفق» نشوند.
+     * دو درخواست هم‌زمان هر دو «موفق» نشوند. فقط مصرفِ واقعی Audit می‌شود
+     * (`identity.guest_checkout_consumed`)؛ این رویداد تنها پیوند Guest → User است
+     * و هیچ Email/Phone ای در آن نمی‌آید (G8).
      */
-    public function consume(GuestCheckout $guest): bool
+    public function consume(GuestCheckout $guest, ?User $by = null): bool
     {
-        return GuestCheckout::query()
+        $consumed = GuestCheckout::query()
             ->whereKey($guest->id)
             ->where('status', 'pending')
             ->update(['status' => 'consumed', 'updated_at' => now()]) === 1;
+
+        if ($consumed) {
+            $this->audit->record('identity.guest_checkout_consumed', $guest, actor: $by);
+        }
+
+        return $consumed;
+    }
+
+    /**
+     * B2.3: لغو/جایگزینی نشست Pending (دکمه‌ی «لغو و شروع دوباره»، یا شروع نشست
+     * تازه). UPDATE شرطی: فقط pending → expired؛ `consumed` هرگز برنمی‌گردد.
+     * `expires_at` هم همین لحظه می‌شود تا شمارش ۶۰ روزه‌ی Retention از اینجا شروع شود.
+     */
+    public function discard(GuestCheckout $guest): bool
+    {
+        $discarded = GuestCheckout::query()
+            ->whereKey($guest->id)
+            ->where('status', 'pending')
+            ->update(['status' => 'expired', 'expires_at' => now(), 'updated_at' => now()]) === 1;
+
+        if ($discarded) {
+            $this->audit->record('identity.guest_checkout_discarded', $guest);
+        }
+
+        return $discarded;
     }
 
     /**

@@ -6,6 +6,8 @@
     <x-ui.card class="max-w-sm mx-auto">
         <h1 class="page-title mb-6">ورود به حساب کاربری</h1>
 
+        @include('website.guest.continue-notice')
+
         <x-ui.errors class="mb-4" />
 
         <form method="POST" action="{{ $storeContext->isReseller() ? route('website.store.login.store', $storeContext->reseller->slug) : route('website.login.store') }}" class="space-y-4">

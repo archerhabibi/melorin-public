@@ -46,6 +46,8 @@ class PreflightTest extends TestCase
             'session.secure' => true, 'telegram.bots.main.token' => '1:A', 'telegram.webhook_secret' => 's3cret',
             'queue.default' => 'database', 'cache.default' => 'file', 'mail.default' => 'smtp',
             'services.zarinpal.sandbox' => false,
+            // B2.5: phpunit.xml نشست را array می‌گذارد؛ Production واقعی database است.
+            'session.driver' => 'database', 'session.http_only' => true, 'session.same_site' => 'lax',
         ]);
 
         $failed = array_filter((new Preflight)->config(), fn (CheckResult $c) => $c->status === CheckResult::FAIL);
@@ -69,6 +71,42 @@ class PreflightTest extends TestCase
             'queue_driver', 'cache_store', 'mail_driver', 'zarinpal_sandbox'] as $name) {
             $this->assertSame(CheckResult::FAIL, $this->statusOf($r, $name), $name);
         }
+    }
+
+    #[Test]
+    public function dangerous_session_settings_are_failures_in_production(): void
+    {
+        config(['app.env' => 'production', 'session.driver' => 'array', 'session.http_only' => false, 'session.same_site' => 'none']);
+        $r = (new Preflight)->config();
+
+        foreach (['session_driver', 'session_http_only', 'session_same_site'] as $name) {
+            $this->assertSame(CheckResult::FAIL, $this->statusOf($r, $name), $name);
+        }
+
+        // strict ورود Google/Telegram را می‌شکند.
+        config(['session.same_site' => 'strict']);
+        $this->assertSame(CheckResult::FAIL, $this->statusOf((new Preflight)->config(), 'session_same_site'));
+
+        // file کار می‌کند ولی ابطال دستگاه‌ها ندارد ⇒ فقط هشدار.
+        config(['session.driver' => 'file']);
+        $this->assertSame(CheckResult::WARN, $this->statusOf((new Preflight)->config(), 'session_driver'));
+    }
+
+    #[Test]
+    public function session_lifetime_and_domain_are_warned_not_failed(): void
+    {
+        config(['app.env' => 'production', 'session.lifetime' => 1440, 'session.domain' => '.shop.test']);
+        $r = (new Preflight)->config();
+        $this->assertSame(CheckResult::WARN, $this->statusOf($r, 'session_lifetime'));
+        $this->assertSame(CheckResult::WARN, $this->statusOf($r, 'session_domain'));
+
+        config(['session.lifetime' => 120, 'session.absolute_lifetime' => 0]);
+        $this->assertSame(CheckResult::WARN, $this->statusOf((new Preflight)->config(), 'session_lifetime'));
+
+        config(['session.absolute_lifetime' => 10080, 'session.domain' => null]);
+        $r = (new Preflight)->config();
+        $this->assertSame(CheckResult::OK, $this->statusOf($r, 'session_lifetime'));
+        $this->assertSame(CheckResult::OK, $this->statusOf($r, 'session_domain'));
     }
 
     #[Test]
