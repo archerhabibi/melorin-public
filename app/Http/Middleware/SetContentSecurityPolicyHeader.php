@@ -41,6 +41,7 @@ class SetContentSecurityPolicyHeader
             "form-action 'self'",
             "frame-ancestors 'self'",
             "base-uri 'self'",
+            "object-src 'none'",
         ]));
 
         return $response;

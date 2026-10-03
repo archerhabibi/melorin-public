@@ -53,18 +53,21 @@ class WebhookController
         // اگر وب‌هوک نماینده بدون secret ثبت شده باشد، تلگرام هدری
         // نمی‌فرستد و درخواست رد می‌شود؛ راه‌حل: اجرای «ثبت وب‌هوک»
         // (Reconnect webhook) از پنل ادمین.
-        $expectedSecret = $reseller->webhook_secret;
+        // Fail-closed (فاز ۸، S-01): پیش از این، اگر نماینده secret نداشت
+        // (`if ($expectedSecret)`) چک کلاً رد می‌شد و هر کسی که slug را
+        // می‌دانست Update جعلی می‌فرستاد؛ کامنت قبلی هم خلاف رفتار واقعی بود.
+        // اکنون بدون secret ← ۴۰۳؛ راه‌حل: «ثبت وب‌هوک» (Reconnect) از پنل ادمین
+        // که secret را می‌سازد (ensureWebhookSecret) و در تلگرام ثبت می‌کند.
+        $expectedSecret = (string) $reseller->webhook_secret;
+        $providedSecret = (string) $request->header('X-Telegram-Bot-Api-Secret-Token');
 
-        if ($expectedSecret) {
-            $providedSecret = (string) $request->header('X-Telegram-Bot-Api-Secret-Token');
+        if ($expectedSecret === '' || ! hash_equals($expectedSecret, $providedSecret)) {
+            Log::warning('درخواست وب‌هوک نماینده بدون secret معتبر رد شد.', [
+                'reseller_id' => $reseller->id,
+                'secret_configured' => $expectedSecret !== '',
+            ]);
 
-            if (! hash_equals($expectedSecret, $providedSecret)) {
-                Log::warning('درخواست وب‌هوک نماینده با secret نامعتبر رد شد.', [
-                    'reseller_id' => $reseller->id,
-                ]);
-
-                abort(403);
-            }
+            abort(403);
         }
 
         $telegram = $this->apiFactory->make($reseller);

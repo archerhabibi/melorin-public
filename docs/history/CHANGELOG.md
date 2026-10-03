@@ -5,6 +5,13 @@
 
 ---
 
+3.3.6 - فاز ۸ (Security Audit — Self-Audit): ۱۰ یافته بسته شد؛ مهم‌ترین‌ها: وب‌هوک تلگرام (اصلی و نماینده) Fail-closed، Callback زرین‌پال مقید به Authority (جلوگیری از Reject ناخواسته‌ی پرداخت دیگران)، Trusted Proxies، هدرهای امنیتی/HSTS، Throttle ثبت‌نام، Idempotency تمدید Website. ۱۶ تست جدید؛ ۴۹۳ سبز (+۵ Redis با flag). باز: Admin Authorization تخت (O-1) و ۷ مورد دیگر.
+
+جزئیات: docs/history/PHASE-8-SECURITY-AUDIT.md
+⚠️ قبل از Deploy: `TELEGRAM_WEBHOOK_SECRET` باید مقدار داشته باشد؛ نمایندگانِ بدون secret باید Reconnect webhook شوند.
+
+---
+
 3.3.5 - تکمیل فاز ۷: (۱) Baseline Squash: ۸۲ Migration → یک Baseline (`2026_10_03_000001_create_baseline_schema.php`)، بدون Backfill/Merge و بدون ستون‌های قدیمی (`users.reseller_id`)؛ اسکیما روی MariaDB با اسکیمای قبلی مقایسه شد (تنها تفاوت: حذف `users.reseller_id`). (۲) Redis واقعی در تست (Cache/Lock/RateLimiter/Queue) با flag قفل‌دار و در CI. (۳) skipهای MariaDB برطرف شد. SQLite و MariaDB+Redis: ۴۸۲ تست سبز.
 
 جزئیات: docs/history/PHASE-7-TEST-ENVIRONMENT.md (بخش «تکمیل فاز ۷»)

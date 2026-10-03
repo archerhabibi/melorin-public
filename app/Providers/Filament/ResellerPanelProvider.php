@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Http\Middleware\SecurityHeaders;
 use App\Models\Reseller;
 use Filament\Facades\Filament;
 use Filament\Http\Middleware\Authenticate;
@@ -95,6 +96,7 @@ class ResellerPanelProvider extends PanelProvider
             ])
             ->discoverWidgets(in: app_path('Filament/Reseller/Widgets'), for: 'App\\Filament\\Reseller\\Widgets')
             ->middleware([
+                SecurityHeaders::class,
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
                 StartSession::class,

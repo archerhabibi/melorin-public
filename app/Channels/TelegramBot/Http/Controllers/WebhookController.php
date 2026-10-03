@@ -32,8 +32,18 @@ class WebhookController
             abort(404);
         }
 
-        $secret = config('telegram.webhook_secret');
-        if ($secret && $request->header('X-Telegram-Bot-Api-Secret-Token') !== $secret) {
+        // Fail-closed (فاز ۸، S-02): پیش از این اگر TELEGRAM_WEBHOOK_SECRET خالی بود
+        // چک کلاً رد می‌شد (Fail-open) و مقایسه هم زمان‌ثابت نبود. اکنون بدون
+        // secret پیکربندی‌شده، هیچ Updateای پذیرفته نمی‌شود.
+        $secret = (string) config('telegram.webhook_secret');
+
+        if ($secret === '') {
+            Log::error('telegram_webhook_secret_not_configured');
+
+            abort(403);
+        }
+
+        if (! hash_equals($secret, (string) $request->header('X-Telegram-Bot-Api-Secret-Token'))) {
             abort(403);
         }
 

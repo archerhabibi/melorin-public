@@ -2,7 +2,7 @@
 
 | فیلد | مقدار |
 |---|---|
-| **نسخه** | 1.8 |
+| **نسخه** | 1.9 |
 | **وضعیت** | CANONICAL |
 | **Parent Contract** | Master Architecture Contract 2.8 |
 | **جایگزین** | Website Subdocument v1.2 (متن داخلی 1.1) و Website Contract 1.3 / 1.4 / 1.6 / 1.7 — DEPRECATED |
@@ -145,6 +145,8 @@ Email Verification (فقط Context اصلی، پشت `auth`): `GET /email/verify
 | Receipt Upload POST | 5/min | IP |
 | Telegram Link Callback | 20/min | IP |
 | Email Verify / Resend | 6/min | IP |
+| Register POST *(فاز ۸)* | 10/hr | IP |
+| Zarinpal Callback GET *(فاز ۸)* | 30/min | IP |
 
 هر تغییر مقدار باید همین جدول را به‌روز کند (Contract Test پیشنهادی در فاز ۳).
 
@@ -175,3 +177,24 @@ Email Verification (فقط Context اصلی، پشت `auth`): `GET /email/verify
 **هشدار Deploy (D-7):** با `MAIL_MAILER=log` هیچ Email تأییدی نمی‌رسد و خرید/شارژ ثبت‌نام‌های جدید مسدود می‌ماند؛ SMTP واقعی پیش‌نیاز Production است.
 
 **کاهش ریسک (D-7):** چون Guest فقط با Email شروع می‌شود، بدون Verification هر کس می‌تواند Email دیگری را ثبت کند؛ Verify در Register و Gate روی Purchase/Charge این ریسک را می‌بندد.
+
+## 25. Security Headers، Trusted Proxies و Callback درگاه (فاز ۸)
+
+**هدرهای پایه** (`SecurityHeaders`؛ روی گروه `web` و هر دو پنل Filament؛ هدری که از قبل ست شده بازنویسی نمی‌شود):
+
+| هدر | مقدار |
+|---|---|
+| `X-Content-Type-Options` | `nosniff` |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` |
+| `X-Frame-Options` | `SAMEORIGIN` |
+| `Permissions-Policy` | `camera=(), microphone=(), geolocation=(), payment=(), usb=()` |
+| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` — فقط وقتی درخواست HTTPS است |
+| `Content-Security-Policy` | فقط Website (بخش ۱۹)؛ اکنون با `object-src 'none'` |
+
+**Trusted Proxies:** `TRUSTED_PROXIES` (پیش‌فرض `127.0.0.1,::1`). بدون آن IP همه‌ی کاربران پشت Nginx/cloudflared یکسان دیده می‌شود و تمام Rate Limitهای مبتنی بر IP مشترک می‌شوند. باید روی Staging با `request()->ip()` راستی‌آزمایی شود.
+
+**Webhook تلگرام Fail-closed است:** Secret پیکربندی‌نشده (`TELEGRAM_WEBHOOK_SECRET` / `resellers.webhook_secret`) = رد (۴۰۳)، نه عبور؛ مقایسه با `hash_equals`.
+
+**Callback درگاه:** `Authority` بازگشتی باید با `payments.gateway_reference` یکی باشد (`hash_equals`)؛ در غیر این صورت هیچ تغییر وضعیتی انجام نمی‌شود و پاسخ 404 عمومی است (`InvalidGatewayCallbackException`). `Status=NOK` فقط با Authority درست، پرداخت را Reject می‌کند.
+
+**Renewal Website:** فرم تمدید `idempotency_token` می‌فرستد؛ کلید Core = `website-renew:{account}:{token}`.

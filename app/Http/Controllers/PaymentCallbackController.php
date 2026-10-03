@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Payment;
+use App\Services\Core\Payments\InvalidGatewayCallbackException;
 use App\Services\Core\PaymentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -44,6 +45,13 @@ class PaymentCallbackController
 
         try {
             $payment = $paymentService->handleCallback($payment, $request->query());
+        } catch (InvalidGatewayCallbackException) {
+            // S-03: Authority نامطابق ← هیچ چیز تغییر نکرده؛ پاسخ عمومی و یکسان با
+            // «پرداخت پیدا نشد» تا وجود/عدم‌وجود payment_id قابل‌تشخیص نباشد.
+            return response()->view('payment.callback', [
+                'success' => false,
+                'message' => 'پرداخت موردنظر پیدا نشد.',
+            ], 404);
         } catch (\Throwable $e) {
             Log::error('zarinpal_callback_failed', [
                 'payment_id' => $payment->id,

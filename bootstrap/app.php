@@ -1,8 +1,11 @@
 <?php
 
+use App\Http\Middleware\SecurityHeaders;
+use App\Http\Middleware\SetContentSecurityPolicyHeader;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -30,8 +33,24 @@ return Application::configure(basePath: dirname(__DIR__))
         // فقط routes/website.php آن را به گروه‌های خودش اضافه می‌کند تا
         // پنل ادمین/نماینده (Filament) که به این گروه global متکی است
         // دست‌نخورده بماند.
+        // S-04 (فاز ۸): پشت Nginx/Cloudflare Tunnel بدون TrustProxies، همه‌ی
+        // کاربران با IP لوپ‌بک (127.0.0.1) دیده می‌شدند ← Rate Limitهای مبتنی بر IP
+        // (لاگین ۵/دقیقه، …) بین «همه‌ی کاربران» مشترک می‌شد (DoS با ۵ درخواست) و
+        // IP واقعی در Audit/Log ثبت نمی‌شد. پیش‌فرض فقط لوپ‌بک است؛ برای پراکسی
+        // روی میزبان دیگر `TRUSTED_PROXIES` را (با ویرگول) تنظیم کنید.
+        $middleware->trustProxies(
+            at: array_values(array_filter(array_map('trim', explode(',', (string) env('TRUSTED_PROXIES', '127.0.0.1,::1'))))),
+            headers: Request::HEADER_X_FORWARDED_FOR
+                | Request::HEADER_X_FORWARDED_HOST
+                | Request::HEADER_X_FORWARDED_PORT
+                | Request::HEADER_X_FORWARDED_PROTO,
+        );
+
+        // S-08: هدرهای امنیتی پایه روی همه‌ی پاسخ‌های وب (Website + پنل‌های Filament).
+        $middleware->appendToGroup('web', SecurityHeaders::class);
+
         $middleware->alias([
-            'website.csp' => \App\Http\Middleware\SetContentSecurityPolicyHeader::class,
+            'website.csp' => SetContentSecurityPolicyHeader::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

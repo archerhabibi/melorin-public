@@ -6,7 +6,7 @@
 | **وضعیت** | CANONICAL (تنها مرجع معتبر معماری) |
 | **جایگزین** | Master v2.1 / v2.3 / 2.4 / 2.5 / 2.6 / 2.7 — DEPRECATED (v2.3: نام فایل 2.3، متن داخلی 2.1) |
 | **تاریخ اعتبار** | ۱۴۰۵/۰۷/۰۸ (۲۰۲۶-۰۹-۳۰) |
-| **زیرسند وابسته** | Website Architecture Contract v1.8 (`Parent Contract: Master 2.8`) |
+| **زیرسند وابسته** | Website Architecture Contract v1.9 (`Parent Contract: Master 2.8`) |
 | **مبنای Implementation** | Release 3.3.0 + فاز ۴ (Guest/Verify/Retention؛ متن Contract بدون تغییر) |
 | **دامنه** | Core + Main/Reseller Store + Telegram Bots + Website + Admin + Wallet + Payment + Purchase + Provisioning + Renewal + Referral + Commission |
 

@@ -10,6 +10,7 @@ use App\Models\Payment;
 use App\Models\PaymentMethod;
 use App\Models\Reseller;
 use App\Models\User;
+use App\Services\Core\Payments\InvalidGatewayCallbackException;
 use App\Services\Core\Payments\InvalidPaymentTransitionException;
 use App\Services\Core\Payments\PaymentGatewayFactory;
 use App\Services\Core\Payments\PaymentStateMachine;
@@ -188,6 +189,19 @@ class PaymentService
 
         if ($gateway->isManual()) {
             throw new \LogicException('این پرداخت دستی است و callback ندارد؛ از confirmManual استفاده کنید.');
+        }
+
+        // S-03 (فاز ۸): مسیر callback بدون احراز هویت است و payment_id یک عدد
+        // ترتیبی قابل‌حدس. بدون این چک، هر کسی با
+        // `?payment_id=N&Status=NOK` پرداخت Pending دیگران را Reject می‌کرد و
+        // اگر قربانی بعدش در درگاه پرداخت می‌کرد، پول کسر و کیف‌پول شارژ نمی‌شد.
+        // Authority رازیِ مخصوص همین تراکنش است (فقط پرداخت‌کننده و درگاه آن را
+        // دارند)؛ بدون تطابق با gateway_reference هیچ تغییر وضعیتی انجام نمی‌شود.
+        $expectedAuthority = (string) $payment->gateway_reference;
+        $givenAuthority = (string) ($callbackData['Authority'] ?? '');
+
+        if ($expectedAuthority === '' || ! hash_equals($expectedAuthority, $givenAuthority)) {
+            throw new InvalidGatewayCallbackException('Authority بازگشتی با این پرداخت مطابقت ندارد.');
         }
 
         // callback تکراری روی پرداخت already-confirmed نباید دوباره کیف پول را شارژ کند

@@ -5,8 +5,8 @@
 | فایل | نسخه | نقش |
 |---|---|---|
 | MASTER-ARCHITECTURE-CONTRACT.md | 2.8 | تنها مرجع معماری (CANONICAL) |
-| WEBSITE-ARCHITECTURE-CONTRACT.md | 1.8 (Parent: Master 2.8) | Contract کانال Website |
-| VERIFICATION-MATRIX.md | Contract 2.8 / 1.8 | وضعیت Contract→Code→Test→Production + شکاف‌ها |
+| WEBSITE-ARCHITECTURE-CONTRACT.md | 1.9 (Parent: Master 2.8) | Contract کانال Website |
+| VERIFICATION-MATRIX.md | Contract 2.8 / 1.9 | وضعیت Contract→Code→Test→Production + شکاف‌ها |
 | DATA-RETENTION.md | — | Retention (Guest ۶۰ روز؛ بقیه تأییدشده) |
 
 ## سایر پوشه‌ها

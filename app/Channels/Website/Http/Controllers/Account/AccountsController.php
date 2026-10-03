@@ -2,18 +2,18 @@
 
 namespace App\Channels\Website\Http\Controllers\Account;
 
-use App\Support\Money;
+use App\Exceptions\InsufficientBalanceException;
 use App\Models\Account;
 use App\Models\CustomerAccount;
 use App\Services\Core\Renewal\RenewalFailedException;
 use App\Services\Core\Renewal\RenewalService;
 use App\Services\Core\Store\StoreContext;
 use App\Services\Core\WalletService;
+use App\Support\Money;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\Response;
-use App\Exceptions\InsufficientBalanceException;
 
 /**
  * Accounts — نمایش اکانت‌های VPN از Core («بر اساس CustomerAccount و
@@ -95,7 +95,17 @@ class AccountsController
         }
 
         try {
-            app(RenewalService::class)->renew($accountModel);
+            // S-07 (فاز ۸): بدون کلید Idempotency، RenewalService کلید را از «ثانیه‌ی
+            // جاری» می‌ساخت؛ دو کلیک با فاصله‌ی بیش از یک ثانیه (یا Refresh/Back
+            // پس از ارسال) دو بار پول می‌گرفت. فرم اکنون یک توکن یکتا می‌فرستد.
+            // اگر توکن نبود (کلاینت قدیمی/اسکریپت)، کلید به پنجره‌ی ۱۰ثانیه‌ای
+            // همان اکانت گره می‌خورد تا ارسال دوباره باز هم یک‌بار شارژ شود.
+            $token = (string) $request->input('idempotency_token', '');
+            $key = $token !== '' && strlen($token) <= 64
+                ? 'website-renew:'.$accountModel->id.':'.$token
+                : 'website-renew:'.$accountModel->id.':w'.intdiv(time(), 10);
+
+            app(RenewalService::class)->renew($accountModel, $key);
         } catch (InsufficientBalanceException) {
             return redirect($redirectRoute)->with('renewal_error', 'موجودی کیف پول کافی نیست.');
         } catch (RenewalFailedException $e) {

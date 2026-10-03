@@ -10,9 +10,9 @@ use App\Channels\Website\Http\Controllers\Auth\NewPasswordController;
 use App\Channels\Website\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Channels\Website\Http\Controllers\Auth\RegisteredUserController;
 use App\Channels\Website\Http\Controllers\Guest\GuestCheckoutController;
-use App\Channels\Website\Http\Controllers\Reseller\ManageController;
 use App\Channels\Website\Http\Controllers\Identity\ProfileController;
 use App\Channels\Website\Http\Controllers\Identity\TelegramLinkController;
+use App\Channels\Website\Http\Controllers\Reseller\ManageController;
 use App\Channels\Website\Http\Controllers\Shared\ChargeController;
 use App\Channels\Website\Http\Controllers\Shared\CheckoutController;
 use App\Channels\Website\Http\Controllers\Shared\HomeController;
@@ -61,7 +61,11 @@ $registerSharedRoutes = function () {
     // --- Auth ---
     Route::middleware('guest')->group(function () {
         Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');
-        Route::post('/register', [RegisteredUserController::class, 'store'])->name('register.store');
+        // S-05 (فاز ۸): بدون محدودیت، ثبت‌نام انبوه و ایمیل‌بمب (هر ثبت‌نام یک ایمیل
+        // تأیید به آدرس دلخواه می‌فرستد) ممکن بود.
+        Route::post('/register', [RegisteredUserController::class, 'store'])
+            ->middleware('throttle:10,60')
+            ->name('register.store');
 
         Route::get('/login', [AuthenticatedSessionController::class, 'create'])
             ->middleware('throttle:5,1')

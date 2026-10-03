@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Reseller;
 use App\Services\Resellers\ResellerService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 /**
@@ -19,7 +20,7 @@ use Illuminate\Support\Facades\Auth;
  */
 class ResellerLoginController
 {
-    public function __invoke(Reseller $reseller, ResellerService $resellerService): RedirectResponse
+    public function __invoke(Request $request, Reseller $reseller, ResellerService $resellerService): RedirectResponse
     {
         $owner = $reseller->user;
 
@@ -32,6 +33,9 @@ class ResellerLoginController
         }
 
         Auth::guard('reseller')->login($owner);
+
+        // S-06 (فاز ۸): Session Fixation — شناسه‌ی نشست باید پس از ورود عوض شود.
+        $request->session()->regenerate();
 
         return redirect('/'.$reseller->slug);
     }

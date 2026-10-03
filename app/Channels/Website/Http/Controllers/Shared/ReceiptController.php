@@ -5,6 +5,7 @@ namespace App\Channels\Website\Http\Controllers\Shared;
 use App\Models\Payment;
 use App\Services\Core\Store\StoreContext;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -68,6 +69,18 @@ class ReceiptController
         // مالی حساس است؛ فقط از طریق TelegramReceiptController (پشت
         // auth:admin) قابل‌مشاهده است، نه با یک URL عمومی مستقیم.
         $path = $request->file('receipt')->store('website-receipts/'.$paymentModel->id, 'local');
+
+        // S-09: رسید قبلی همین پرداخت پاک می‌شود (وگرنه با هر آپلود، فایل یتیم
+        // روی دیسک می‌ماند).
+        $previous = (string) $paymentModel->receipt_image;
+
+        if (str_starts_with($previous, 'website:')) {
+            $previousPath = substr($previous, strlen('website:'));
+
+            if ($previousPath !== $path) {
+                Storage::disk('local')->delete($previousPath);
+            }
+        }
 
         $paymentModel->update([
             'receipt_image' => 'website:'.$path,

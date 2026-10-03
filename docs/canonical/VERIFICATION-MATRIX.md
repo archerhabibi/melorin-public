@@ -1,6 +1,6 @@
 # Melorin — Verification Matrix
 
-**Contract:** Master 2.8 · Website 1.8 · **Code baseline:** 3.3.5 (تکمیل فاز ۷ — Baseline + Redis)
+**Contract:** Master 2.8 · Website 1.9 · **Code baseline:** 3.3.6 (فاز ۸ — Security Audit)
 
 **راهنما:** ✅ انجام و مستند · ⚠️ ناقص یا **مغایر Contract** · ☐ انجام نشده · — نامربوط · ⛔ DEPRECATED
 
@@ -18,6 +18,7 @@
 | Pending → Login/Register → ادامه‌ی همان خرید | ✅ | ✅ | ✅ | ☐ | ☐ | ☐ | ☐ |
 | Payment State Machine (۴ وضعیت) | ✅ | ✅ | ✅ | ☐ | ☐ | ☐ | ☐ |
 | Payment Purpose (`wallet_charge` فقط) | ✅ | ✅ | ✅ | ☐ | — | ☐ | ☐ |
+| Zarinpal Callback مقید به Authority (S-03) | ✅ | ✅ | ✅ | ☐ | ✅ *(Self-audit)* | ☐ *(Sandbox واقعی)* | ☐ |
 | Direct Payment = Wallet Charge (Zarinpal) | ✅ | ✅ | ✅ *(Http::fake)* | ☐ | ☐ | ☐ *(Sandbox واقعی لازم)* | ☐ |
 | Card-to-Card + Receipt | ✅ | ✅ | ✅ | ☐ | ☐ | ☐ | ☐ |
 | Provisioning + Attempts | ✅ | ✅ | ✅ | ☐ | — | ☐ | ☐ |
@@ -34,14 +35,15 @@
 | Discount (No Stacking، Eligibility از سابقه) | ✅ | ☐ *(موتور وجود ندارد، C12)* | ☐ | ☐ | — | ☐ | ☐ |
 | Guest Retention (۶۰ روز) | ✅ | ✅ *(`guest:prune` روزانه)* | ✅ | — | — | ☐ | ☐ |
 | بازگشت به Checkout پس از شارژ (D-3) | ✅ | ✅ *(لینک بازگشت)* | ✅ | ☐ | — | ☐ | ☐ |
-| Security Headers/CSP/Rate Limit | ⚠️ *Matrix رسمی ندارد* | ✅ | ✅ | — | ☐ | ☐ | ☐ |
+| Security Headers/CSP/Rate Limit/Trusted Proxies | ✅ *(Website §22، §25)* | ✅ | ✅ *(`Phase8SecurityTest`)* | — | ⚠️ *Self-audit فاز ۸* | ☐ | ☐ |
 | Money Representation (بدون float، ارز قابل‌تنظیم) | ✅ *(M1–M8)* | ✅ | ✅ | — | — | ☐ *(Migration روی کپی DB)* | ☐ |
 | Cache / RateLimiter / Queue روی Redis واقعی | ✅ | ✅ | ✅ *(فاز ۷؛ ۵ تست)* | ☐ | — | ☐ | ☐ |
 | Schema Baseline (۱ Migration، MariaDB + SQLite) | ✅ | ✅ | ✅ *(`BaselineSchemaTest`)* | — | — | ☐ | ☐ |
 | Backup / Restore | ☐ | ✅ *(update-git.sh)* | — | — | — | ☐ | ☐ |
 | Rollback (Migration/Health failure عمدی) | ☐ | ✅ | — | — | — | ☐ | ☐ |
 | Observability / Alerting / Health | ☐ | ⚠️ | — | — | — | ☐ | ☐ |
-| Independent Security Review | — | — | — | — | ☐ | — | — |
+| Security Self-Audit (فاز ۸) | ✅ | ✅ | ✅ *(۱۶ تست)* | — | ✅ *(S-01…S-10 بسته؛ O-1…O-8 باز)* | — | — |
+| Independent Security Review (شخص/ابزار مستقل) | — | — | — | — | ☐ | — | — |
 
 ## ۲. موارد DEPRECATED (نباید دوباره پیاده شوند)
 

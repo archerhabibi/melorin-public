@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\PaymentCallbackController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -16,5 +17,6 @@ use Illuminate\Support\Facades\Route;
  * PaymentCallbackController با verify سمت‌به‌سمت تأمین می‌شود، نه با
  * اعتماد به پارامترهای URL.
  */
-Route::get('/payment/zarinpal/callback', [\App\Http\Controllers\PaymentCallbackController::class, 'zarinpal'])
+Route::get('/payment/zarinpal/callback', [PaymentCallbackController::class, 'zarinpal'])
+    ->middleware('throttle:30,1')
     ->name('payment.zarinpal.callback');

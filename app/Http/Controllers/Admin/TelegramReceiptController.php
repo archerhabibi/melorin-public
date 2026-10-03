@@ -54,10 +54,17 @@ class TelegramReceiptController
             ? $normalized
             : 'application/octet-stream';
 
-        return [
+        $headers = [
             'Content-Type' => $type,
             'X-Content-Type-Options' => 'nosniff',
         ];
+
+        // S-10: نوع ناشناخته هیچ‌وقت Inline رندر نمی‌شود.
+        if ($type === 'application/octet-stream') {
+            $headers['Content-Disposition'] = 'attachment; filename="receipt.bin"';
+        }
+
+        return $headers;
     }
 
     public function __invoke(Payment $payment, Api $telegram): Response

@@ -52,6 +52,7 @@
               action="{{ $store->isReseller() ? route('website.store.accounts.renew', [$store->reseller->slug, $account->id]) : route('website.accounts.renew', $account->id) }}"
               class="mt-6 pt-4 border-t">
             @csrf
+            <input type="hidden" name="idempotency_token" value="{{ \Illuminate\Support\Str::uuid() }}">
             <button type="submit" class="w-full py-2 rounded text-white" style="background: var(--brand)">
                 تمدید اکانت (به قیمت فعلی تعرفه)
             </button>

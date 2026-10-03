@@ -9,7 +9,9 @@ use App\Models\ResellerConversationState;
 use App\Models\User;
 use App\Services\Core\Store\StoreContext;
 use App\Services\Core\WalletService;
+use App\Services\Resellers\ResellerCustomerService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Testing\TestResponse;
 use Mockery;
 use PHPUnit\Framework\Attributes\Test;
 use Telegram\Bot\Api;
@@ -40,10 +42,10 @@ class WebhookMultiTenancyTest extends TestCase
                 $this->sent[] = $params;
 
                 return new Message([
-                'message_id' => 1,
-                'date' => time(),
-                'chat' => ['id' => $params['chat_id'] ?? 1, 'type' => 'private'],
-                'text' => $params['text'] ?? '',
+                    'message_id' => 1,
+                    'date' => time(),
+                    'chat' => ['id' => $params['chat_id'] ?? 1, 'type' => 'private'],
+                    'text' => $params['text'] ?? '',
                 ]);
             });
         $telegram->shouldReceive('getMe')->zeroOrMoreTimes()->andReturn(
@@ -56,6 +58,16 @@ class WebhookMultiTenancyTest extends TestCase
         $this->app->instance(ResellerApiFactory::class, $factory);
 
         return $telegram;
+    }
+
+    /**
+     * وب‌هوک نماینده Fail-closed است (فاز ۸): هر درخواست باید secret درست را
+     * همراه داشته باشد، پس تست‌ها همان رفتار تلگرام را شبیه‌سازی می‌کنند.
+     */
+    protected function postWebhook(Reseller $reseller, array $update): TestResponse
+    {
+        return $this->withHeader('X-Telegram-Bot-Api-Secret-Token', $reseller->ensureWebhookSecret())
+            ->postJson("/reseller-bot/webhook/{$reseller->webhook_slug}", $update);
     }
 
     protected function startUpdate(int $telegramId, string $firstName = 'Tester'): array
@@ -80,7 +92,7 @@ class WebhookMultiTenancyTest extends TestCase
         $resellerA = Reseller::factory()->create();
         $resellerB = Reseller::factory()->create();
 
-        $this->postJson("/reseller-bot/webhook/{$resellerA->webhook_slug}", $this->startUpdate(111111))
+        $this->postWebhook($resellerA, $this->startUpdate(111111))
             ->assertOk();
 
         $user = User::query()->where('telegram_id', 111111)->firstOrFail();
@@ -108,13 +120,13 @@ class WebhookMultiTenancyTest extends TestCase
         $reseller = Reseller::factory()->create();
         $telegramId = 555555;
 
-        $this->postJson("/reseller-bot/webhook/{$reseller->webhook_slug}", $this->startUpdate($telegramId))->assertOk();
+        $this->postWebhook($reseller, $this->startUpdate($telegramId))->assertOk();
 
         $user = User::query()->where('telegram_id', $telegramId)->firstOrFail();
-        app(\App\Services\Resellers\ResellerCustomerService::class)->remove($reseller, $user);
+        app(ResellerCustomerService::class)->remove($reseller, $user);
 
         $this->sent = [];
-        $this->postJson("/reseller-bot/webhook/{$reseller->webhook_slug}", $this->startUpdate($telegramId))->assertOk();
+        $this->postWebhook($reseller, $this->startUpdate($telegramId))->assertOk();
 
         $this->assertStringContainsString('غیرفعال', $this->sent[0]['text']);
         $this->assertDatabaseHas('customer_accounts', [
@@ -142,10 +154,10 @@ class WebhookMultiTenancyTest extends TestCase
         // یک کاربر (چون در چت خصوصی chat_id == from.id) با هر دو ربات صحبت می‌کند
         $telegramId = 333333;
 
-        $this->postJson("/reseller-bot/webhook/{$resellerA->webhook_slug}", $this->startUpdate($telegramId))->assertOk();
+        $this->postWebhook($resellerA, $this->startUpdate($telegramId))->assertOk();
 
         // Rule 12: مشتری نماینده‌ی A بودن مانع مشتری B شدن نیست
-        $this->postJson("/reseller-bot/webhook/{$resellerB->webhook_slug}", $this->startUpdate($telegramId))->assertOk();
+        $this->postWebhook($resellerB, $this->startUpdate($telegramId))->assertOk();
 
         $user = User::query()->where('telegram_id', $telegramId)->firstOrFail();
 
@@ -173,11 +185,11 @@ class WebhookMultiTenancyTest extends TestCase
         $reseller = Reseller::factory()->create();
         $update = $this->startUpdate(444444);
 
-        $this->postJson("/reseller-bot/webhook/{$reseller->webhook_slug}", $update)->assertOk();
+        $this->postWebhook($reseller, $update)->assertOk();
         $countAfterFirst = ResellerConversationState::query()->count();
 
         // همان update_id دوباره ارسال می‌شود (شبیه‌سازی retry تلگرام)
-        $this->postJson("/reseller-bot/webhook/{$reseller->webhook_slug}", $update)->assertOk();
+        $this->postWebhook($reseller, $update)->assertOk();
 
         $this->assertEquals($countAfterFirst, ResellerConversationState::query()->count());
     }
@@ -191,7 +203,7 @@ class WebhookMultiTenancyTest extends TestCase
         $update = $this->startUpdate(555555);
         $update['message']['from']['is_bot'] = true;
 
-        $this->postJson("/reseller-bot/webhook/{$reseller->webhook_slug}", $update)->assertOk();
+        $this->postWebhook($reseller, $update)->assertOk();
 
         $this->assertDatabaseMissing('users', ['telegram_id' => 555555]);
     }
