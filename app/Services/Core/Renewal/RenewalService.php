@@ -3,9 +3,13 @@
 namespace App\Services\Core\Renewal;
 
 use App\DataTransferObjects\PanelAccountRequest;
+use App\Exceptions\InsufficientBalanceException;
 use App\Models\Account;
+use App\Models\CustomerAccount;
 use App\Models\Operation;
 use App\Models\Order;
+use App\Models\Product;
+use App\Models\Wallet;
 use App\Services\Core\OperationService;
 use App\Services\Core\Panels\PanelDriverFactory;
 use App\Services\Core\Provisioning\ProvisioningFailureHandler;
@@ -61,10 +65,107 @@ class RenewalService
         return $result instanceof Account ? $result : $account->fresh();
     }
 
+    /**
+     * B3.2 — پیش‌فاکتور فقط‌خواندنی (بدون Order، بدون Debit، بدون ساختن Wallet). هر دروازه‌ای که
+     * execute() اعمال می‌کند اینجا هم سنجیده می‌شود تا دکمه‌ی «تمدید» فقط وقتی فعال باشد که
+     * اجرای واقعی هم رد نمی‌شد. UI همچنان مرز امنیتی نیست: execute() دوباره همه‌چیز را می‌سنجد.
+     */
+    public function quote(Account $account): RenewalQuote
+    {
+        $product = $account->product;
+        $customer = $account->customerAccount;
+        $fail = fn (string $reason, string $message, int $price = 0, int $balance = 0) => RenewalQuote::blocked(
+            $account->id, $product, $reason, $message, $price, $balance,
+        );
+
+        if (! $account->isRenewableStatus()) {
+            return $fail(RenewalQuote::REASON_ACCOUNT_STATE, 'این سرویس در وضعیتی است که تمدید آنلاین ندارد؛ با پشتیبانی تماس بگیرید.');
+        }
+
+        if (! $customer) {
+            return $fail(RenewalQuote::REASON_NOT_ALLOWED, 'مالک این اکانت مشخص نیست؛ با پشتیبانی تماس بگیرید.');
+        }
+
+        if (! $product) {
+            return $fail(RenewalQuote::REASON_NOT_AVAILABLE, 'محصول این اکانت دیگر موجود نیست؛ تمدید ممکن نیست.');
+        }
+
+        try {
+            $store = StoreContext::fromReseller($customer->reseller);
+
+            $this->guard->assertContextAllowed($customer, $store);
+            $this->guard->assertProductAvailable($product, $store);
+
+            $price = $this->priceFor($customer, $product, $store);
+        } catch (PurchaseNotAllowedException $e) {
+            return $fail(RenewalQuote::REASON_NOT_AVAILABLE, $e->getMessage());
+        } catch (\InvalidArgumentException) {
+            // محصول در این Context قیمت ندارد (مثلاً نماینده قیمتِ فروش تعیین نکرده)
+            return $fail(RenewalQuote::REASON_NOT_AVAILABLE, 'این تعرفه در حال حاضر قابل‌فروش نیست؛ تمدید ممکن نیست.');
+        }
+
+        $debit = $price->customerDebit();
+        $balance = $this->readBalance($customer);
+
+        if (! $price->isFree() && $balance < $debit) {
+            return $fail(
+                RenewalQuote::REASON_INSUFFICIENT_BALANCE,
+                'موجودی کیف‌پول برای این مبلغ کافی نیست.',
+                $debit,
+                $balance,
+            );
+        }
+
+        try {
+            $this->guard->assertCanPurchase($customer, $product, $store, $price, checkServerAvailability: false);
+        } catch (InsufficientBalanceException) {
+            return $fail(RenewalQuote::REASON_INSUFFICIENT_BALANCE, 'موجودی کیف‌پول کافی نیست.', $debit, $balance);
+        } catch (PurchaseNotAllowedException $e) {
+            return $fail(RenewalQuote::REASON_NOT_ALLOWED, $e->getMessage(), $debit, $balance);
+        }
+
+        return new RenewalQuote($account->id, $product, $debit, $balance, true);
+    }
+
+    /**
+     * موجودی بدونِ ساختنِ Wallet (D4.1 داشبورد: باز کردن یک صفحه‌ی GET چیزی در DB نمی‌نویسد؛
+     * برخلاف WalletService::balance که Wallet خالی می‌سازد).
+     */
+    public function readBalance(CustomerAccount $customer): int
+    {
+        return (int) Wallet::query()
+            ->where('user_id', $customer->user_id)
+            ->where('scope_key', $customer->scope_key)
+            ->value('balance');
+    }
+
+    /**
+     * تنها جایی که قیمتِ یک تمدید ساخته می‌شود (هم quote و هم execute) تا دو قیمت هرگز از هم جدا
+     * نشوند — دقیقاً همان ریسکی که در ۳.۰.۷ رخ داد (مسیر تمدید با مسیر خرید فرق داشت).
+     */
+    protected function priceFor(CustomerAccount $customer, Product $product, StoreContext $store): PriceSnapshot
+    {
+        $customersPrice = $store->isReseller()
+            ? $product->customersPrice($store->reseller)
+            : null;
+
+        // همان تصمیم بند ۱۸ در PurchaseService: تمدید هم از نظر مالی
+        // یک خرید کامل است، پس همان استثنا برای صاحب نماینده‌ای که
+        // شخصاً (در Main) اکانت گرفته، اینجا هم برقرار است.
+        $buyerOwnsAReseller = $store->isMain() && $customer->user->resellerAccount()->exists();
+
+        return PriceSnapshot::for($store, $product, $customersPrice, $buyerOwnsAReseller);
+    }
+
     protected function execute(Account $account, Operation $operation): Account
     {
         $customer = $account->customerAccount;
         $product = $account->product;
+
+        // B3.2: اکانتِ مسدود/تعلیق/حذف‌شده با پرداخت نباید «فعال» شود (applyOnPanel وضعیت را active می‌کند).
+        if (! $account->isRenewableStatus()) {
+            throw new PurchaseNotAllowedException('این سرویس در وضعیتی است که تمدید ندارد؛ با پشتیبانی تماس بگیرید.');
+        }
 
         if (! $customer) {
             throw new PurchaseNotAllowedException('مالک این اکانت مشخص نیست؛ با پشتیبانی تماس بگیرید.');
@@ -81,16 +182,7 @@ class RenewalService
         $this->guard->assertContextAllowed($customer, $store);
         $this->guard->assertProductAvailable($product, $store);
 
-        $customersPrice = $store->isReseller()
-            ? $product->customersPrice($store->reseller)
-            : null;
-
-        // همان تصمیم بند ۱۸ در PurchaseService: تمدید هم از نظر مالی
-        // یک خرید کامل است، پس همان استثنا برای صاحب نماینده‌ای که
-        // شخصاً (در Main) اکانت گرفته، اینجا هم برقرار است.
-        $buyerOwnsAReseller = $store->isMain() && $customer->user->resellerAccount()->exists();
-
-        $price = PriceSnapshot::for($store, $product, $customersPrice, $buyerOwnsAReseller);
+        $price = $this->priceFor($customer, $product, $store);
 
         // همان دروازه‌های خرید — شامل سقف بدهی نماینده. تمدید از نظر
         // مالی یک خرید کامل است و هیچ دلیلی ندارد قوانین سست‌تری داشته
@@ -256,11 +348,13 @@ class RenewalService
             throw $failure->withOutcome($this->failures->handle($order));
         }
 
-        // ریست کامل در رکورد محلی
+        // ریست کامل در رکورد محلی (بند ۲۸): زمان و ترافیک هر دو. usage_synced_at همین حالا ست می‌شود
+        // چون مصرف تازه‌ریست‌شده صفر است و دقیق است.
         $account->update([
             'expires_at' => $newExpiry,
             'traffic_gb' => $product->traffic_gb,
             'traffic_used_gb' => 0,
+            'usage_synced_at' => now(),
             'status' => 'active',
         ]);
 

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Core\Customer\CustomerDashboardService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -16,13 +17,14 @@ class Account extends Model
         'panel_username', 'panel_client_uuid',
         'subscription_id', 'subscription_url',
         'config_data', 'starts_at', 'expires_at', 'traffic_gb',
-        'traffic_used_gb', 'status', 'is_test',
+        'traffic_used_gb', 'usage_synced_at', 'status', 'is_test',
     ];
 
     protected $casts = [
         'config_data' => 'encrypted',
         'starts_at' => 'datetime',
         'expires_at' => 'datetime',
+        'usage_synced_at' => 'datetime',
         'traffic_gb' => 'decimal:2',
         'traffic_used_gb' => 'decimal:2',
         'is_test' => 'boolean',
@@ -133,5 +135,54 @@ class Account extends Model
         }
 
         return max(0.0, (float) $this->traffic_gb - (float) ($this->traffic_used_gb ?? 0));
+    }
+
+    /** مصرف‌شده به گیگابایت (هیچ‌وقت منفی/null نیست). */
+    public function usedTrafficGb(): float
+    {
+        return max(0.0, (float) ($this->traffic_used_gb ?? 0));
+    }
+
+    /**
+     * رنگ/لحن نوار مصرف: ≥۹۰٪ هشدار، ۱۰۰٪ خطر. همان آستانه‌ی اعلان‌های داشبورد (B3.1)
+     * تا دو جا دو عدد متفاوت نشان ندهند. نامحدود ⇒ success.
+     */
+    public function trafficTone(): string
+    {
+        $percent = $this->trafficUsagePercent();
+
+        return match (true) {
+            $percent === null => 'success',
+            $percent >= 100 => 'danger',
+            $percent >= CustomerDashboardService::TRAFFIC_WARN_PERCENT => 'warning',
+            default => 'success',
+        };
+    }
+
+    /**
+     * وضعیتِ قابل‌نمایش به مشتری (مرجع واحد برای فهرست، جزئیات و داشبورد):
+     * expired | expiring (≤ EXPIRING_DAYS روز) | active | هر وضعیت دیگر همان‌طور که هست (disabled، suspended، …).
+     */
+    public function displayState(): string
+    {
+        if ($this->status === 'expired' || ($this->status === 'active' && $this->isExpired())) {
+            return 'expired';
+        }
+
+        if ($this->status !== 'active') {
+            return (string) $this->status;
+        }
+
+        $days = $this->remainingDays();
+
+        return $days !== null && $days <= CustomerDashboardService::EXPIRING_DAYS
+            ? 'expiring'
+            : 'active';
+    }
+
+    /** تمدید فقط روی سرویس فعال یا منقضی مجاز است؛ مسدود/تعلیق/حذف‌شده با پرداخت زنده نمی‌شود. */
+    public function isRenewableStatus(): bool
+    {
+        return in_array($this->status, ['active', 'expired'], true);
     }
 }

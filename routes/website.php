@@ -183,8 +183,15 @@ $registerSharedRoutes = function () {
         Route::get('/accounts', [AccountsController::class, 'index'])->name('accounts.index');
         Route::get('/accounts/{account}', [AccountsController::class, 'show'])->name('accounts.show');
 
-        // --- پنل کاربری: Renewal ---
-        Route::post('/accounts/{account}/renew', [AccountsController::class, 'renew'])->name('accounts.renew');
+        // --- پنل کاربری: Renewal + مصرف (B3.2) ---
+        // renew: پول کسر می‌کند ⇒ throttle سخت (علاوه بر توکن Idempotency S-07). usage.refresh: هر بار
+        // یک تماس به پنل خارجی است؛ علاوه بر این Throttle، Core هم برای هر سرویس ۱۲۰ ثانیه فاصله می‌گذارد.
+        Route::post('/accounts/{account}/renew', [AccountsController::class, 'renew'])
+            ->middleware('throttle:6,1')
+            ->name('accounts.renew');
+        Route::post('/accounts/{account}/usage/refresh', [AccountsController::class, 'refreshUsage'])
+            ->middleware('throttle:12,1')
+            ->name('accounts.usage.refresh');
 
         // --- پنل کاربری: Referral/Commission ---
         Route::get('/referral', [ReferralController::class, 'show'])->name('referral.show');

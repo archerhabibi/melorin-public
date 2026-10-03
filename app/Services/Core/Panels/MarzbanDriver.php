@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Http;
  * منبع الهام: نحوه‌ی اتصال در ربات mirzabot بررسی و منطق مشابه، با پیاده‌سازی
  * تازه و مبتنی بر Laravel HTTP Client (به‌جای curl خام) نوشته شده است.
  */
-class MarzbanDriver implements PanelDriverInterface
+class MarzbanDriver implements PanelDriverInterface, SupportsUsageReport
 {
     use BuildsPanelBaseUrl;
 
@@ -83,6 +83,14 @@ class MarzbanDriver implements PanelDriverInterface
         $body = $response->json();
 
         return PanelAccountResult::ok($body, $this->toAbsoluteSubscriptionUrl($panel, $body['subscription_url'] ?? null));
+    }
+
+    /** Marzban/PasarGuard: فیلد used_traffic (بایت) در پاسخ GET /api/user/{username}. */
+    public function usedTrafficBytes(PanelAccountResult $result): ?int
+    {
+        $used = $result->rawResponse['used_traffic'] ?? null;
+
+        return is_numeric($used) ? max(0, (int) $used) : null;
     }
 
     public function getAccount(ServerPanel $panel, string $username): PanelAccountResult

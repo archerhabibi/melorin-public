@@ -2,39 +2,30 @@
 
 namespace App\Channels\Website\Http\Controllers\Account;
 
-use App\Exceptions\InsufficientBalanceException;
+use App\Channels\Website\Services\WebsiteServiceFacade;
 use App\Models\Account;
 use App\Models\CustomerAccount;
-use App\Services\Core\Renewal\RenewalFailedException;
-use App\Services\Core\Renewal\RenewalService;
 use App\Services\Core\Store\StoreContext;
-use App\Services\Core\WalletService;
-use App\Support\Money;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
-use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Accounts — نمایش اکانت‌های VPN از Core («بر اساس CustomerAccount و
- * Context Core نمایش داده می‌شوند»). مالکیت اینجا با همان `customer_account_id` سنجیده
- * می‌شود که `EnsureCustomerAccountResolved` (میان‌افزار store.customer)
- * از قبل برای همین User در همین Context Resolve کرده — پس
- * این کوئری خودش‌به‌خود Context-isolated است (بند ۳۱)، بدون نیاز به
- * فیلتر reseller_id جداگانه‌ای که Order نیاز دارد.
+ * Accounts / Service Management (B3.2) — فهرست سرویس‌ها، جزئیات با مصرف زنده، و تمدید.
  *
- * اطلاعات اتصال (Config/QR) عمداً محدود نگه داشته شده: فقط
- * `subscription_url` (لینکی که خودِ کاربر باید در کلاینت VPN وارد
- * کند) نمایش داده می‌شود، نه محتوای خامِ `config_data` (که رمزنگاری‌
- * شده و برای نمایش مستقیم طراحی نشده — بند ۵۲: «هیچ داده‌ای از Client
- * نباید Trusted فرض شود» به همان اندازه یعنی داده‌ی حساس هم نباید
- * بدون دلیل به Client فرستاده شود).
+ * مالکیت اینجا با همان `customer_account_id` سنجیده می‌شود که `EnsureCustomerAccountResolved`
+ * (میان‌افزار store.customer) از قبل برای همین User در همین Context Resolve کرده — پس این کوئری
+ * خودش‌به‌خود Context-isolated است (بند ۳۱)، بدون نیاز به فیلتر reseller_id جداگانه.
+ *
+ * هیچ منطق مالی/تصمیمی اینجا نیست: «وضعیت، مصرف، پیش‌فاکتور و تمدید» همه از Core
+ * (AccountManagementService/RenewalService) می‌آید و WebsiteServiceFacade فقط Adapter است.
+ *
+ * اطلاعات اتصال (Config/QR) عمداً محدود نگه داشته شده: فقط `subscription_url` نمایش داده می‌شود،
+ * نه محتوای خامِ `config_data` (بند ۵۲). Refund/Retry کاملاً Admin-only است (مثل ربات).
  */
 class AccountsController
 {
-    public function __construct(
-        protected WalletService $walletService,
-    ) {}
+    public function __construct(protected WebsiteServiceFacade $services) {}
 
     public function index(Request $request, StoreContext $store): View
     {
@@ -50,80 +41,52 @@ class AccountsController
         return view('website.account.accounts.index', [
             'accounts' => $accounts,
             'store' => $store,
+            'url' => fn (string $name, array $params = []) => $this->services->url($name, $store, $params),
         ]);
     }
 
-    public function show(Request $request, int $account, StoreContext $store): View|Response
+    public function show(Request $request, int $account, StoreContext $store): View
     {
         $accountModel = $this->ownedAccountOrFail($request, $account);
 
         return view('website.account.accounts.show', [
             'account' => $accountModel,
+            'overview' => $this->services->overview($accountModel),
             'store' => $store,
+            'url' => fn (string $name, array $params = []) => $this->services->url($name, $store, $params),
         ]);
     }
 
     /**
-     * Renewal — دقیقاً همانند Core و ربات تلگرام. این متد عمداً هیچ منطق مالی/تصمیمی
-     * ندارد — فقط همان سه‌تکه که `AccountsHandler::renew()` (ربات
-     * تلگرام اصلی) دارد را روی یک درخواست HTTP تکرار می‌کند:
-     *   ۱) یک پیش‌بررسیِ UX (نه دروازه‌ی واقعی — آن داخل
-     *      RenewalService/PurchaseGuard است) که پیام روشن‌تری از
-     *      InsufficientBalanceException خام بدهد؛
-     *   ۲) صدا زدن مستقیم RenewalService::renew()؛
-     *   ۳) نگاشت هر سه نوع خطا به همان متنی که ربات نشان می‌دهد
-     *      (بند ۵۶ زیرسند: نگاشت خطا، نه پیام‌های مستقل تازه).
-     * هیچ بازگشت‌وجه/تلاش‌مجدد دستی‌ای اینجا انجام نمی‌شود — دقیقاً
-     * مثل ربات، چون آن دو Admin-only می‌مانند (تصمیم صریح).
+     * Renewal — دقیقاً همانند Core و ربات تلگرام؛ همه‌چیز در WebsiteServiceFacade/RenewalService.
+     * فرم یک توکن یکتا می‌فرستد (S-07) تا دو کلیک/Refresh دو بار پول نگیرد.
      */
     public function renew(Request $request, int $account, StoreContext $store): RedirectResponse
     {
         $accountModel = $this->ownedAccountOrFail($request, $account);
-        $product = $accountModel->product;
+        $back = $this->services->url('accounts.show', $store, [$accountModel->id]);
 
-        $redirectRoute = $store->isReseller()
-            ? route('website.store.accounts.show', [$store->reseller->slug, $accountModel->id])
-            : route('website.accounts.show', $accountModel->id);
+        $result = $this->services->renew($accountModel, (string) $request->input('idempotency_token', ''));
 
-        $customer = $request->attributes->get('customerAccount');
-        $balanceBeforeRenewal = $this->walletService->balance($customer);
-
-        if ($balanceBeforeRenewal < $product->mainPrice()) {
-            return redirect($redirectRoute)->with('renewal_error',
-                'برای تمدید، ابتدا کیف پول خود را شارژ کنید. هزینه‌ی تمدید: '.Money::format($product->mainPrice())
-            );
+        if (! $result['ok']) {
+            return redirect($back)->with('renewal_error', $result['message']);
         }
 
-        try {
-            // S-07 (فاز ۸): بدون کلید Idempotency، RenewalService کلید را از «ثانیه‌ی
-            // جاری» می‌ساخت؛ دو کلیک با فاصله‌ی بیش از یک ثانیه (یا Refresh/Back
-            // پس از ارسال) دو بار پول می‌گرفت. فرم اکنون یک توکن یکتا می‌فرستد.
-            // اگر توکن نبود (کلاینت قدیمی/اسکریپت)، کلید به پنجره‌ی ۱۰ثانیه‌ای
-            // همان اکانت گره می‌خورد تا ارسال دوباره باز هم یک‌بار شارژ شود.
-            $token = (string) $request->input('idempotency_token', '');
-            $key = $token !== '' && strlen($token) <= 64
-                ? 'website-renew:'.$accountModel->id.':'.$token
-                : 'website-renew:'.$accountModel->id.':w'.intdiv(time(), 10);
-
-            app(RenewalService::class)->renew($accountModel, $key);
-        } catch (InsufficientBalanceException) {
-            return redirect($redirectRoute)->with('renewal_error', 'موجودی کیف پول کافی نیست.');
-        } catch (RenewalFailedException $e) {
-            return redirect($redirectRoute)->with('renewal_error', "تمدید ناموفق بود: {$e->getMessage()}\n{$e->customerNotice()}");
-        } catch (\RuntimeException $e) {
-            // مثل ربات: هیچ بازگشت وجه دستی‌ای اینجا نمی‌دهیم — وضعیت
-            // سفارش provision_failed می‌ماند تا ادمین رسیدگی کند.
-            return redirect($redirectRoute)->with('renewal_error',
-                "تمدید ناموفق بود: {$e->getMessage()}\nلطفاً با پشتیبانی تماس بگیرید؛ وضعیت سفارش شما ثبت شده است."
-            );
-        }
-
-        $balanceAfterRenewal = $this->walletService->balance($customer);
-
-        return redirect($redirectRoute)->with('renewal_success', [
-            'balance_before' => $balanceBeforeRenewal,
-            'balance_after' => $balanceAfterRenewal,
+        return redirect($back)->with('renewal_success', [
+            'balance_before' => $result['before'],
+            'balance_after' => $result['after'],
         ]);
+    }
+
+    /** به‌روزرسانی دستیِ مصرف از پنل (Throttle در Core: ۱۲۰ ثانیه برای هر سرویس). */
+    public function refreshUsage(Request $request, int $account, StoreContext $store): RedirectResponse
+    {
+        $accountModel = $this->ownedAccountOrFail($request, $account);
+
+        [$tone, $message] = $this->services->refreshUsage($accountModel);
+
+        return redirect($this->services->url('accounts.show', $store, [$accountModel->id]))
+            ->with('usage_notice', ['tone' => $tone, 'message' => $message]);
     }
 
     protected function ownedAccountOrFail(Request $request, int $accountId): Account

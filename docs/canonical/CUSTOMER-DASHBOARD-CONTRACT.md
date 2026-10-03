@@ -52,4 +52,4 @@
 
 ## D6. Out of Scope
 
-Ticket Center (B3.4)، Service Management کامل — ارتقا (B3.2)، Wallet Center (B3.3)، مرکز اعلان ماندگار، نمودار مصرف.
+Ticket Center (B3.4)، Service Management (انجام شد در B3.2؛ `CUSTOMER-SERVICES-CONTRACT.md`؛ ارتقا عمداً نیست)، Wallet Center (B3.3)، مرکز اعلان ماندگار، نمودار مصرف.

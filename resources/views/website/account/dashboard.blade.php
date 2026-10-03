@@ -72,7 +72,7 @@
                             $usage = $service->trafficUsagePercent();
                             $remaining = $service->remainingTrafficGb();
                             $expiring = $days !== null && $days <= \App\Services\Core\Customer\CustomerDashboardService::EXPIRING_DAYS;
-                            $usageTone = $usage === null ? 'success' : ($usage >= 100 ? 'danger' : ($usage >= \App\Services\Core\Customer\CustomerDashboardService::TRAFFIC_WARN_PERCENT ? 'warning' : 'success'));
+                            $usageTone = $service->trafficTone(); // مرجع واحد آستانه‌ها: Account::trafficTone() (B3.2)
                         @endphp
                         <li class="card">
                             <div class="flex flex-wrap items-start justify-between gap-2">

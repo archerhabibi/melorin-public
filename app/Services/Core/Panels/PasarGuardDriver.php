@@ -33,7 +33,7 @@ use Illuminate\Support\Facades\Http;
  * پنل تستی PasarGuard واقعی اجرا کنید تا ساختار دقیق پاسخ (مخصوصاً
  * subscription_url) با نسخه‌ی نصب‌شده‌ی شما مطابقت داشته باشد.
  */
-class PasarGuardDriver implements PanelDriverInterface
+class PasarGuardDriver implements PanelDriverInterface, SupportsUsageReport
 {
     use BuildsPanelBaseUrl;
 
@@ -102,6 +102,14 @@ class PasarGuardDriver implements PanelDriverInterface
         $body = $response->json();
 
         return PanelAccountResult::ok($body, $this->toAbsoluteSubscriptionUrl($panel, $body['subscription_url'] ?? null));
+    }
+
+    /** Marzban/PasarGuard: فیلد used_traffic (بایت) در پاسخ GET /api/user/{username}. */
+    public function usedTrafficBytes(PanelAccountResult $result): ?int
+    {
+        $used = $result->rawResponse['used_traffic'] ?? null;
+
+        return is_numeric($used) ? max(0, (int) $used) : null;
     }
 
     public function getAccount(ServerPanel $panel, string $username): PanelAccountResult

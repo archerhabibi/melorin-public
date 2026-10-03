@@ -1,5 +1,6 @@
 <?php
 
+use App\Services\Core\Customer\AccountUsageService;
 use App\Services\Core\Guest\GuestCheckoutService;
 use App\Services\Core\Provisioning\FailedOrderRecovery;
 use App\Services\Core\Provisioning\StuckOrderWatchdog;
@@ -26,6 +27,20 @@ Artisan::command('provisioning:retry-failed {--limit=25 : حداکثر تعدا�
 })->purpose('Retry provisioning/renewal of paid orders whose panel call failed');
 
 Schedule::command('provisioning:retry-failed')->everyMinute()->withoutOverlapping(10);
+
+// B3.2 — هم‌گام‌سازی «مصرف» سرویس‌های فعال از پنل (قدیمی‌ترین‌ها اول، سقف تعداد در هر اجرا تا
+// پنل‌ها زیر بار نروند). بدون این، traffic_used_gb همیشه صفر می‌ماند و نوار مصرف/هشدار ۹۰٪ بی‌معنی است.
+Artisan::command('accounts:sync-usage {--limit=200} {--older-than=30 : دقیقه}', function () {
+    $summary = app(AccountUsageService::class)
+        ->refreshStale((int) $this->option('limit'), (int) $this->option('older-than'));
+
+    $this->info(sprintf(
+        'attempted=%d refreshed=%d failed=%d unsupported=%d',
+        $summary['attempted'], $summary['refreshed'], $summary['failed'], $summary['unsupported'],
+    ));
+})->purpose('Sync panel traffic usage into accounts.traffic_used_gb (oldest first, capped)');
+
+Schedule::command('accounts:sync-usage')->everyFifteenMinutes()->withoutOverlapping(10);
 
 // Master 2.7 G9 / DATA-RETENTION.md: حذف فیزیکی
 // guest_checkouts با وضعیت expired/consumed (و pending گذشته از expires_at)

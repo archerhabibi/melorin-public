@@ -29,7 +29,7 @@ use Illuminate\Support\Str;
  * دقیقاً با همان تنظیمات (فقط با email/uuid/حجم/انقضای خودش) می‌سازد.
  * این دقیقاً همان روشی است که در ربات میرزا هم استفاده می‌شود.
  */
-class SanaeiDriver implements PanelDriverInterface, SupportsServerStatus, SupportsUsernameAvailability
+class SanaeiDriver implements PanelDriverInterface, SupportsServerStatus, SupportsUsageReport, SupportsUsernameAvailability
 {
     use BuildsPanelBaseUrl;
 
@@ -255,6 +255,23 @@ class SanaeiDriver implements PanelDriverInterface, SupportsServerStatus, Suppor
             $this->subBaseUrl($panel).'/'.$subId,
             panelExtra: ['subscription_id' => $subId],
         );
+    }
+
+    /**
+     * 3x-ui: مصرف = up + down از /clients/traffic/{email}؛ اگر آن در دسترس نبود از خودِ رکورد کلاینت.
+     * اگر هیچ‌کدام up/down نداشتند null برمی‌گردد (نه صفر) تا مصرف ثبت‌شده با یک پاسخ ناقص صفر نشود.
+     */
+    public function usedTrafficBytes(PanelAccountResult $result): ?int
+    {
+        foreach (['traffic', 'client'] as $key) {
+            $block = $result->rawResponse[$key] ?? null;
+
+            if (is_array($block) && (isset($block['up']) || isset($block['down']))) {
+                return max(0, (int) ($block['up'] ?? 0) + (int) ($block['down'] ?? 0));
+            }
+        }
+
+        return null;
     }
 
     public function getAccount(ServerPanel $panel, string $username): PanelAccountResult
