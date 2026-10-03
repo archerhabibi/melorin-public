@@ -3,14 +3,14 @@
 @section('title', 'جزئیات اکانت')
 
 @section('content')
-    @include('website.account._nav')
+    @include('website.account._nav', ['crumbs' => [['label' => 'جزئیات اکانت']]])
 
-    <div class="bg-white border rounded-lg p-6 max-w-xl">
+    <div class="bg-surface border rounded-lg p-6 max-w-xl">
         <h1 class="text-xl font-bold">{{ $account->product->name ?? 'اکانت VPN' }}</h1>
 
         @if(session('renewal_success'))
             @php($result = session('renewal_success'))
-            <div class="mt-4 p-3 rounded bg-green-50 text-green-800 text-sm whitespace-pre-line">
+            <div class="mt-4 p-3 rounded bg-success-soft text-success text-sm whitespace-pre-line">
                 ✅ اکانت شما با موفقیت تمدید شد.
 
                 موجودی کیف پول قبل از تمدید: {{ \App\Support\Money::format($result['balance_before']) }}
@@ -19,15 +19,15 @@
         @endif
 
         @if(session('renewal_error'))
-            <div class="mt-4 p-3 rounded bg-red-50 text-red-800 text-sm whitespace-pre-line">
+            <div class="mt-4 p-3 rounded bg-danger-soft text-danger text-sm whitespace-pre-line">
                 {{ session('renewal_error') }}
             </div>
         @endif
 
-        <dl class="mt-4 space-y-2 text-sm text-gray-600">
+        <dl class="mt-4 space-y-2 text-sm text-muted">
             <div class="flex justify-between">
                 <dt>وضعیت</dt>
-                <dd class="font-medium {{ $account->isExpired() ? 'text-red-600' : 'text-green-700' }}">
+                <dd class="font-medium {{ $account->isExpired() ? 'text-danger' : 'text-success' }}">
                     {{ $account->isExpired() ? 'منقضی‌شده' : 'فعال' }}
                 </dd>
             </div>
@@ -53,7 +53,7 @@
               class="mt-6 pt-4 border-t">
             @csrf
             <input type="hidden" name="idempotency_token" value="{{ \Illuminate\Support\Str::uuid() }}">
-            <button type="submit" class="w-full py-2 rounded text-white" style="background: var(--brand)">
+            <button type="submit" class="bg-brand w-full py-2 rounded text-on-brand">
                 تمدید اکانت (به قیمت فعلی تعرفه)
             </button>
         </form>
@@ -65,21 +65,16 @@
             می‌شود — نه خطا.
         --}}
         <div class="mt-6 pt-4 border-t">
-            <p class="text-sm font-medium text-gray-700 mb-2">اطلاعات اتصال</p>
+            <p class="text-sm font-medium text-text mb-2">اطلاعات اتصال</p>
 
             @if($account->subscription_url)
                 <div class="flex items-center gap-2">
-                    <input type="text" readonly value="{{ $account->subscription_url }}"
-                           class="flex-1 text-xs border rounded px-3 py-2 bg-gray-50 text-gray-600" dir="ltr">
-                    <button type="button"
-                            x-data
-                            @click="navigator.clipboard.writeText('{{ $account->subscription_url }}')"
-                            class="px-3 py-2 rounded text-white text-sm" style="background: var(--brand)">
-                        کپی
-                    </button>
+                    <input id="subscription-url" type="text" readonly value="{{ $account->subscription_url }}"
+                           class="input flex-1 text-xs bg-surface-2 text-muted" dir="ltr">
+                    <button type="button" data-copy="#subscription-url" class="btn btn-primary">کپی</button>
                 </div>
             @else
-                <p class="text-sm text-gray-400">لینک اتصال هنوز آماده نیست.</p>
+                <p class="text-sm text-subtle">لینک اتصال هنوز آماده نیست.</p>
             @endif
         </div>
     </div>

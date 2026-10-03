@@ -19,6 +19,8 @@ class BroadcastResource extends Resource
 
     protected static ?string $navigationLabel = 'سوابق پیام همگانی';
 
+    protected static ?int $navigationSort = 2;
+
     protected static ?string $modelLabel = 'پیام همگانی';
 
     public static function table(Table $table): Table

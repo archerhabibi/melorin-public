@@ -23,6 +23,8 @@ class BroadcastMessage extends Page implements HasForms
 
     protected static ?string $navigationIcon = 'heroicon-o-megaphone';
 
+    protected static ?string $navigationGroup = 'پیام‌رسانی';
+
     protected static ?string $navigationLabel = 'پیام همگانی';
 
     protected static ?string $title = 'پیام همگانی به مشتریان من';

@@ -96,6 +96,19 @@ class CustomerResource extends Resource
         });
     }
 
+    // ---- جستجوی سراسری (B1.3): روی getEloquentQuery اسکوپ‌شده‌ی همین فروشگاه ----
+    protected static ?string $recordTitleAttribute = 'full_name';
+
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['full_name', 'email', 'phone', 'telegram_id'];
+    }
+
+    public static function getGlobalSearchResultTitle(\Illuminate\Database\Eloquent\Model $record): string
+    {
+        return $record->full_name ?: ($record->email ?: 'مشتری #'.$record->id);
+    }
+
     public static function getPages(): array
     {
         return [

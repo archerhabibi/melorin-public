@@ -30,6 +30,8 @@ class ServerPanelResource extends Resource
 
     protected static ?string $navigationLabel = 'سرورها و پنل‌ها';
 
+    protected static ?int $navigationSort = 1;
+
     protected static ?string $modelLabel = 'سرور / پنل';
 
     public static function form(Form $form): Form

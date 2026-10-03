@@ -26,54 +26,67 @@
     <title>@yield('title', isset($storeContext) && $storeContext->isReseller() ? $branding['name'] : 'Melorin')</title>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    <style>:root { --brand: {{ $branding['color'] }}; }</style>
+    <script src="{{ asset('js/theme-init.js') }}"></script>
+    <style>:root { --brand: {{ $branding['color'] }}; --brand-contrast: {{ \App\Support\Branding\BrandColor::onColor($branding['color']) }}; }</style>
+    @stack('head')
 </head>
-<body class="bg-gray-50 text-gray-900 font-sans antialiased min-h-screen flex flex-col">
+<body class="min-h-screen flex flex-col">
 
-    <header class="border-b bg-white">
-        <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+    {{-- B1.2: دسترس‌پذیری — پرش به محتوا برای کاربر کیبورد/Screen reader --}}
+    <a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:start-2 focus:z-50 btn btn-primary">پرش به محتوا</a>
+
+    <header class="border-b border-border bg-surface">
+        <div class="@yield('container', 'max-w-5xl') mx-auto px-4 py-3 flex items-center justify-between">
             <a href="{{ $storeContext->isReseller() ? route('website.store.home', $storeContext->reseller->slug) : route('website.home') }}"
-               class="font-bold text-lg flex items-center gap-2" style="color: var(--brand)">
+               class="text-brand font-bold text-lg flex items-center gap-2">
                 @if($storeContext->isReseller() && $branding['logo_url'])
                     <img src="{{ $branding['logo_url'] }}" alt="{{ $branding['name'] }}" class="h-8 w-8 rounded object-contain">
                 @endif
                 {{ $storeContext->isReseller() ? $branding['name'] : 'Melorin' }}
             </a>
 
-            <nav class="flex items-center gap-4 text-sm">
+            <nav class="flex flex-wrap items-center justify-end gap-x-4 gap-y-2 text-sm" aria-label="منوی اصلی">
                 {{-- بند ۴۷: منوی اختصاصی نماینده — فقط برای ادمین/مالکِ همین فروشگاه --}}
                 @if($canManageStore)
-                    <a href="{{ route('website.store.manage.customers', $storeContext->reseller->slug) }}" class="text-gray-500 hover:text-gray-900">مشتریان</a>
-                    <a href="{{ route('website.store.manage.products', $storeContext->reseller->slug) }}" class="text-gray-500 hover:text-gray-900">محصولات</a>
-                    <a href="{{ route('website.store.manage.branding', $storeContext->reseller->slug) }}" class="text-gray-500 hover:text-gray-900">تنظیمات فروشگاه</a>
+                    <a href="{{ route('website.store.manage.customers', $storeContext->reseller->slug) }}" class="nav-link">مشتریان</a>
+                    <a href="{{ route('website.store.manage.products', $storeContext->reseller->slug) }}" class="nav-link">محصولات</a>
+                    <a href="{{ route('website.store.manage.branding', $storeContext->reseller->slug) }}" class="nav-link">تنظیمات فروشگاه</a>
                 @endif
 
+                <button type="button" data-theme-toggle class="nav-link" aria-label="تغییر حالت روشن/تیره" title="حالت روشن/تیره">
+                    <x-ui.icon name="moon" :size="18" class="theme-icon-light" />
+                    <x-ui.icon name="sun" :size="18" class="theme-icon-dark" />
+                </button>
+
                 @auth
-                    <span class="text-gray-500">{{ auth()->user()->full_name }}</span>
+                    <a href="{{ $storeContext->isReseller() ? route('website.store.wallet.show', $storeContext->reseller->slug) : route('website.wallet.show') }}"
+                       class="nav-link flex items-center gap-1.5">
+                        <x-ui.icon name="user" :size="16" />
+                        <span class="hidden sm:inline">{{ auth()->user()->full_name }}</span>
+                        <span class="sm:hidden">حساب من</span>
+                    </a>
                     <form method="POST" action="{{ $storeContext->isReseller() ? route('website.store.logout', $storeContext->reseller->slug) : route('website.logout') }}">
                         @csrf
-                        <button type="submit" class="text-gray-500 hover:text-gray-900">خروج</button>
+                        <button type="submit" class="nav-link">خروج</button>
                     </form>
                 @else
-                    <a href="{{ $storeContext->isReseller() ? route('website.store.login', $storeContext->reseller->slug) : route('website.login') }}" class="text-gray-500 hover:text-gray-900">ورود</a>
+                    <a href="{{ $storeContext->isReseller() ? route('website.store.login', $storeContext->reseller->slug) : route('website.login') }}" class="nav-link">ورود</a>
                     <a href="{{ $storeContext->isReseller() ? route('website.store.register', $storeContext->reseller->slug) : route('website.register') }}"
-                       class="px-3 py-1.5 rounded text-white" style="background: var(--brand)">ثبت‌نام</a>
+                       class="btn btn-primary btn-sm">ثبت‌نام</a>
                 @endauth
             </nav>
         </div>
     </header>
 
-    <main class="flex-1 max-w-5xl w-full mx-auto px-4 py-8">
+    <main id="main" class="flex-1 @yield('container', 'max-w-5xl') w-full mx-auto px-4 py-6 sm:py-8">
         @if(session('status'))
-            <div class="mb-6 rounded border border-green-200 bg-green-50 text-green-800 px-4 py-3 text-sm">
-                {{ session('status') }}
-            </div>
+            <x-ui.alert type="success" class="mb-6">{{ session('status') }}</x-ui.alert>
         @endif
 
         @yield('content')
     </main>
 
-    <footer class="border-t bg-white py-6 text-center text-xs text-gray-400">
+    <footer class="border-t border-border bg-surface py-6 text-center text-xs text-subtle">
         <div>© {{ now()->format('Y') }} {{ $storeContext->isReseller() ? $branding['name'] : 'Melorin' }}</div>
 
         {{-- بند ۴۶: اطلاعات تماس نماینده، فقط اگر خودش ثبت کرده باشد --}}
@@ -85,5 +98,6 @@
             </div>
         @endif
     </footer>
+    @stack('scripts')
 </body>
 </html>

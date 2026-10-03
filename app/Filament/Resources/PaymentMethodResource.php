@@ -21,6 +21,8 @@ class PaymentMethodResource extends Resource
 
     protected static ?string $navigationLabel = 'روش‌های پرداخت';
 
+    protected static ?int $navigationSort = 2;
+
     public static function form(Form $form): Form
     {
         return $form->schema([

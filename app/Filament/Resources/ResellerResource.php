@@ -33,6 +33,8 @@ class ResellerResource extends Resource
 
     protected static ?string $navigationLabel = 'نمایندگان';
 
+    protected static ?int $navigationSort = 1;
+
     protected static ?string $modelLabel = 'نماینده';
 
     protected static ?string $pluralModelLabel = 'نمایندگان';
@@ -146,6 +148,24 @@ class ResellerResource extends Resource
                 Tables\Actions\EditAction::make(),
             ])
             ->defaultSort('created_at', 'desc');
+    }
+
+    // ---- جستجوی سراسری (B1.3) ----
+    protected static ?string $recordTitleAttribute = 'slug';
+
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['slug', 'user.full_name'];
+    }
+
+    public static function getGlobalSearchEloquentQuery(): \Illuminate\Database\Eloquent\Builder
+    {
+        return parent::getGlobalSearchEloquentQuery()->with('user');
+    }
+
+    public static function getGlobalSearchResultTitle(\Illuminate\Database\Eloquent\Model $record): string
+    {
+        return $record->getFilamentName();
     }
 
     public static function getPages(): array

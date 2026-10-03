@@ -28,6 +28,8 @@ class BroadcastMessage extends Page implements HasForms
 
     protected static ?string $navigationLabel = 'پیام همگانی';
 
+    protected static ?int $navigationSort = 1;
+
     protected static string $view = 'filament.pages.broadcast-message';
 
     public ?array $data = [];

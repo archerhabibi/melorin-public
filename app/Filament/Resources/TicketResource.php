@@ -30,6 +30,8 @@ class TicketResource extends Resource
 
     protected static ?string $navigationLabel = 'تیکت‌ها';
 
+    protected static ?int $navigationSort = 1;
+
     protected static ?string $modelLabel = 'تیکت';
 
     protected static ?string $pluralModelLabel = 'تیکت‌ها';
@@ -165,6 +167,24 @@ class TicketResource extends Resource
         return [
             MessagesRelationManager::class,
         ];
+    }
+
+    // ---- جستجوی سراسری (B1.3) ----
+    protected static ?string $recordTitleAttribute = 'subject';
+
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['subject', 'user.full_name'];
+    }
+
+    public static function getGlobalSearchEloquentQuery(): \Illuminate\Database\Eloquent\Builder
+    {
+        return parent::getGlobalSearchEloquentQuery()->with('user');
+    }
+
+    public static function getGlobalSearchResultDetails(\Illuminate\Database\Eloquent\Model $record): array
+    {
+        return array_filter(['کاربر' => $record->user?->full_name]);
     }
 
     public static function getPages(): array

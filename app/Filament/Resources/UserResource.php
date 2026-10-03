@@ -26,6 +26,8 @@ class UserResource extends Resource
 
     protected static ?string $navigationLabel = 'کاربران';
 
+    protected static ?int $navigationSort = 1;
+
     public static function form(Form $form): Form
     {
         return $form->schema([
@@ -121,6 +123,28 @@ class UserResource extends Resource
                         }
                     }),
             ]);
+    }
+
+    // ---- جستجوی سراسری (B1.3) ----
+    protected static ?string $recordTitleAttribute = 'full_name';
+
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['full_name', 'email', 'phone', 'telegram_id', 'username_site'];
+    }
+
+    public static function getGlobalSearchResultTitle(\Illuminate\Database\Eloquent\Model $record): string
+    {
+        return $record->full_name ?: ($record->email ?: 'کاربر #'.$record->id);
+    }
+
+    public static function getGlobalSearchResultDetails(\Illuminate\Database\Eloquent\Model $record): array
+    {
+        return array_filter([
+            'ایمیل' => $record->email,
+            'موبایل' => $record->phone,
+            'تلگرام' => $record->telegram_id,
+        ]);
     }
 
     public static function getPages(): array

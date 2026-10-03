@@ -3,12 +3,12 @@
 @section('title', $product->name)
 
 @section('content')
-    <a href="{{ $store->isReseller() ? route('website.store.home', $store->reseller->slug) : route('website.home') }}" class="text-sm text-gray-500">&rarr; بازگشت به تعرفه‌ها</a>
+    <a href="{{ $store->isReseller() ? route('website.store.home', $store->reseller->slug) : route('website.home') }}" class="text-sm text-muted">&rarr; بازگشت به تعرفه‌ها</a>
 
-    <div class="mt-4 bg-white border rounded-lg p-6 max-w-xl">
+    <div class="mt-4 bg-surface border rounded-lg p-6 max-w-xl">
         <h1 class="text-xl font-bold">{{ $product->name }}</h1>
 
-        <dl class="mt-4 space-y-2 text-sm text-gray-600">
+        <dl class="mt-4 space-y-2 text-sm text-muted">
             <div class="flex justify-between"><dt>مدت زمان</dt><dd>{{ $product->duration_days }} روز</dd></div>
             @if($product->traffic_gb)
                 <div class="flex justify-between"><dt>حجم</dt><dd>{{ $product->traffic_gb }} گیگابایت</dd></div>
@@ -18,7 +18,7 @@
             @endif
         </dl>
 
-        <div class="mt-6 text-2xl font-bold" style="color: var(--brand)">
+        <div class="text-brand mt-6 text-2xl font-bold">
             {{ \App\Support\Money::format($price) }}
         </div>
 
@@ -32,14 +32,14 @@
             <a href="{{ $store->isReseller()
                     ? route('website.store.checkout.show', ['slug' => $store->reseller->slug, 'product' => $product->id])
                     : route('website.checkout.show', $product->id) }}"
-               class="mt-6 inline-block px-4 py-2 rounded text-white text-sm font-medium" style="background: var(--brand)">
+               class="bg-brand mt-6 inline-block px-4 py-2 rounded text-on-brand text-sm font-medium">
                 خرید این تعرفه
             </a>
         @else
             <a href="{{ $store->isReseller()
                     ? route('website.store.login', $store->reseller->slug)
                     : route('website.login') }}"
-               class="mt-6 inline-block px-4 py-2 rounded text-white text-sm font-medium" style="background: var(--brand)">
+               class="bg-brand mt-6 inline-block px-4 py-2 rounded text-on-brand text-sm font-medium">
                 برای خرید وارد شوید
             </a>
             <span class="mt-6 mr-2 inline-block">

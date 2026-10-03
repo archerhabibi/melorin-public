@@ -12,6 +12,6 @@
 <a href="{{ $store->isReseller()
         ? route('website.store.guest-checkout.show', ['slug' => $store->reseller->slug, 'product' => $product->id])
         : route('website.guest-checkout.show', $product->id) }}"
-   class="inline-block px-4 py-2 rounded border text-sm font-medium text-gray-700">
+   class="inline-block px-4 py-2 rounded border text-sm font-medium text-text">
     خرید به‌عنوان مهمان
 </a>

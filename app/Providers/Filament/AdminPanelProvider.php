@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Support\PanelDefaults;
 use App\Http\Middleware\SecurityHeaders;
 use App\Models\Admin;
 use Filament\Http\Middleware\Authenticate;
@@ -38,7 +39,7 @@ class AdminPanelProvider extends PanelProvider
 
     public function panel(Panel $panel): Panel
     {
-        return $panel
+        return PanelDefaults::apply($panel)
             ->default()
             ->id('admin')
             ->path('admin')
@@ -62,6 +63,7 @@ class AdminPanelProvider extends PanelProvider
                 'کاربران',
                 'نمایندگان',
                 'مالی',
+                'گزارشات',
                 'زیرساخت',
                 'پشتیبانی',
                 'پیام‌رسانی',

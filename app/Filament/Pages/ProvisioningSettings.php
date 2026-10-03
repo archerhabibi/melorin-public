@@ -33,6 +33,8 @@ class ProvisioningSettings extends Page implements HasForms
 
     protected static ?string $navigationLabel = 'شکست ساخت اکانت';
 
+    protected static ?int $navigationSort = 4;
+
     protected static string $view = 'filament.pages.provisioning-settings';
 
     public ?array $data = [];

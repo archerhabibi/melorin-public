@@ -3,12 +3,12 @@
 @section('title', 'فراموشی رمز عبور')
 
 @section('content')
-    <div class="max-w-sm mx-auto bg-white border rounded-lg p-6">
+    <div class="max-w-sm mx-auto bg-surface border rounded-lg p-6">
         <h1 class="text-lg font-bold mb-2">بازیابی رمز عبور</h1>
-        <p class="text-sm text-gray-500 mb-6">ایمیل خود را وارد کنید تا لینک بازیابی برایتان ارسال شود.</p>
+        <p class="text-sm text-muted mb-6">ایمیل خود را وارد کنید تا لینک بازیابی برایتان ارسال شود.</p>
 
         @if($errors->any())
-            <div class="mb-4 rounded border border-red-200 bg-red-50 text-red-700 px-3 py-2 text-sm">
+            <div class="mb-4 rounded border border-danger/30 bg-danger-soft text-danger px-3 py-2 text-sm">
                 @foreach($errors->all() as $error)
                     <div>{{ $error }}</div>
                 @endforeach
@@ -20,9 +20,9 @@
             <div>
                 <label class="block text-sm mb-1">ایمیل</label>
                 <input type="email" name="email" value="{{ old('email') }}" required autofocus
-                       class="w-full rounded border-gray-300 focus:border-gray-500 focus:ring-0">
+                       class="input">
             </div>
-            <button type="submit" class="w-full py-2 rounded text-white" style="background: var(--brand)">ارسال لینک بازیابی</button>
+            <button type="submit" class="bg-brand w-full py-2 rounded text-on-brand">ارسال لینک بازیابی</button>
         </form>
     </div>
 @endsection

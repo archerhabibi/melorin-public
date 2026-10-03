@@ -1,3 +1,84 @@
+@import '@fontsource-variable/vazirmatn';
+@import './design/tokens.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+    html { -webkit-text-size-adjust: 100%; }
+    body { @apply bg-bg text-text font-sans antialiased; font-feature-settings: 'ss01'; }
+    :focus-visible { outline: 2px solid color-mix(in srgb, var(--brand) 70%, transparent); outline-offset: 2px; }
+    ::selection { background: color-mix(in srgb, var(--brand) 25%, transparent); }
+    /* ایمیل/URL/کد همیشه LTR داخل متن RTL */
+    .ltr, [dir='ltr'], input[type='email'], input[type='url'], input[type='password'] { unicode-bidi: plaintext; }
+    .tabular { font-variant-numeric: tabular-nums; }
+}
+
+/* ---- Components (همه روی توکن) ---- */
+@layer components {
+    /* Button */
+    .btn { @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition
+                  disabled:opacity-50 disabled:pointer-events-none; }
+    .btn-primary { background: var(--brand); color: var(--brand-contrast, #fff); }
+    .btn-primary:hover { background: color-mix(in srgb, var(--brand) 88%, #000); }
+    .btn-secondary { @apply bg-surface border border-border-strong text-text hover:bg-surface-2; }
+    .btn-ghost { @apply text-muted hover:text-text hover:bg-surface-2; }
+    .btn-danger { @apply bg-danger text-white hover:opacity-90; }
+    .btn-sm { @apply px-3 py-1.5 text-xs; }
+    .btn-block { @apply w-full; }
+
+    /* Form */
+    .label { @apply block text-sm font-medium text-text mb-1; }
+    .hint { @apply mt-1 text-xs text-muted; }
+    .field-error { @apply mt-1 text-xs text-danger; }
+    .input { @apply w-full rounded-md border border-border-strong bg-surface text-text text-sm px-3 py-2
+                    placeholder:text-subtle transition focus:outline-none focus:border-[var(--brand)]
+                    focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand)_25%,transparent)]; }
+    .input[aria-invalid='true'], .input.is-invalid { @apply border-danger; }
+    .check { @apply rounded border-border-strong text-[var(--brand)] focus:ring-0; }
+
+    /* Surfaces */
+    .card { @apply bg-surface border border-border rounded-lg p-6; box-shadow: var(--shadow-card); }
+    .card-flat { @apply bg-surface border border-border rounded-lg; }
+    .divider { @apply border-t border-border; }
+
+    /* Feedback */
+    .alert { @apply rounded-md border px-4 py-3 text-sm; }
+    .alert-success { @apply border-success/30 bg-success-soft text-success; }
+    .alert-warning { @apply border-warning/30 bg-warning-soft text-warning; }
+    .alert-danger  { @apply border-danger/30 bg-danger-soft text-danger; }
+    .alert-info    { @apply border-info/30 bg-info-soft text-info; }
+
+    /* Badge */
+    .badge { @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium; }
+    .badge-neutral { @apply bg-surface-2 text-muted; }
+    .badge-success { @apply bg-success-soft text-success; }
+    .badge-warning { @apply bg-warning-soft text-warning; }
+    .badge-danger  { @apply bg-danger-soft text-danger; }
+    .badge-info    { @apply bg-info-soft text-info; }
+
+    /* Table */
+    .table { @apply w-full text-sm; }
+    .table th { @apply text-start font-medium text-muted px-4 py-2.5 bg-surface-2 border-b border-border; }
+    .table td { @apply px-4 py-3 border-b border-border; }
+    .table tbody tr:last-child td { @apply border-b-0; }
+
+    /* Typography */
+    .page-title { @apply text-xl font-bold text-text; }
+    .page-subtitle { @apply mt-1 text-sm text-muted; }
+    .link { @apply text-muted hover:text-text transition; }
+    .link-brand { color: var(--brand); @apply hover:underline; }
+    /* Dark: Brandِ تیره روی سطح تیره دیده نمی‌شود → برای «متن/لینک برند» کمی روشن‌تر */
+    :root[data-theme='dark'] .link-brand,
+    :root[data-theme='dark'] .text-brand { color: color-mix(in srgb, var(--brand) 60%, #fff); }
+
+    /* Nav */
+    .nav-link { @apply text-muted hover:text-text transition; }
+    .nav-link-active { @apply font-bold text-text; }
+}
+
+/* Theme toggle: آیکون مناسب هر حالت */
+.theme-icon-dark { display: none; }
+:root[data-theme='dark'] .theme-icon-light { display: none; }
+:root[data-theme='dark'] .theme-icon-dark { display: inline; }

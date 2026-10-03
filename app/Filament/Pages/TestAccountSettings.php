@@ -27,6 +27,8 @@ class TestAccountSettings extends Page implements HasForms
 
     protected static ?string $navigationLabel = 'اکانت تست';
 
+    protected static ?int $navigationSort = 3;
+
     protected static string $view = 'filament.pages.test-account-settings';
 
     public ?array $data = [];

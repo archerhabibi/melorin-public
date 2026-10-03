@@ -28,6 +28,8 @@ class OrderResource extends Resource
 
     protected static ?string $navigationLabel = 'سفارش‌ها';
 
+    protected static ?int $navigationSort = 1;
+
     public static function table(Table $table): Table
     {
         return $table
@@ -177,6 +179,29 @@ class OrderResource extends Resource
         };
 
         $notification->send();
+    }
+
+    // ---- جستجوی سراسری (B1.3) ----
+    protected static ?string $recordTitleAttribute = 'id';
+
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['id', 'user.full_name', 'user.email'];
+    }
+
+    public static function getGlobalSearchEloquentQuery(): \Illuminate\Database\Eloquent\Builder
+    {
+        return parent::getGlobalSearchEloquentQuery()->with('user');
+    }
+
+    public static function getGlobalSearchResultTitle(\Illuminate\Database\Eloquent\Model $record): string
+    {
+        return 'سفارش #'.$record->id;
+    }
+
+    public static function getGlobalSearchResultDetails(\Illuminate\Database\Eloquent\Model $record): array
+    {
+        return array_filter(['مشتری' => $record->user?->full_name]);
     }
 
     public static function getPages(): array

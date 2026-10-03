@@ -1,0 +1,68 @@
+/*
+ * Melorin Design Tokens (B1.1)
+ * منبع واحد رنگ/فاصله/شعاع/سایه. هیچ کامپوننتی رنگ خام (gray-500, #fff, ...) نمی‌گذارد؛
+ * فقط از این توکن‌ها (از طریق کلاس‌های Tailwind مثل bg-surface, text-muted) استفاده می‌کند.
+ *
+ * رنگ‌ها به‌صورت «R G B» ذخیره شده‌اند تا Tailwind بتواند alpha بدهد (bg-primary/10).
+ * --brand همچنان یک hex است که Layout برای نماینده تزریق می‌کند (بند ۴۶)؛
+ * primary از آن مشتق می‌شود، پس Reseller Branding بدون تغییر در کامپوننت‌ها کار می‌کند.
+ */
+:root {
+    --brand: #2563eb;
+    --brand-contrast: #ffffff; /* متن روی Brand؛ Layout بر اساس روشنایی رنگ نماینده تعیین می‌کند */
+    color-scheme: light;
+
+    /* Surfaces */
+    --c-bg: 249 250 251;
+    --c-surface: 255 255 255;
+    --c-surface-2: 243 244 246;
+
+    /* Text */
+    --c-text: 17 24 39;
+    --c-muted: 107 114 128;
+    --c-subtle: 156 163 175;
+
+    /* Lines */
+    --c-border: 229 231 235;
+    --c-border-strong: 209 213 219;
+
+    /* Semantic */
+    --c-success: 22 163 74;
+    --c-success-soft: 240 253 244;
+    --c-warning: 217 119 6;
+    --c-warning-soft: 255 251 235;
+    --c-danger: 220 38 38;
+    --c-danger-soft: 254 242 242;
+    --c-info: 2 132 199;
+    --c-info-soft: 240 249 255;
+
+    /* Shape & depth */
+    --radius-sm: 0.375rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.04);
+    --shadow-pop: 0 8px 24px rgb(0 0 0 / 0.08);
+}
+
+/* Dark: فقط توکن‌ها عوض می‌شوند (سوئیچ کردنش در B1.4 است) */
+:root[data-theme='dark'] {
+    color-scheme: dark;
+    --c-bg: 10 12 16;
+    --c-surface: 20 24 31;
+    --c-surface-2: 31 36 46;
+    --c-text: 243 244 246;
+    --c-muted: 156 163 175;
+    --c-subtle: 107 114 128;
+    --c-border: 42 48 59;
+    --c-border-strong: 63 70 84;
+    --c-success: 74 222 128;
+    --c-success-soft: 20 40 28;
+    --c-warning: 251 191 36;
+    --c-warning-soft: 45 36 14;
+    --c-danger: 248 113 113;
+    --c-danger-soft: 52 22 24;
+    --c-info: 56 189 248;
+    --c-info-soft: 14 36 52;
+    --shadow-card: none;
+    --shadow-pop: 0 8px 24px rgb(0 0 0 / 0.5);
+}

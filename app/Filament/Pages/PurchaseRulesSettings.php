@@ -25,6 +25,8 @@ class PurchaseRulesSettings extends Page implements HasForms
 
     protected static ?string $navigationLabel = 'قوانین خرید و آموزش';
 
+    protected static ?int $navigationSort = 2;
+
     protected static string $view = 'filament.pages.purchase-rules-settings';
 
     public ?array $data = [];

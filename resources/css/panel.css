@@ -1,0 +1,20 @@
+/*
+ * Panel layer (B1.2) — مشترک بین پنل ادمین و پنل نماینده (Filament).
+ * عمداً بدون @tailwind: Filament استایل خودش را دارد؛ اینجا فقط هم‌راستاسازی با Design System
+ * (فونت فارسی + همان توکن‌ها) تا Admin / Reseller / Customer یک زبان بصری داشته باشند.
+ * فونت: همان Vazirmatn سلف‌هاست (بدون CDN).
+ */
+@import '@fontsource-variable/vazirmatn';
+@import './design/tokens.css';
+
+:root {
+    --font-family: 'Vazirmatn Variable', 'Vazirmatn', ui-sans-serif, system-ui, sans-serif;
+}
+
+body, .fi-body { font-family: var(--font-family); font-feature-settings: 'ss01'; }
+
+/* اعداد جدول/آمار هم‌عرض شوند تا ستون‌ها تمیز بمانند */
+.fi-ta-table td, .fi-wi-stats-overview-stat-value { font-variant-numeric: tabular-nums; }
+
+/* ایمیل/URL/کد داخل متن RTL درست چیده شود */
+.fi-input[type='email'], .fi-input[type='url'], .fi-input[type='password'] { unicode-bidi: plaintext; }

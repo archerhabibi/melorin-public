@@ -2,8 +2,11 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Support\PanelDefaults;
 use App\Http\Middleware\SecurityHeaders;
 use App\Models\Reseller;
+use App\Models\ResellerWebsiteSetting;
+use App\Support\Branding\BrandColor;
 use Filament\Facades\Filament;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -48,7 +51,7 @@ class ResellerPanelProvider extends PanelProvider
 
     public function panel(Panel $panel): Panel
     {
-        return $panel
+        return PanelDefaults::apply($panel)
             ->id('reseller')
             ->path('')
             // مسیر ورود پنل نماینده عمداً '/panel/login' است نه '/login':
@@ -75,6 +78,11 @@ class ResellerPanelProvider extends PanelProvider
                 'warning' => Color::Amber,
                 'danger' => Color::Rose,
             ])
+            // B1.4: رنگ اصلی پنل = رنگ Brand خودِ نماینده (همان منبعی که Website می‌خواند).
+            // Closure است چون Tenant فقط هنگام رندر مشخص است؛ در صفحه‌ی ورود (بدون Tenant) پیش‌فرض می‌ماند.
+            ->colors(fn (): array => ($tenant = Filament::getTenant())
+                ? ['primary' => BrandColor::readableWithWhite(ResellerWebsiteSetting::brandingFor($tenant)['color'])]
+                : [])
             // نامِ برند در پنل نماینده، نامِ خودِ نماینده است نه
             // «ملورین» — نماینده این پنل را به‌عنوان فروشگاه خودش
             // می‌بیند. از Tenant فعلی خوانده می‌شود، و در صفحه‌ی ورود

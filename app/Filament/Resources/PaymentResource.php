@@ -30,6 +30,20 @@ class PaymentResource extends Resource
 
     protected static ?string $navigationLabel = 'پرداخت‌ها';
 
+    protected static ?int $navigationSort = 1;
+
+    public static function getNavigationBadge(): ?string
+    {
+        $count = static::getModel()::query()->where('status', 'pending')->count();
+
+        return $count > 0 ? (string) $count : null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'warning';
+    }
+
     public static function form(Form $form): Form
     {
         return $form->schema([
@@ -152,6 +166,29 @@ class PaymentResource extends Resource
                         }
                     }),
             ]);
+    }
+
+    // ---- جستجوی سراسری (B1.3) ----
+    protected static ?string $recordTitleAttribute = 'id';
+
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['id', 'depositor_name', 'gateway_reference', 'user.full_name'];
+    }
+
+    public static function getGlobalSearchEloquentQuery(): \Illuminate\Database\Eloquent\Builder
+    {
+        return parent::getGlobalSearchEloquentQuery()->with('user');
+    }
+
+    public static function getGlobalSearchResultTitle(\Illuminate\Database\Eloquent\Model $record): string
+    {
+        return 'پرداخت #'.$record->id;
+    }
+
+    public static function getGlobalSearchResultDetails(\Illuminate\Database\Eloquent\Model $record): array
+    {
+        return array_filter(['مشتری' => $record->user?->full_name]);
     }
 
     public static function getPages(): array
