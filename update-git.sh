@@ -569,6 +569,18 @@ else
     exit 1
 fi
 
+# فاز ۹ (G-9-3) — فایل‌های آپلودی (رسیدها/لوگوها) در دیتابیس نیستند؛ بدون این Backup
+# بازگردانی دیتابیس، ارجاع به فایل‌های ازدست‌رفته می‌گذارد. شکست این مرحله Fatal نیست (هشدار).
+echo "==> Backup فایل‌های storage/app"
+if [[ -d "storage/app" ]] && tar -czf "${BACKUP_DIR}/storage-app.tar.gz" \
+    --exclude='storage/app/framework' --exclude='storage/app/private/livewire-tmp' \
+    storage/app 2> "${BACKUP_DIR}/storage-tar.log"
+then
+    echo "    ${BACKUP_DIR}/storage-app.tar.gz"
+else
+    echo "    هشدار: Backup فایل‌های storage/app انجام نشد (Log: ${BACKUP_DIR}/storage-tar.log)" >&2
+fi
+
 echo ""
 
 # ============================================================================
@@ -797,6 +809,19 @@ if php artisan migrate:status > /dev/null; then
 else
 
     echo "خطا: Laravel/Database health check شکست خورد." >&2
+    exit 1
+fi
+
+# فاز ۹ — Readiness واقعی: DB، Cache، Storage، Migration عقب‌مانده، قفل ارز.
+# (Heartbeat Scheduler فقط warn است و Rollback نمی‌سازد.)
+echo "    melorin:preflight --group=runtime"
+if php artisan melorin:preflight --group=runtime; then
+
+    echo "    Readiness OK ✅"
+
+else
+
+    echo "خطا: Readiness شکست خورد (melorin:preflight --group=runtime)." >&2
     exit 1
 fi
 

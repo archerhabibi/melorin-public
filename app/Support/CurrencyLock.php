@@ -28,7 +28,7 @@ final class CurrencyLock
         'migrate', 'migrate:fresh', 'migrate:status', 'migrate:rollback', 'migrate:reset',
         'db:wipe', 'db:seed', 'config:clear', 'config:cache', 'cache:clear',
         'optimize', 'optimize:clear', 'package:discover', 'key:generate', 'list', 'help',
-        'down', 'up', 'melorin:currency-lock',
+        'down', 'up', 'melorin:currency-lock', 'melorin:preflight',
     ];
 
     public static function signature(): string

@@ -1,17 +1,25 @@
 <?php
 
+use App\Http\Controllers\Ops\HealthController;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SetContentSecurityPolicyHeader;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
+        then: function () {
+            // فاز ۹ — Readiness (بدون Session/CSRF تا پایشگر هر ۳۰ ثانیه Session نسازد).
+            Route::get('/health/ready', HealthController::class)
+                ->middleware('throttle:60,1')
+                ->name('health.ready');
+        },
     )
     ->withMiddleware(function (Middleware $middleware) {
         // بدون این callback، میان‌افزار 'auth' (guard پیش‌فرض 'web') روی

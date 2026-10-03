@@ -1,6 +1,6 @@
 # Melorin — Verification Matrix
 
-**Contract:** Master 2.8 · Website 1.9 · **Code baseline:** 3.3.6 (فاز ۸ — Security Audit)
+**Contract:** Master 2.8 · Website 1.9 · **Code baseline:** 3.3.8 (فاز ۹ — Staging Tooling تکمیل‌شده)
 
 **راهنما:** ✅ انجام و مستند · ⚠️ ناقص یا **مغایر Contract** · ☐ انجام نشده · — نامربوط · ⛔ DEPRECATED
 
@@ -39,9 +39,12 @@
 | Money Representation (بدون float، ارز قابل‌تنظیم) | ✅ *(M1–M8)* | ✅ | ✅ | — | — | ☐ *(Migration روی کپی DB)* | ☐ |
 | Cache / RateLimiter / Queue روی Redis واقعی | ✅ | ✅ | ✅ *(فاز ۷؛ ۵ تست)* | ☐ | — | ☐ | ☐ |
 | Schema Baseline (۱ Migration، MariaDB + SQLite) | ✅ | ✅ | ✅ *(`BaselineSchemaTest`)* | — | — | ☐ | ☐ |
-| Backup / Restore | ☐ | ✅ *(update-git.sh)* | — | — | — | ☐ | ☐ |
-| Rollback (Migration/Health failure عمدی) | ☐ | ✅ | — | — | — | ☐ | ☐ |
-| Observability / Alerting / Health | ☐ | ⚠️ | — | — | — | ☐ | ☐ |
+| Backup / Restore | ☐ *(رویه: `operations/DISASTER-RECOVERY.md`؛ RPO/RTO تصمیم D-9-1)* | ✅ *(update-git.sh + `backup-restore-drill.sh`)* | — | — | — | ☐ *(Drill اجرا نشده)* | ☐ |
+| Rollback (Migration/Health failure عمدی) | ☐ | ✅ *(+ Gate Readiness در update-git.sh)* | — | — | — | ☐ *(Drill سه‌گانه)* | ☐ |
+| Observability / Alerting / Health | ☐ *(سند: `operations/MONITORING.md`)* | ⚠️ *(Health/Preflight/Heartbeat ✅؛ Alert خارجی و Correlation ID ☐)* | ✅ *(`Operations/*`)* | — | — | ☐ | ☐ |
+| Readiness (`/health/ready`) + `melorin:preflight` (config/runtime/data، فقط‌خواندنی) | ✅ | ✅ | ✅ *(۲۴ تست)* | — | ✅ *(بدون نشت جزئیات/Session)* | ☐ | ☐ |
+| Smoke جعبه‌سیاه Staging (`scripts/staging/smoke.sh`) | — | ✅ *(روی سرور محلی اجرا شد)* | — | — | — | ☐ *(روی Staging واقعی)* | ☐ |
+| Incident Runbook (`operations/INCIDENT-RESPONSE.md`) | ✅ | — | — | — | — | ☐ *(تمرین نشده)* | ☐ |
 | Security Self-Audit (فاز ۸) | ✅ | ✅ | ✅ *(۱۶ تست)* | — | ✅ *(S-01…S-10 بسته؛ O-1…O-8 باز)* | — | — |
 | Independent Security Review (شخص/ابزار مستقل) | — | — | — | — | ☐ | — | — |
 
@@ -97,3 +100,14 @@ C1، C2، C3، C4، C8، C9، C10، C11، C13 در **کد و تست‌های ن�
 
 ## ۸. تکمیل فاز ۷ (3.3.5)
 Baseline Squash (۸۲ Migration → ۱؛ حذف `users.reseller_id`)، تست Redis واقعی و رفع skipهای MariaDB. جزئیات: `../history/PHASE-7-TEST-ENVIRONMENT.md`. ماتریس: ردیف‌های «Redis» و «Schema Baseline» اضافه شد؛ `MoneyMigrationTest` حذف و با `BaselineSchemaTest` جایگزین شد.
+
+## ۹. فاز ۹ — Staging Tooling (3.3.7)
+**ابزار و رویه ساخته شد؛ اجرای واقعی Staging انجام نشده** (ردیف‌های ستون Staging همه ☐ ماندند؛ مدرک‌ها در `../operations/STAGING-EVIDENCE.md`). جزئیات: `../history/PHASE-9-STAGING.md`.
+
+| # | شکاف | وضعیت |
+|---|---|---|
+| G-9-1 | سفارش بعد از Crash وسط Provisioning در `provisioning` می‌ماند | ✅ بسته شد در 3.3.8 (`provisioning:recover-stuck`؛ بدون Retry خودکار/حرکت مالی)؛ V5 روی Staging هنوز ☐ |
+| G-9-2 | پاسخ گمشده‌ی پنل ← Retry با نام جدید ← اکانت یتیم روی پنل | مستند (Runbook §۴)؛ اصلاح = Adopt با `note=melorin-order-<id>` |
+| G-9-3 | Backup رسیدها/لوگوها (`storage/app`) در `update-git.sh` نبود | ✅ بسته شد در 3.3.8 |
+| O-6 | PII در `telegram_update_resolved` | ✅ بسته شد (فقط با `APP_DEBUG`) |
+| O-1 / O-2 / O-3 / O-5 / O-7 | باز | نیازمند تصمیم محصول |

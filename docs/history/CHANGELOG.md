@@ -5,6 +5,16 @@
 
 ---
 
+3.3.8 - تکمیل فاز ۹: `StuckOrderWatchdog` + `php artisan provisioning:recover-stuck` (هر ۵ دقیقه) برای بستن G-9-1 — سفارشِ گیرکرده در `provisioning` بیش از ۱۵ دقیقه: اگر اکانت ثبت شده باشد ← `account_created`، وگرنه ← `provision_failed` **بدون Retry خودکار و بدون هیچ حرکت مالی** (تصمیم Retry اجباری/Refund با ادمین)؛ بستن G-9-3 — `update-git.sh` از `storage/app` (رسیدها/لوگوها) هم Backup می‌گیرد. ۶ تست جدید. اجرای واقعی Staging و G-9-2 (Adopt اکانت یتیم) هنوز باز است.
+
+---
+
+3.3.7 - فاز ۹ (Staging Tooling): `php artisan melorin:preflight` (config/runtime/data، فقط‌خواندنی، Exit Code)، `GET /health/ready` (Readiness بدون Session و بدون نشت جزئیات)، Heartbeat Scheduler + پایش داده هر ۱۵ دقیقه (لاگ)، Gate Readiness در `update-git.sh`، اسکریپت‌های `scripts/staging/smoke.sh` و `backup-restore-drill.sh`، سندهای Runbook/Evidence/DR/Incident/Monitoring، رفع O-6 (PII در لاگ تلگرام). ۲۴ تست جدید. **اجرای واقعی Staging هنوز انجام نشده.**
+
+جزئیات: docs/history/PHASE-9-STAGING.md
+
+---
+
 3.3.6 - فاز ۸ (Security Audit — Self-Audit): ۱۰ یافته بسته شد؛ مهم‌ترین‌ها: وب‌هوک تلگرام (اصلی و نماینده) Fail-closed، Callback زرین‌پال مقید به Authority (جلوگیری از Reject ناخواسته‌ی پرداخت دیگران)، Trusted Proxies، هدرهای امنیتی/HSTS، Throttle ثبت‌نام، Idempotency تمدید Website. ۱۶ تست جدید؛ ۴۹۳ سبز (+۵ Redis با flag). باز: Admin Authorization تخت (O-1) و ۷ مورد دیگر.
 
 جزئیات: docs/history/PHASE-8-SECURITY-AUDIT.md

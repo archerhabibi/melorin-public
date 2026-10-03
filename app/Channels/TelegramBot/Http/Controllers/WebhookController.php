@@ -110,10 +110,12 @@ class WebhookController
             'update_id' => $updateId,
             'type' => $message ? 'message' : ($callbackQuery ? 'callback_query' : 'unknown'),
             'from_id' => $telegramUser->get('id'),
-            'from_first_name' => $telegramUser->get('first_name'),
             'chat_id' => $chat->getId(),
+        ] + (config('app.debug') ? [
+            // O-6 (فاز ۹): نام و متن پیام PII است؛ فقط در حالت Debug لاگ می‌شود.
+            'from_first_name' => $telegramUser->get('first_name'),
             'text_or_data' => $message ? $message->getText() : ($callbackQuery ? $callbackQuery->get('data') : null),
-        ]);
+        ] : []));
 
         $user = User::firstOrNew(['telegram_id' => $telegramUser->get('id')]);
 
