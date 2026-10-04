@@ -16,6 +16,7 @@
 | CUSTOMER-WALLET-CONTRACT.md | 1.0 (Parent: Master 2.8 / Website 1.9 / Dashboard 1.0 / Services 1.0) | Wallet Center: خلاصه، گردش حساب فیلتر‌پذیر، وضعیت شارژها، صفحه‌ی شارژ (B3.3؛ W1–W7) |
 | CUSTOMER-TICKETS-CONTRACT.md | 1.0 (Parent: Master 2.8 / Website 1.9 / Dashboard 1.0 / Wallet 1.0) | Ticket Center: فهرست، ثبت، گفتگو، پاسخ، بستن؛ مالکیت user+reseller (B3.4؛ T1–T7) |
 | CUSTOMER-PROFILE-CONTRACT.md | 1.0 (Parent: Master 2.8 / Website 1.9 / Linking 1.0 / Sessions 1.0 / Tickets 1.0) | Profile Center: نمای کلی، ویرایش نام/موبایل، قاعده‌ی نام تلگرام، یکی‌بودن Core بین Website و ربات (B3.5؛ P1–P9) |
+| CUSTOMER-CATALOG-CONTRACT.md | 1.0 (Parent: Master 2.8 / Website 1.9 / Profile 1.0) | Product Catalog: سرویس واحد Core برای سایت و دو ربات، جست‌وجو/فیلتر/مرتب‌سازی، ظرفیت تکمیل، بدون N+1 (B4.1؛ C1–C9) |
 | DATA-RETENTION.md | — | Retention (Guest ۶۰ روز؛ بقیه تأییدشده) |
 
 ## سایر پوشه‌ها

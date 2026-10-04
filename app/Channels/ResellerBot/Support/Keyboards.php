@@ -2,6 +2,7 @@
 
 namespace App\Channels\ResellerBot\Support;
 
+use App\Services\Core\Catalog\CatalogItem;
 use App\Support\Money;
 
 /**
@@ -42,23 +43,18 @@ class Keyboards
         return self::encode(['inline_keyboard' => $rows]);
     }
 
-    /** فقط محصولاتی که خودِ نماینده فعال/قیمت‌گذاری کرده — قیمت نمایش‌داده‌شده customers_price است، نه main_price یا reseller_price */
-    public static function productList(iterable $productsWithPrice): string
+    /**
+     * فقط تعرفه‌هایی که خودِ نماینده فعال/قیمت‌گذاری کرده (B4.1: `CatalogItem` از Core) — قیمت نمایش‌داده‌شده
+     * customers_price است، نه main_price یا reseller_price.
+     *
+     * @param  iterable<CatalogItem>  $items
+     */
+    public static function productList(iterable $items): string
     {
         $rows = [];
 
-        foreach ($productsWithPrice as $row) {
-            [$product, $customersPrice] = $row;
-
-            $label = sprintf(
-                '%s — %s (%s روز%s)',
-                $product->name,
-                Money::format($customersPrice),
-                $product->duration_days,
-                $product->traffic_gb ? ", {$product->traffic_gb} گیگ" : ''
-            );
-
-            $rows[] = [['text' => $label, 'callback_data' => "rbuy:product:{$product->id}"]];
+        foreach ($items as $item) {
+            $rows[] = [['text' => \App\Channels\TelegramBot\Support\Keyboards::catalogLabel($item), 'callback_data' => "rbuy:product:{$item->id()}"]];
         }
 
         $rows[] = [['text' => '⬅️ بازگشت', 'callback_data' => 'rbuy:back_to_categories']];

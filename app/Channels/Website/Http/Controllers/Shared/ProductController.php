@@ -12,6 +12,8 @@ use Symfony\Component\HttpFoundation\Response;
  * Core». محصولی که در این Context قابل‌فروش/قابل‌مشاهده نیست، دقیقاً
  * مثل یک محصول ناموجود 404 می‌شود — نه پیام خطای جداگانه، تا وجود/عدم‌
  * وجودِ محصولات غیرفعالِ نماینده از بیرون قابل‌حدس‌زدن نباشد.
+ *
+ * B4.1: «ظرفیت تکمیل» محصول **دیده می‌شود** (404 نیست) ولی دکمه‌ی خرید ندارد و تعرفه‌های جایگزین پیشنهاد می‌شود.
  */
 class ProductController
 {
@@ -19,16 +21,22 @@ class ProductController
 
     public function show(int $product, StoreContext $store): View|Response
     {
-        $productModel = $this->catalog->findVisibleProduct($product, $store);
+        $item = $this->catalog->item($product, $store);
 
-        if (! $productModel) {
+        if (! $item) {
             abort(404);
         }
 
         return view('website.shared.product-show', [
-            'product' => $productModel,
-            'price' => $this->catalog->displayPrice($productModel, $store),
+            'item' => $item,
+            'product' => $item->product,
+            'price' => $item->price,
+            'alternatives' => $item->isSoldOut() ? $this->catalog->alternatives($item, $store) : collect(),
             'store' => $store,
+            // نام‌های نسبی Route (Main و فروشگاه نماینده)؛ View هیچ شاخه‌ی isReseller برای لینک ندارد.
+            'route' => fn (string $name, array $params = []) => $store->isReseller()
+                ? route('website.store.'.$name, ['slug' => $store->reseller->slug, ...$params])
+                : route('website.'.$name, $params),
         ]);
     }
 }

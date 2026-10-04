@@ -2,6 +2,7 @@
 
 namespace App\Channels\TelegramBot\Support;
 
+use App\Services\Core\Catalog\CatalogItem;
 use App\Support\Money;
 
 /**
@@ -70,29 +71,44 @@ class Keyboards
         return self::encode(['inline_keyboard' => $rows]);
     }
 
-    /** لیست محصولات/تعرفه‌های یک دسته‌بندی */
-    public static function productList(iterable $products): string
+    /**
+     * لیست تعرفه‌های یک سبد (B4.1). ورودی `CatalogItem`‌های Core است؛ قیمت همان عددی است که کاتالوگ سایت هم نشان می‌دهد.
+     * ظرفیت‌تکمیل دیده می‌شود (با نشان) ولی کلیکش در Handler با پیام رد می‌شود.
+     *
+     * @param  iterable<CatalogItem>  $items
+     */
+    public static function productList(iterable $items): string
     {
         $rows = [];
 
-        foreach ($products as $product) {
-            $label = sprintf(
-                '%s — %s (%s روز%s)',
-                $product->name,
-                Money::format($product->mainPrice()),
-                $product->duration_days,
-                $product->traffic_gb ? ", {$product->traffic_gb} گیگ" : ''
-            );
-
+        foreach ($items as $item) {
             $rows[] = [[
-                'text' => $label,
-                'callback_data' => "buy:product:{$product->id}",
+                'text' => self::catalogLabel($item),
+                'callback_data' => "buy:product:{$item->id()}",
             ]];
         }
 
         $rows[] = [['text' => '⬅️ بازگشت', 'callback_data' => 'buy:back_to_categories']];
 
         return self::encode(['inline_keyboard' => $rows]);
+    }
+
+    /** برچسب یک تعرفه در دکمه — مشترک با ربات نماینده (`ResellerBot\Support\Keyboards`) */
+    public static function catalogLabel(CatalogItem $item): string
+    {
+        $label = sprintf(
+            '%s — %s (%s%s)',
+            $item->product->name,
+            Money::format($item->price),
+            $item->durationLabel(),
+            $item->isUnlimitedTraffic() ? '' : ', '.$item->trafficLabel()
+        );
+
+        if ($item->isSoldOut()) {
+            return '⛔ '.$label.' · ظرفیت تکمیل';
+        }
+
+        return $item->isLowStock() ? $label.' · '.$item->remaining().' عدد مانده' : $label;
     }
 
     /**

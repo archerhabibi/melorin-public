@@ -2,23 +2,24 @@
 
 namespace App\Channels\ResellerBot\Handlers;
 
-use App\Support\Money;
 use App\Channels\ResellerBot\Support\ConversationState;
 use App\Channels\ResellerBot\Support\Keyboards;
 use App\Channels\TelegramBot\Support\QrCodeGenerator;
 use App\Exceptions\InsufficientBalanceException;
 use App\Exceptions\ResellerScopeViolationException;
 use App\Models\Account;
-use App\Models\Category;
 use App\Models\Product;
 use App\Models\Reseller;
 use App\Models\User;
 use App\Services\Core\AccountService;
+use App\Services\Core\Catalog\CatalogQuery;
+use App\Services\Core\Catalog\ProductCatalogService;
 use App\Services\Core\Provisioning\ProvisioningFailedException;
-use App\Services\Core\WalletService;
 use App\Services\Core\Store\IdentityService;
 use App\Services\Core\Store\StoreContext;
+use App\Services\Core\WalletService;
 use App\Services\Resellers\ResellerPricingService;
+use App\Support\Money;
 use Telegram\Bot\Api;
 use Telegram\Bot\FileUpload\InputFile;
 
@@ -38,14 +39,15 @@ class BuyAccountHandler
         protected AccountService $accountService,
         protected WalletService $walletService,
         protected ResellerPricingService $pricing,
+        protected ProductCatalogService $catalog,
         protected QrCodeGenerator $qr,
         protected IdentityService $identity,
     ) {}
 
     public function start(Reseller $reseller, int $chatId, User $user): void
     {
-        $sellableProductIds = $this->pricing->sellableProducts($reseller)->pluck('category_id')->unique();
-        $categories = Category::query()->where('status', 'active')->whereIn('id', $sellableProductIds)->get();
+        // B4.1: همان کاتالوگ Core که سایتِ همین نماینده نشان می‌دهد (opt-in، سبد فعال، قیمت‌گذاری‌شده).
+        $categories = $this->catalog->catalog(StoreContext::reseller($reseller))->categories->map(fn ($group) => $group->category);
 
         if ($categories->isEmpty()) {
             $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => 'در حال حاضر هیچ محصولی برای فروش تنظیم نشده است.']);
@@ -64,23 +66,22 @@ class BuyAccountHandler
 
     public function showProducts(Reseller $reseller, int $chatId, User $user, int $categoryId): void
     {
-        $category = Category::query()->where('status', 'active')->findOrFail($categoryId);
-        $sellable = $this->pricing->sellableProducts($reseller)->where('category_id', $category->id);
+        $group = $this->catalog->catalog(StoreContext::reseller($reseller), new CatalogQuery(categoryId: $categoryId))->categories->first();
 
-        if ($sellable->isEmpty()) {
+        if (! $group) {
             $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => 'برای این سبد فروش محصولی تنظیم نشده است.']);
 
             return;
         }
 
-        $rows = $sellable->map(fn (Product $p) => [$p, $p->customersPrice($reseller)])->values();
+        $category = $group->category;
 
         $this->state->set($reseller, $chatId, ConversationState::BUY_CHOOSE_PRODUCT, ['category_id' => $categoryId], $user);
 
         $this->telegram->sendMessage([
             'chat_id' => $chatId,
             'text' => "تعرفه‌های «{$category->name}»:",
-            'reply_markup' => Keyboards::productList($rows),
+            'reply_markup' => Keyboards::productList($group->items),
         ]);
     }
 
@@ -95,6 +96,13 @@ class BuyAccountHandler
         // تعیین کرده (بند ۶). null یعنی اصلاً قابل‌فروش نیست.
         $customersPrice = $product->customersPrice($reseller);
 
+        // B4.1: ظرفیت تکمیل در لیست دیده می‌شود؛ کلیک روی آن پیام می‌گیرد (مرجع واقعی: PurchaseGuard / رزرو اتمیک).
+        if ($customersPrice !== null && $this->catalog->find($productId, StoreContext::reseller($reseller))?->isSoldOut()) {
+            $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => 'ظرفیت فروش این تعرفه تکمیل شده است. تعرفه‌ی دیگری را انتخاب کنید.']);
+
+            return;
+        }
+
         if ($customersPrice === null) {
             $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => 'این محصول دیگر در دسترس نیست.']);
 
@@ -102,7 +110,7 @@ class BuyAccountHandler
         }
 
         if ($this->walletService->balance($customer) < $customersPrice) {
-        $this->telegram->sendMessage([
+            $this->telegram->sendMessage([
                 'chat_id' => $chatId,
                 'text' => 'موجودی کیف پول شما کافی نیست.'
                     ."\nقیمت این تعرفه: ".Money::format($customersPrice)
@@ -141,7 +149,7 @@ class BuyAccountHandler
         $this->telegram->sendMessage([
             'chat_id' => $chatId,
             'text' => '💰 موجودی کیف پول شما: '.Money::format($this->walletService->balance($customer)),
-            ]);
+        ]);
     }
 
     public function deliverConfig(int $chatId, Account $account): void

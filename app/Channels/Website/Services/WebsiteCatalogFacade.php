@@ -2,76 +2,52 @@
 
 namespace App\Channels\Website\Services;
 
-use App\Models\Category;
 use App\Models\Product;
+use App\Services\Core\Catalog\Catalog;
+use App\Services\Core\Catalog\CatalogItem;
+use App\Services\Core\Catalog\CatalogQuery;
+use App\Services\Core\Catalog\ProductCatalogService;
 use App\Services\Core\Store\StoreContext;
-use App\Services\Resellers\ResellerPricingService;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection;
 
 /**
  * «لایه‌ی نازک Website Facade Services — فقط متدهای موجود Core را صدا
- * می‌زند، هیچ منطق تصمیم‌گیری در این لایه نیست». این کلاس برای Home و
- * Product Detail است: فقط Query و صدا زدن متدهای قیمتِ خودِ مدل‌ها —
- * هیچ محاسبه‌ی قیمتی در Client/Controller انجام نمی‌شود.
+ * می‌زند، هیچ منطق تصمیم‌گیری در این لایه نیست». از B4.1 تمام منطق دیده‌شدن،
+ * قیمت نمایشی، جست‌وجو/فیلتر/مرتب‌سازی و ظرفیت در `ProductCatalogService` (Core) است
+ * و ربات‌ها هم از همان می‌خوانند؛ این کلاس فقط Adapter است.
  */
 class WebsiteCatalogFacade
 {
-    public function __construct(protected ResellerPricingService $pricing) {}
+    public function __construct(protected ProductCatalogService $core) {}
 
-    /**
-     * دسته‌بندی‌های فعال به‌همراه محصولات قابل‌فروش‌شان در این Context.
-     * در فروشگاه اصلی همه‌ی محصولات فعال نمایش داده می‌شوند؛ در فروشگاه
-     * نماینده فقط آن‌هایی که ResellerPricingService::isSellable تایید
-     * می‌کند (دقیقاً همان Guard که Core خودِ خرید را هم با آن چک می‌کند
-     * — بند ۹.۴: «بدون منطق اضافه در Website»).
-     */
-    public function categoriesWithProducts(StoreContext $store): Collection
+    /** @param  array<string, mixed>  $input  query string خام؛ پاک‌سازی در Core (`CatalogQuery::fromInput`) */
+    public function catalog(StoreContext $store, array $input = []): Catalog
     {
-        return Category::query()
-            ->where('status', 'active')
-            ->with(['products' => fn ($q) => $q->where('status', 'active')])
-            ->get()
-            ->map(function (Category $category) use ($store) {
-                $category->setRelation(
-                    'products',
-                    $category->products->filter(fn (Product $p) => $this->isVisible($p, $store))->values()
-                );
-
-                return $category;
-            })
-            ->filter(fn (Category $category) => $category->products->isNotEmpty())
-            ->values();
+        return $this->core->catalog($store, CatalogQuery::fromInput($input));
     }
 
+    public function item(int $productId, StoreContext $store): ?CatalogItem
+    {
+        return $this->core->find($productId, $store);
+    }
+
+    /** @return Collection<int, CatalogItem> */
+    public function alternatives(CatalogItem $item, StoreContext $store, int $limit = 3): Collection
+    {
+        return $this->core->alternatives($item, $store, $limit);
+    }
+
+    /**
+     * برای Checkout/Guest/Charge: همان قاعده‌ی دیده‌شدن کاتالوگ (از B4.1 شامل «سبد فعال» در فروشگاه اصلی هم هست).
+     */
     public function findVisibleProduct(int $productId, StoreContext $store): ?Product
     {
-        $product = Product::query()->where('status', 'active')->with('category')->find($productId);
-
-        if (! $product || ! $this->isVisible($product, $store)) {
-            return null;
-        }
-
-        return $product;
+        return $this->core->find($productId, $store)?->product;
     }
 
-    /**
-     * قیمت نمایشی یک محصول در این Context — دقیقاً همان متدهای موجود
-     * روی Product، بدون هیچ محاسبه‌ی اضافه («هیچ Price محاسبه‌شده در
-     * Client»).
-     */
+    /** قیمت نمایشی — همان عددی که کاتالوگ نشان می‌دهد (main_price یا customers_price)؛ هیچ محاسبه‌ای در Channel نیست. */
     public function displayPrice(Product $product, StoreContext $store): int
     {
-        return $store->isReseller()
-            ? (int) $product->customersPrice($store->reseller)
-            : $product->mainPrice();
-    }
-
-    protected function isVisible(Product $product, StoreContext $store): bool
-    {
-        if ($store->isMain()) {
-            return true;
-        }
-
-        return $this->pricing->isSellable($store->reseller, $product);
+        return (int) ($this->core->find((int) $product->id, $store)?->price ?? 0);
     }
 }

@@ -2,21 +2,22 @@
 
 namespace App\Channels\TelegramBot\Handlers;
 
-use App\Support\Money;
 use App\Channels\TelegramBot\Support\ConversationState;
 use App\Channels\TelegramBot\Support\Keyboards;
 use App\Channels\TelegramBot\Support\QrCodeGenerator;
 use App\Exceptions\InsufficientBalanceException;
 use App\Models\Account;
-use App\Models\Category;
 use App\Models\Product;
 use App\Models\ServerPanel;
 use App\Models\User;
 use App\Services\Core\AccountService;
+use App\Services\Core\Catalog\CatalogQuery;
+use App\Services\Core\Catalog\ProductCatalogService;
 use App\Services\Core\Provisioning\ProvisioningFailedException;
 use App\Services\Core\Store\IdentityService;
 use App\Services\Core\Store\StoreContext;
 use App\Services\Core\WalletService;
+use App\Support\Money;
 use Telegram\Bot\Api;
 use Telegram\Bot\FileUpload\InputFile;
 
@@ -39,6 +40,7 @@ class BuyAccountHandler
         protected WalletService $walletService,
         protected QrCodeGenerator $qr,
         protected IdentityService $identity,
+        protected ProductCatalogService $catalog,
     ) {}
 
     /**
@@ -58,7 +60,8 @@ class BuyAccountHandler
 
     public function start(int $chatId, User $user): void
     {
-        $categories = Category::query()->where('status', 'active')->get();
+        // B4.1: سبدهای قابل‌نمایش از کاتالوگ Core (همان که سایت نشان می‌دهد؛ سبد بدون تعرفه‌ی فعال نمایش داده نمی‌شود).
+        $categories = $this->catalog->catalog(StoreContext::main())->categories->map(fn ($group) => $group->category);
 
         if ($categories->isEmpty()) {
             $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => 'در حال حاضر هیچ سبد فروش فعالی موجود نیست.']);
@@ -85,21 +88,22 @@ class BuyAccountHandler
 
     public function showProducts(int $chatId, User $user, int $categoryId): void
     {
-        $category = Category::query()->where('status', 'active')->findOrFail($categoryId);
-        $products = $category->products()->where('status', 'active')->get();
+        $group = $this->catalog->catalog(StoreContext::main(), new CatalogQuery(categoryId: $categoryId))->categories->first();
 
-        if ($products->isEmpty()) {
+        if (! $group) {
             $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => 'برای این سبد فروش تعرفه‌ی فعالی تعریف نشده است.']);
 
             return;
         }
+
+        $category = $group->category;
 
         $this->state->set($chatId, ConversationState::BUY_CHOOSE_PRODUCT, ['category_id' => $categoryId], $user);
 
         $this->telegram->sendMessage([
             'chat_id' => $chatId,
             'text' => "تعرفه‌های «{$category->name}»:",
-            'reply_markup' => Keyboards::productList($products),
+            'reply_markup' => Keyboards::productList($group->items),
         ]);
     }
 
@@ -112,6 +116,10 @@ class BuyAccountHandler
      */
     public function chooseServerOrPurchase(int $chatId, User $user, int $productId): void
     {
+        if (! $this->assertListed($chatId, $productId)) {
+            return;
+        }
+
         $product = Product::query()->with('category')->where('status', 'active')->findOrFail($productId);
 
         if ($product->category->server_selection_mode !== 'manual') {
@@ -143,6 +151,29 @@ class BuyAccountHandler
      * می‌رسیم. اگر سبد فروش روی نام‌گذاری دلخواه تنظیم شده باشد، همین‌جا
      * نام را از کاربر می‌پرسد؛ وگرنه مستقیم می‌رود سراغ purchase().
      */
+    /**
+     * B4.1: پیش‌بررسیِ نمایشی با همان کاتالوگ Core (دکمه ممکن است از لیستِ قدیمی باشد). فقط پیام مناسب می‌دهد؛
+     * مرجع واقعی خرید همچنان PurchaseGuard و رزرو اتمیک ظرفیت است.
+     */
+    protected function assertListed(int $chatId, int $productId): bool
+    {
+        $item = $this->catalog->find($productId, StoreContext::main());
+
+        if ($item === null) {
+            $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => 'این تعرفه دیگر در دسترس نیست. دوباره یک سبد فروش انتخاب کنید.']);
+
+            return false;
+        }
+
+        if ($item->isSoldOut()) {
+            $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => 'ظرفیت فروش این تعرفه تکمیل شده است. تعرفه‌ی دیگری را انتخاب کنید.']);
+
+            return false;
+        }
+
+        return true;
+    }
+
     public function proceedAfterServer(int $chatId, User $user, int $productId, ?int $panelId): void
     {
         $product = Product::query()->with('category')->where('status', 'active')->findOrFail($productId);
