@@ -39,22 +39,14 @@
                 برمی‌گرداند (intended URL استاندارد).
             --}}
             @auth
-                <a href="{{ $store->isReseller()
-                        ? route('website.store.checkout.show', ['slug' => $store->reseller->slug, 'product' => $product->id])
-                        : route('website.checkout.show', $product->id) }}"
-                   class="bg-brand mt-6 inline-block px-4 py-2 rounded text-on-brand text-sm font-medium">
-                    خرید این تعرفه
-                </a>
+                <x-ui.button class="mt-6" :href="$route('checkout.show', ['product' => $product->id])">خرید این تعرفه</x-ui.button>
             @else
-                <a href="{{ $store->isReseller()
-                        ? route('website.store.login', $store->reseller->slug)
-                        : route('website.login') }}"
-                   class="bg-brand mt-6 inline-block px-4 py-2 rounded text-on-brand text-sm font-medium">
-                    برای خرید وارد شوید
-                </a>
-                <span class="mt-6 mr-2 inline-block">
+                {{-- B4.3: دو مسیر هم‌وزن و روشن؛ مهمان با «فقط ایمیل» شروع می‌کند و پرداخت بعد از ورود است. --}}
+                <div class="mt-6 flex flex-wrap items-center gap-3">
+                    <x-ui.button :href="$route('login')">برای خرید وارد شوید</x-ui.button>
                     @include('website.guest.entry-link', ['product' => $product, 'store' => $store])
-                </span>
+                </div>
+                <p class="mt-3 text-xs text-muted">خرید مهمان فقط به ایمیل نیاز دارد؛ پرداخت بعد از ورود یا ثبت‌نام انجام می‌شود.</p>
             @endauth
         @endif
     </div>

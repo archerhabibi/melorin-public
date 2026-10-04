@@ -7,11 +7,12 @@
 
     فقط به $product و $store نیاز دارد؛ هیچ وابستگی دیگری به Layout یا
     CSS خاص Main ندارد، پس داخل هر Layout (از جمله Branding نماینده)
-    قابل‌استفاده است.
+    قابل‌استفاده است. (B4.3: ظاهر با دکمه‌ی دیزاین‌سیستم یکی شد.)
 --}}
-<a href="{{ $store->isReseller()
+<x-ui.button
+    :href="$store->isReseller()
         ? route('website.store.guest-checkout.show', ['slug' => $store->reseller->slug, 'product' => $product->id])
-        : route('website.guest-checkout.show', $product->id) }}"
-   class="inline-block px-4 py-2 rounded border text-sm font-medium text-text">
+        : route('website.guest-checkout.show', $product->id)"
+    variant="secondary">
     خرید به‌عنوان مهمان
-</a>
+</x-ui.button>

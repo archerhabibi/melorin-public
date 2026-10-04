@@ -83,6 +83,10 @@
             <x-ui.alert type="success" class="mb-6">{{ session('status') }}</x-ui.alert>
         @endif
 
+        @if(session('warning'))
+            <x-ui.alert type="warning" class="mb-6">{{ session('warning') }}</x-ui.alert>
+        @endif
+
         @yield('content')
     </main>
 

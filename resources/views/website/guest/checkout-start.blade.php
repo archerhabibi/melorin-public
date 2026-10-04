@@ -3,43 +3,79 @@
 @section('title', 'خرید به‌عنوان مهمان')
 
 @section('content')
-    <a href="{{ $store->isReseller() ? route('website.store.products.show', ['slug' => $store->reseller->slug, 'product' => $product->id]) : route('website.products.show', $product->id) }}"
-       class="text-sm text-muted">&rarr; بازگشت</a>
+    {{--
+        B4.3 — Guest Checkout UX. ورودی: $item (CatalogItem)، $product، $price، $store، $prefill (GuestCheckout|null)، $route.
+        قرارداد داده بدون تغییر است (G2): email تنها فیلد الزامی؛ name/phone اختیاری.
+    --}}
+    <x-ui.breadcrumb :items="[
+        ['label' => 'تعرفه‌ها', 'url' => $route('home')],
+        ['label' => $product->name, 'url' => $route('products.show', ['product' => $product->id])],
+        ['label' => 'خرید مهمان'],
+    ]" />
 
-    <div class="mt-4 bg-surface border rounded-lg p-6 max-w-xl">
-        <h1 class="text-xl font-bold">خرید به‌عنوان مهمان</h1>
-        <p class="mt-2 text-sm text-muted">
-            فقط ایمیل لازم است. پرداخت بعد از ورود یا ثبت‌نام انجام می‌شود و همین خرید ادامه پیدا می‌کند.
-        </p>
+    <x-ui.steps :items="['اطلاعات', 'ورود یا ثبت‌نام', 'پرداخت']" :current="1" class="max-w-3xl" />
 
-        <dl class="mt-4 space-y-2 text-sm text-muted">
-            <div class="flex justify-between"><dt>تعرفه</dt><dd>{{ $product->name }}</dd></div>
-            <div class="flex justify-between"><dt>مبلغ</dt><dd class="font-bold text-text">{{ \App\Support\Money::format($price) }}</dd></div>
-        </dl>
+    <div class="grid max-w-3xl gap-6 md:grid-cols-5">
+        <x-ui.card class="md:col-span-3">
+            <h1 class="page-title">خرید به‌عنوان مهمان</h1>
+            <p class="mt-2 text-sm text-muted">
+                فقط ایمیل لازم است. پرداخت بعد از ورود یا ثبت‌نام انجام می‌شود و همین خرید از همان‌جا ادامه پیدا می‌کند.
+            </p>
 
-        @error('guest_email') <div class="mt-4 text-sm text-danger">{{ $message }}</div> @enderror
-        @error('guest_name') <div class="mt-2 text-sm text-danger">{{ $message }}</div> @enderror
-        @error('guest_phone') <div class="mt-2 text-sm text-danger">{{ $message }}</div> @enderror
+            <form method="POST" action="{{ $route('guest-checkout.store', ['product' => $product->id]) }}"
+                  class="mt-6 space-y-4">
+                @csrf
+                <x-ui.field name="guest_email" type="email" label="ایمیل" required autofocus
+                            :value="$prefill?->guest_email"
+                            autocomplete="email" inputmode="email" dir="ltr"
+                            placeholder="name@example.com"
+                            hint="برای تأیید حساب و دریافت اطلاعات سرویس استفاده می‌شود." />
 
-        <form method="POST"
-              action="{{ $store->isReseller() ? route('website.store.guest-checkout.store', ['slug' => $store->reseller->slug, 'product' => $product->id]) : route('website.guest-checkout.store', $product->id) }}"
-              class="mt-6 space-y-4">
-            @csrf
-            <div>
-                <label class="block text-sm text-muted mb-1">ایمیل</label>
-                <input type="email" name="guest_email" value="{{ old('guest_email') }}" required class="w-full border rounded px-3 py-2 text-sm">
-            </div>
-            <div>
-                <label class="block text-sm text-muted mb-1">نام و نام خانوادگی (اختیاری)</label>
-                <input type="text" name="guest_name" value="{{ old('guest_name') }}" class="w-full border rounded px-3 py-2 text-sm">
-            </div>
-            <div>
-                <label class="block text-sm text-muted mb-1">شماره تماس (اختیاری)</label>
-                <input type="text" name="guest_phone" value="{{ old('guest_phone') }}" class="w-full border rounded px-3 py-2 text-sm">
-            </div>
-            <button type="submit" class="bg-brand px-4 py-2 rounded text-on-brand text-sm font-medium">
-                ادامه
-            </button>
-        </form>
+                <x-ui.field name="guest_name" label="نام و نام خانوادگی (اختیاری)"
+                            :value="$prefill?->guest_name"
+                            autocomplete="name" maxlength="100" />
+
+                <x-ui.field name="guest_phone" type="tel" label="شماره تماس (اختیاری)"
+                            :value="$prefill?->guest_phone"
+                            autocomplete="tel" inputmode="tel" dir="ltr" maxlength="32"
+                            placeholder="09123456789" />
+
+                <x-ui.button type="submit" block icon="mail">ادامه و ورود / ثبت‌نام</x-ui.button>
+            </form>
+
+            <p class="mt-4 text-center text-sm text-muted">
+                قبلاً ثبت‌نام کرده‌اید؟
+                <a href="{{ $route('login') }}" class="link">ورود به حساب</a>
+            </p>
+        </x-ui.card>
+
+        <aside class="md:col-span-2" aria-label="خلاصه‌ی خرید">
+            <x-ui.card :flat="true" class="p-5">
+                <h2 class="text-sm font-semibold">خلاصه‌ی خرید</h2>
+                <p class="mt-3 font-medium">{{ $product->name }}</p>
+                <p class="mt-1 text-xs text-muted">{{ $item->category->name }}</p>
+
+                <dl class="mt-4 space-y-2 text-sm text-muted">
+                    <div class="flex justify-between"><dt>مدت زمان</dt><dd>{{ $item->durationLabel() }}</dd></div>
+                    <div class="flex justify-between"><dt>حجم</dt><dd>{{ $item->trafficLabel() }}</dd></div>
+                </dl>
+
+                <div class="divider my-4"></div>
+
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-muted">مبلغ</span>
+                    <span class="text-lg font-bold text-brand tabular">{{ \App\Support\Money::format($price) }}</span>
+                </div>
+
+                @if($item->isLowStock())
+                    <x-ui.badge tone="warning" class="mt-3">{{ $item->remaining() }} عدد باقی مانده</x-ui.badge>
+                @endif
+            </x-ui.card>
+
+            <ul class="mt-4 space-y-2 text-xs text-muted">
+                <li class="flex items-start gap-2"><x-ui.icon name="lock" :size="14" class="mt-0.5" /><span>پرداخت فقط بعد از ورود به حساب انجام می‌شود.</span></li>
+                <li class="flex items-start gap-2"><x-ui.icon name="info" :size="14" class="mt-0.5" /><span>تا قبل از پرداخت هیچ حسابی ساخته نمی‌شود و هزینه‌ای کسر نمی‌شود.</span></li>
+            </ul>
+        </aside>
     </div>
 @endsection

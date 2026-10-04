@@ -43,21 +43,32 @@ class GuestCheckoutController
 
     public function show(int $product, StoreContext $store, Request $request): View|Response|RedirectResponse
     {
-        $productModel = $this->catalog->findVisibleProduct($product, $store);
+        $item = $this->catalog->item($product, $store);
 
-        if (! $productModel) {
+        if (! $item) {
             abort(404);
         }
 
         // B2.3: کاربرِ واردشده «مهمان» نیست؛ مستقیم به Checkout همان محصول می‌رود.
         if ($request->user()) {
-            return redirect()->to($this->websiteRoute($request, 'checkout.show', ['product' => $productModel->id]));
+            return redirect()->to($this->websiteRoute($request, 'checkout.show', ['product' => $item->id()]));
+        }
+
+        // B4.3: تعرفه‌ی «ظرفیت تکمیل» از بیرون هم دیده می‌شود (B4.1) ولی خرید ندارد؛ مهمان را
+        // پیش از پر کردن فرم به صفحه‌ی همان تعرفه (با جایگزین‌ها) می‌بریم، نه به بن‌بست بعد از ورود.
+        if ($item->isSoldOut()) {
+            return $this->soldOutRedirect($request, $item->id());
         }
 
         return view('website.guest.checkout-start', [
-            'product' => $productModel,
-            'price' => $this->catalog->displayPrice($productModel, $store),
+            'item' => $item,
+            'product' => $item->product,
+            'price' => $item->price,
             'store' => $store,
+            // B4.3: «ویرایش اطلاعات» از Pending Page — فرم با داده‌ی نشست فعالِ همین مرورگر پر می‌شود
+            // (همان Cookie رمزنگاری‌شده؛ نشست Context دیگر پیدا نمی‌شود). old() بعد از خطا اولویت دارد.
+            'prefill' => $this->activeSession($request, $store),
+            'route' => $this->routeHelper($store),
         ]);
     }
 
@@ -70,15 +81,22 @@ class GuestCheckoutController
             'guest_phone' => ['nullable', 'string', 'max:32'],
         ]);
 
-        $productModel = $this->catalog->findVisibleProduct($product, $store);
+        $item = $this->catalog->item($product, $store);
 
-        if (! $productModel) {
+        if (! $item) {
             abort(404);
         }
+
+        $productModel = $item->product;
 
         // B2.3: کاربر واردشده Guest نمی‌سازد (رکورد بی‌مصرف + دور زدن مسیر Auth).
         if ($request->user()) {
             return redirect()->to($this->websiteRoute($request, 'checkout.show', ['product' => $productModel->id]));
+        }
+
+        // B4.3: برای ظرفیت تکمیل نشست Pending ساخته نمی‌شود (مرجع واقعی ظرفیت همچنان رزرو اتمیک خرید است).
+        if ($item->isSoldOut()) {
+            return $this->soldOutRedirect($request, $productModel->id);
         }
 
         // B2.3: نشست Pending قبلیِ همین مرورگر (همین Context) با شروع نشست تازه باطل می‌شود.
@@ -116,10 +134,10 @@ class GuestCheckoutController
             abort(404, 'نشست خرید مهمان پیدا نشد یا منقضی شده است.');
         }
 
-        $productModel = $this->catalog->findVisibleProduct($guestCheckout->product_id, $store);
+        $item = $this->catalog->item((int) $guestCheckout->product_id, $store);
 
         // B2.3: تعرفه بعد از شروع نشست غیرفعال/نامرئی شده ⇒ نشست بی‌معناست؛ باطل می‌شود.
-        if (! $productModel) {
+        if (! $item) {
             $this->guest->discard($guestCheckout);
 
             abort(404, 'این تعرفه دیگر در دسترس نیست.');
@@ -127,14 +145,18 @@ class GuestCheckoutController
 
         // B2.3: کاربر واردشده نیازی به Pending Page ندارد؛ همان خرید را ادامه می‌دهد.
         if ($request->user()) {
-            return redirect()->to($this->websiteRoute($request, 'checkout.show', ['product' => $productModel->id]));
+            return redirect()->to($this->websiteRoute($request, 'checkout.show', ['product' => $item->id()]));
         }
 
         return view('website.guest.checkout-pending', [
             'guestCheckout' => $guestCheckout,
-            'product' => $productModel,
-            'price' => $this->catalog->displayPrice($productModel, $store),
+            'item' => $item,
+            'product' => $item->product,
+            'price' => $item->price,
             'store' => $store,
+            // B4.3: ظرفیت بعد از شروع نشست تمام شده ⇒ دکمه‌های ورود/ثبت‌نام جایش را به پیام و بازگشت می‌دهند.
+            'soldOut' => $item->isSoldOut(),
+            'route' => $this->routeHelper($store),
         ]);
     }
 
@@ -159,6 +181,22 @@ class GuestCheckoutController
             ->to($target)
             ->with('status', 'خرید مهمان لغو شد.')
             ->withoutCookie(self::COOKIE_NAME);
+    }
+
+    /** B4.3: ظرفیت تکمیل ⇒ صفحه‌ی همان تعرفه با پیام هشدار (آنجا جایگزین‌ها پیشنهاد می‌شود). */
+    protected function soldOutRedirect(Request $request, int $productId): RedirectResponse
+    {
+        return redirect()
+            ->to($this->websiteRoute($request, 'products.show', ['product' => $productId]))
+            ->with('warning', 'ظرفیت فروش این تعرفه تکمیل شده است؛ می‌توانید یکی از تعرفه‌های جایگزین را انتخاب کنید.');
+    }
+
+    /** نام‌های نسبی Route برای View (Main و فروشگاه نماینده)، هم‌الگو با ProductController. */
+    protected function routeHelper(StoreContext $store): \Closure
+    {
+        return fn (string $name, array $params = []) => $store->isReseller()
+            ? route('website.store.'.$name, ['slug' => $store->reseller->slug, ...$params])
+            : route('website.'.$name, $params);
     }
 
     /** نشست Pending فعالِ همین Context از روی Cookie، یا null. */
