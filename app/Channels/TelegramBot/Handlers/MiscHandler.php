@@ -91,6 +91,7 @@ class MiscHandler
 
         $openTicket = Ticket::query()
             ->where('user_id', $user->id)
+            ->whereNull('reseller_id')
             ->where('type', 'reseller_request')
             ->where('status', '!=', 'closed')
             ->latest()
@@ -225,8 +226,10 @@ class MiscHandler
 
     public function supportStart(int $chatId, User $user): void
     {
+        // B3.4: ربات فقط فروشگاه اصلی است؛ تیکت ثبت‌شده در فروشگاه یک نماینده (reseller_id) اینجا ظاهر نمی‌شود.
         $openTicket = Ticket::query()
             ->where('user_id', $user->id)
+            ->whereNull('reseller_id')
             ->where('type', 'support')
             ->where('status', '!=', 'closed')
             ->latest()
@@ -314,7 +317,7 @@ class MiscHandler
         $this->state->reset($chatId);
 
         $ticket = $ticketId
-            ? Ticket::query()->where('user_id', $user->id)->find($ticketId)
+            ? Ticket::query()->where('user_id', $user->id)->whereNull('reseller_id')->find($ticketId)
             : null;
 
         if (! $ticket) {

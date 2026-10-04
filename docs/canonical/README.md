@@ -14,6 +14,7 @@
 | CUSTOMER-DASHBOARD-CONTRACT.md | 1.0 (Parent: Master 2.8 / Website 1.9) | Customer Dashboard: سرویس‌های فعال، کیف‌پول، اعلان‌های مشتق‌شده (B3.1؛ D1–D6) |
 | CUSTOMER-SERVICES-CONTRACT.md | 1.0 (Parent: Master 2.8 / Website 1.9 / Dashboard 1.0) | Service Management: مصرف زنده، پیش‌فاکتور و تمدید، بدون ارتقا (B3.2؛ S1–S6) |
 | CUSTOMER-WALLET-CONTRACT.md | 1.0 (Parent: Master 2.8 / Website 1.9 / Dashboard 1.0 / Services 1.0) | Wallet Center: خلاصه، گردش حساب فیلتر‌پذیر، وضعیت شارژها، صفحه‌ی شارژ (B3.3؛ W1–W7) |
+| CUSTOMER-TICKETS-CONTRACT.md | 1.0 (Parent: Master 2.8 / Website 1.9 / Dashboard 1.0 / Wallet 1.0) | Ticket Center: فهرست، ثبت، گفتگو، پاسخ، بستن؛ مالکیت user+reseller (B3.4؛ T1–T7) |
 | DATA-RETENTION.md | — | Retention (Guest ۶۰ روز؛ بقیه تأییدشده) |
 
 ## سایر پوشه‌ها

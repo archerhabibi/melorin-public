@@ -42,6 +42,7 @@
 | Customer Dashboard (B3.1: سرویس‌های فعال، کیف‌پول، اعلان‌های مشتق‌شده، Context-isolation، بدون نوشتن روی GET) | ✅ | — | ✅ *(اجرا و سبز در B3.2)* | — | — | ☐ | ☐ |
 | Service Management (B3.2: مصرف زنده از پنل، پیش‌فاکتور، قیمت هر Context، دروازه‌ی وضعیت، Idempotency تمدید، بدون ارتقا) | ✅ | ✅ | ✅ *(SQLite؛ پنل = `Http::fake`)* | ☐ | — | ☐ *(فرمت واقعی `used_traffic`/`up+down` روی پنل واقعی)* | ☐ |
 | Wallet Center (B3.3: خلاصه ۳۰ روزه، گردش حساب با فیلتر جهت/نوع/تاریخ، وضعیت «منتظر چه کاری» برای شارژها، لینک سفارش با مالکیت، صفحه‌ی شارژ با مبلغ پیشنهادی، GET بدون نوشتن) | ✅ | ✅ | ✅ *(SQLite؛ `WalletCenterTest` ۲۷ تست، با ۵ جهش راستی‌آزمایی شد)* | ☐ | — | ☐ *(MySQL: SUM/CASE و فیلتر تاریخ روی داده‌ی واقعی)* | ☐ |
+| Ticket Center (B3.4: فهرست/فیلتر وضعیت، ثبت با سقف ۵ تیکت باز و ضد دوبار-کلیک، گفتگو بدون نام ادمین، پاسخ/بستن، ایزولاسیون user+reseller، اعلان داشبورد، ربات فقط تیکت Main) | ✅ | ✅ | ✅ *(SQLite؛ `TicketCenterTest` ۲۵ تست، با ۸ جهش راستی‌آزمایی شد)* | ☐ | — | ☐ *(MySQL: migration ستون/FK/index و `CASE` مرتب‌سازی)* | ☐ |
 | بازگشت به Checkout پس از شارژ (D-3) | ✅ | ✅ *(لینک بازگشت)* | ✅ | ☐ | — | ☐ | ☐ |
 | Security Headers/CSP/Rate Limit/Trusted Proxies | ✅ *(Website §22، §25)* | ✅ | ✅ *(`Phase8SecurityTest`)* | — | ⚠️ *Self-audit فاز ۸* | ☐ | ☐ |
 | Money Representation (بدون float، ارز قابل‌تنظیم) | ✅ *(M1–M8)* | ✅ | ✅ | — | — | ☐ *(Migration روی کپی DB)* | ☐ |

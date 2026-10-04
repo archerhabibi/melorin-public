@@ -29,7 +29,8 @@ class NotifyAdminsOfTicketReply
         $ticket = $message->ticket;
 
         $text = "💬 پیام جدید در تیکت #{$ticket->id}\n\n"
-            ."کاربر: {$ticket->user->full_name} (شناسه: {$ticket->user->telegram_id})\n"
+            ."کاربر: {$ticket->user->full_name} (".($ticket->user->telegram_id ? "شناسه: {$ticket->user->telegram_id}" : (string) $ticket->user->email).")\n"
+            .($ticket->reseller_id ? "فروشگاه نماینده: #{$ticket->reseller_id}\n" : '')
             ."موضوع: {$ticket->subject}\n\n"
             .mb_substr((string) $message->message, 0, 300)
             ."\n\nپاسخ از طریق پنل مدیریت:\n".config('app.url').'/admin/tickets/'.$ticket->id;

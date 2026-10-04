@@ -27,4 +27,13 @@ class TicketMessage extends Model
 
         return $this->ticket?->user?->full_name ?? 'کاربر';
     }
+
+    /**
+     * برچسب فرستنده برای **مشتری** (B3.4): نام واقعی ادمین هرگز به مشتری نشان داده نمی‌شود
+     * (`senderLabel()` فقط برای پنل ادمین است).
+     */
+    public function customerLabel(): string
+    {
+        return $this->sender_type === 'admin' ? 'پشتیبانی' : 'شما';
+    }
 }

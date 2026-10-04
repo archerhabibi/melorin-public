@@ -20,6 +20,7 @@
         ['route' => 'wallet.show',   'active' => '*wallet.show',   'icon' => 'wallet',   'label' => 'کیف‌پول'],
         ['route' => 'orders.index',  'active' => '*orders.index',  'icon' => 'orders',   'label' => 'سفارش‌ها'],
         ['route' => 'accounts.index', 'active' => '*accounts.*',   'icon' => 'server',   'label' => 'اکانت‌های من'],
+        ['route' => 'tickets.index', 'active' => '*tickets.*',     'icon' => 'ticket',   'label' => 'پشتیبانی'],
         ['route' => 'referral.show', 'active' => '*referral.show', 'icon' => 'gift',     'label' => 'دعوت از دوستان'],
         ['route' => 'identity.profile.show', 'active' => '*identity.profile.*', 'icon' => 'user', 'label' => 'پروفایل'],
     ];

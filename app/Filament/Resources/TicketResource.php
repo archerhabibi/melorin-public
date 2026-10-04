@@ -56,7 +56,7 @@ class TicketResource extends Resource
             Forms\Components\Grid::make(4)->schema([
                 Forms\Components\Placeholder::make('user')
                     ->label('کاربر')
-                    ->content(fn (Ticket $record) => $record->user->full_name.' (شناسه: '.$record->user->telegram_id.')'),
+                    ->content(fn (Ticket $record) => $record->user->full_name.' ('.($record->user->telegram_id ? 'شناسه: '.$record->user->telegram_id : (string) $record->user->email).')'),
 
                 Forms\Components\Placeholder::make('type')
                     ->label('نوع')
@@ -85,6 +85,10 @@ class TicketResource extends Resource
                 Tables\Columns\TextColumn::make('id')->label('#')->sortable(),
                 Tables\Columns\TextColumn::make('user.full_name')->label('کاربر')->searchable(),
                 Tables\Columns\TextColumn::make('user.telegram_id')->label('شناسه تلگرام')->searchable(),
+                Tables\Columns\TextColumn::make('reseller_id')
+                    ->label('فروشگاه')
+                    ->formatStateUsing(fn ($state) => $state ? 'نماینده #'.$state : 'اصلی')
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('subject')->label('موضوع')->searchable()->limit(40),
                 Tables\Columns\BadgeColumn::make('type')
                     ->label('نوع')

@@ -43,7 +43,10 @@ class CustomerDashboardService
 
     private const PER_KIND_LIMIT = 3;
 
-    public function __construct(protected WalletCenterService $walletCenter) {}
+    public function __construct(
+        protected WalletCenterService $walletCenter,
+        protected TicketCenterService $ticketCenter,
+    ) {}
 
     public function snapshot(User $user, StoreContext $store, ?CustomerAccount $customer): CustomerDashboard
     {
@@ -94,7 +97,9 @@ class CustomerDashboardService
             }
         }
 
-        $notices = $notices->concat($this->pendingPaymentNotices($user, $store));
+        $notices = $notices
+            ->concat($this->pendingPaymentNotices($user, $store))
+            ->concat($this->ticketNotices($user, $store));
 
         return new CustomerDashboard(
             activeCount: $activeCount,
@@ -202,6 +207,32 @@ class CustomerDashboardService
                 DashboardNotice::TARGET_ORDER,
                 $o->id,
             ));
+    }
+
+    /**
+     * پاسخ پشتیبانی که مشتری هنوز ندیده/جواب نداده (B3.4). یک تیکت ⇒ لینک مستقیم به همان تیکت؛
+     * چند تیکت ⇒ فهرست. مشتق از وضعیت زنده‌ی `answered` است، پس با پاسخ/بستن خودبه‌خود ناپدید می‌شود.
+     *
+     * @return Collection<int, DashboardNotice>
+     */
+    protected function ticketNotices(User $user, StoreContext $store): Collection
+    {
+        $count = $this->ticketCenter->answeredCount($user, $store);
+
+        if ($count === 0) {
+            return collect();
+        }
+
+        $single = $count === 1 ? $this->ticketCenter->tickets($user, $store, 'answered', 1)->first() : null;
+
+        return collect([new DashboardNotice(
+            'ticket.answered',
+            DashboardNotice::TONE_INFO,
+            'پشتیبانی به تیکت شما پاسخ داد',
+            $count === 1 ? 'یک تیکت شما پاسخ جدید دارد.' : "{$count} تیکت شما پاسخ جدید دارد.",
+            $single ? DashboardNotice::TARGET_TICKET : DashboardNotice::TARGET_TICKETS,
+            $single?->id,
+        )]);
     }
 
     /**

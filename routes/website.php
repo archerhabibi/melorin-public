@@ -4,6 +4,7 @@ use App\Channels\Website\Http\Controllers\Account\AccountsController;
 use App\Channels\Website\Http\Controllers\Account\DashboardController;
 use App\Channels\Website\Http\Controllers\Account\OrdersController;
 use App\Channels\Website\Http\Controllers\Account\ReferralController;
+use App\Channels\Website\Http\Controllers\Account\TicketsController;
 use App\Channels\Website\Http\Controllers\Account\WalletController;
 use App\Channels\Website\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Channels\Website\Http\Controllers\Auth\EmailVerificationController;
@@ -192,6 +193,23 @@ $registerSharedRoutes = function () {
         Route::post('/accounts/{account}/usage/refresh', [AccountsController::class, 'refreshUsage'])
             ->middleware('throttle:12,1')
             ->name('accounts.usage.refresh');
+
+        // --- پنل کاربری: Ticket Center (B3.4 — CUSTOMER-TICKETS-CONTRACT.md) ---
+        // ثبت/پاسخ/بستن نوشتن‌اند ⇒ throttle (ضد اسپم)؛ مالکیت و Context داخل Core بررسی می‌شود (نه Route Model Binding).
+        Route::get('/tickets', [TicketsController::class, 'index'])->name('tickets.index');
+        Route::get('/tickets/new', [TicketsController::class, 'create'])->name('tickets.create');
+        Route::post('/tickets', [TicketsController::class, 'store'])
+            ->middleware('throttle:5,1')
+            ->name('tickets.store');
+        Route::get('/tickets/{ticket}', [TicketsController::class, 'show'])->whereNumber('ticket')->name('tickets.show');
+        Route::post('/tickets/{ticket}/reply', [TicketsController::class, 'reply'])
+            ->whereNumber('ticket')
+            ->middleware('throttle:10,1')
+            ->name('tickets.reply');
+        Route::post('/tickets/{ticket}/close', [TicketsController::class, 'close'])
+            ->whereNumber('ticket')
+            ->middleware('throttle:10,1')
+            ->name('tickets.close');
 
         // --- پنل کاربری: Referral/Commission ---
         Route::get('/referral', [ReferralController::class, 'show'])->name('referral.show');

@@ -29,6 +29,8 @@ class WebsiteDashboardFacade
             DashboardNotice::TARGET_ORDER => ['orders.show', [$notice->targetId]],
             DashboardNotice::TARGET_WALLET => ['wallet.show', []],
             DashboardNotice::TARGET_CHARGE => ['wallet.charge.show', []],
+            DashboardNotice::TARGET_TICKET => ['tickets.show', [$notice->targetId]],
+            DashboardNotice::TARGET_TICKETS => ['tickets.index', []],
             default => [null, []],
         };
 

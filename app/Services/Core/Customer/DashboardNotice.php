@@ -25,6 +25,10 @@ final class DashboardNotice
 
     public const TARGET_CHARGE = 'charge';
 
+    public const TARGET_TICKET = 'ticket';
+
+    public const TARGET_TICKETS = 'tickets';
+
     public function __construct(
         public readonly string $key,
         public readonly string $tone,
