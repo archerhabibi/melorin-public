@@ -6,6 +6,7 @@ use App\Channels\ResellerBot\ResellerApiFactory;
 use App\Channels\ResellerBot\UpdateRouter;
 use App\Models\Reseller;
 use App\Models\User;
+use App\Services\Core\Customer\ProfileCenterService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Cache;
@@ -120,9 +121,8 @@ class WebhookController
             $user->joined_from = 'reseller_bot';
         }
 
-        if ($freshName !== '') {
-            $user->full_name = $freshName;
-        }
+        // B3.5: همان قاعده‌ی ربات اصلی — نام ویرایش‌شده‌ی کاربر با هر پیام بازنویسی نمی‌شود.
+        app(ProfileCenterService::class)->applyTelegramName($user, $freshName);
 
         $user->save();
 

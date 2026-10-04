@@ -152,6 +152,15 @@ class Keyboards
         ]]);
     }
 
+    /** B3.5: دکمه‌های ویرایش در «👤 حساب کاربری» (callback: profile:edit:{name|phone}) */
+    public static function profileActions(): string
+    {
+        return self::encode(['inline_keyboard' => [[
+            ['text' => '✏️ ویرایش نام', 'callback_data' => 'profile:edit:name'],
+            ['text' => '📱 موبایل', 'callback_data' => 'profile:edit:phone'],
+        ]]]);
+    }
+
     private static function encode(array $markup): string
     {
         return json_encode($markup, JSON_UNESCAPED_UNICODE);

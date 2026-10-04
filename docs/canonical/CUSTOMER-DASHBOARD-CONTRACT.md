@@ -53,4 +53,4 @@
 
 ## D6. Out of Scope
 
-Ticket Center (انجام شد در B3.4؛ `CUSTOMER-TICKETS-CONTRACT.md`)، Service Management (انجام شد در B3.2؛ `CUSTOMER-SERVICES-CONTRACT.md`؛ ارتقا عمداً نیست)، Wallet Center (انجام شد در B3.3؛ `CUSTOMER-WALLET-CONTRACT.md`)، مرکز اعلان ماندگار، نمودار مصرف.
+Profile Center (انجام شد در B3.5؛ `CUSTOMER-PROFILE-CONTRACT.md`)، Ticket Center (انجام شد در B3.4؛ `CUSTOMER-TICKETS-CONTRACT.md`)، Service Management (انجام شد در B3.2؛ `CUSTOMER-SERVICES-CONTRACT.md`؛ ارتقا عمداً نیست)، Wallet Center (انجام شد در B3.3؛ `CUSTOMER-WALLET-CONTRACT.md`)، مرکز اعلان ماندگار، نمودار مصرف.

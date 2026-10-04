@@ -126,6 +126,10 @@ $registerSharedRoutes = function () {
 
         // --- Profile / اتصال Telegram (Master G10) ---
         Route::get('/profile', [ProfileController::class, 'show'])->name('identity.profile.show');
+        // B3.5: ویرایش نام و موبایل (CUSTOMER-PROFILE-CONTRACT.md). نوشتن است ⇒ throttle (به‌ازای کاربر).
+        Route::post('/profile', [ProfileController::class, 'update'])
+            ->middleware('throttle:10,1')
+            ->name('identity.profile.update');
 
         // --- B2.4 Account Linking (ACCOUNT-LINKING-CONTRACT.md) ---
         // اتصال Google: شروع از Profile (callback همان Redirect URI ثابت B2.1). بدون Google فعال ⇒ 404.

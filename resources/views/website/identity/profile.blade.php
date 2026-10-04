@@ -12,24 +12,90 @@
         $needsPassword = $hasPassword;
     @endphp
 
+    {{--
+        B3.5 — Profile Center. نام و موبایل یک‌بار برای Identity ذخیره می‌شود و در همه‌ی فروشگاه‌ها مشترک است.
+        قواعد (طول، فرمت، یکتایی) در Core (ProfileCenterService)؛ اینجا فقط فرم و نمایش. ایمیل از این فرم قابل‌تغییر نیست.
+    --}}
     <x-ui.card class="max-w-xl">
-        <h1 class="page-title">پروفایل</h1>
-        <dl class="mt-4 space-y-2 text-sm text-muted">
-            <div class="flex justify-between"><dt>نام</dt><dd>{{ $user->full_name }}</dd></div>
-            <div class="flex justify-between">
-                <dt>ایمیل</dt>
-                <dd class="flex items-center gap-2">
-                    {{ $user->email }}
-                    @if($user->email)
-                        @if($user->hasVerifiedEmail())
+        <div class="flex items-start justify-between gap-3">
+            <h1 class="page-title">پروفایل</h1>
+            @if($overview->isComplete())
+                <x-ui.badge tone="success">پروفایل کامل است</x-ui.badge>
+            @endif
+        </div>
+
+        @unless($overview->isComplete())
+            <div class="mt-4">
+                <div class="mb-1 flex items-center justify-between text-xs text-muted">
+                    <span>تکمیل پروفایل</span>
+                    <span>{{ $overview->completionPercent() }}٪</span>
+                </div>
+                <x-ui.progress :value="$overview->completionPercent()" tone="warning" label="تکمیل پروفایل" />
+                <ul class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
+                    @foreach(\App\Services\Core\Customer\ProfileOverview::checkLabels() as $key => $label)
+                        @if(array_key_exists($key, $overview->checklist))
+                            <li class="flex items-center gap-1">
+                                <span aria-hidden="true">{{ $overview->checklist[$key] ? '✓' : '○' }}</span>
+                                <span class="{{ $overview->checklist[$key] ? 'text-success' : '' }}">{{ $label }}</span>
+                            </li>
+                        @endif
+                    @endforeach
+                </ul>
+            </div>
+        @endunless
+
+        @error('profile')<x-ui.alert type="danger" class="mt-4">{{ $message }}</x-ui.alert>@enderror
+
+        <form method="POST" action="{{ $route('identity.profile.update') }}" class="mt-5 space-y-4">
+            @csrf
+            <x-ui.field name="full_name" label="نام و نام خانوادگی" required :maxlength="$nameMax"
+                        autocomplete="name" :value="$overview->fullName" />
+            <x-ui.field name="phone" type="tel" label="شماره‌ی موبایل" dir="ltr" inputmode="tel"
+                        autocomplete="tel" placeholder="09123456789" :value="$overview->phone"
+                        hint="اختیاری. برای تماس پشتیبانی؛ برای ورود استفاده نمی‌شود." />
+
+            <div>
+                <span class="label">ایمیل</span>
+                @if($overview->email)
+                    <p class="flex flex-wrap items-center gap-2 text-sm">
+                        <span dir="ltr">{{ $overview->email }}</span>
+                        @if($overview->emailVerified)
                             <x-ui.badge tone="success">تأییدشده</x-ui.badge>
                         @else
                             <x-ui.badge tone="warning">تأییدنشده</x-ui.badge>
+                            <a href="{{ route('verification.notice') }}" class="text-xs underline">تأیید ایمیل</a>
                         @endif
+                    </p>
+                    <p class="hint">ایمیل، شناسه‌ی ورود شماست و از این فرم تغییر نمی‌کند.</p>
+                @else
+                    <p class="text-sm text-muted">ثبت نشده</p>
+                @endif
+            </div>
+
+            <x-ui.button type="submit">ذخیره‌ی اطلاعات</x-ui.button>
+        </form>
+
+        <dl class="mt-5 space-y-2 border-t border-border pt-4 text-xs text-muted">
+            @if($overview->memberSince)
+                <div class="flex justify-between"><dt>عضو Melorin از</dt><dd>{{ \App\Support\JalaliDate::format($overview->memberSince) }}</dd></div>
+            @endif
+            @if($overview->storeMemberSince)
+                <div class="flex justify-between"><dt>عضویت در این فروشگاه از</dt><dd>{{ \App\Support\JalaliDate::format($overview->storeMemberSince) }}</dd></div>
+            @endif
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <dt>اتصال‌ها</dt>
+                <dd class="flex flex-wrap items-center gap-2">
+                    <x-ui.badge :tone="$overview->hasPassword ? 'success' : 'neutral'">رمز عبور</x-ui.badge>
+                    @if($googleEnabled || $overview->googleLinked)
+                        <x-ui.badge :tone="$overview->googleLinked ? 'success' : 'neutral'">Google</x-ui.badge>
+                    @endif
+                    @if($telegramBotUsername || $overview->telegramLinked)
+                        <x-ui.badge :tone="$overview->telegramLinked ? 'success' : 'neutral'">تلگرام</x-ui.badge>
                     @endif
                 </dd>
             </div>
         </dl>
+        <p class="mt-3 text-xs text-muted">این اطلاعات بین فروشگاه اصلی و همه‌ی فروشگاه‌های نمایندگان مشترک است.</p>
     </x-ui.card>
 
     {{-- B2.4 — روش‌های ورود و حساب‌های متصل. تصمیم‌ها در Core (AccountLinkingService)؛ اینجا فقط نمایش. --}}

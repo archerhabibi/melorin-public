@@ -34,6 +34,8 @@ class User extends Authenticatable implements FilamentUser, HasName, HasTenants,
     protected $casts = [
         'password' => 'hashed',
         'email_verified_at' => 'datetime',
+        // B3.5: آخرین ویرایش دستیِ نام (NULL = هیچ‌وقت) — نام تلگرام فقط روی نام ویرایش‌نشده می‌نشیند.
+        'full_name_edited_at' => 'datetime',
     ];
 
     /**

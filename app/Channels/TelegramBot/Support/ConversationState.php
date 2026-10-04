@@ -53,6 +53,12 @@ class ConversationState
     // می‌کند — طبق درخواست صریح.
     public const TICKET_AWAITING_REPLY = 'ticket:awaiting_reply';
 
+    // B3.5 Profile Center: بعد از «✏️ ویرایش نام» / «📱 موبایل»، پیام متنیِ بعدی مقدار جدید است
+    // (اعتبارسنجی و ذخیره در Core: ProfileCenterService — همان که Website استفاده می‌کند).
+    public const PROFILE_AWAITING_NAME = 'profile:awaiting_name';
+
+    public const PROFILE_AWAITING_PHONE = 'profile:awaiting_phone';
+
     public function find(int $chatId): TelegramConversationState
     {
         return TelegramConversationState::firstOrCreate(

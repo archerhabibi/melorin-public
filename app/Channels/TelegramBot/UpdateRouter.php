@@ -2,15 +2,14 @@
 
 namespace App\Channels\TelegramBot;
 
-use App\Support\Money;
 use App\Channels\TelegramBot\Handlers\AccountsHandler;
 use App\Channels\TelegramBot\Handlers\BuyAccountHandler;
 use App\Channels\TelegramBot\Handlers\MiscHandler;
+use App\Channels\TelegramBot\Handlers\ProfileHandler;
 use App\Channels\TelegramBot\Handlers\StartHandler;
 use App\Channels\TelegramBot\Handlers\WalletHandler;
 use App\Channels\TelegramBot\Support\ConversationState;
 use App\Models\User;
-use App\Services\Core\WalletService;
 use Telegram\Bot\Api;
 use Telegram\Bot\Objects\Update;
 
@@ -30,7 +29,7 @@ class UpdateRouter
         protected WalletHandler $wallet,
         protected AccountsHandler $accounts,
         protected MiscHandler $misc,
-        protected WalletService $walletService,
+        protected ProfileHandler $profile,
     ) {}
 
     public function handle(Update $update, User $user, int $chatId): void
@@ -92,13 +91,25 @@ class UpdateRouter
         $this->routeFreeText($chatId, $user, $text);
     }
 
+    /** متن دکمه‌های منوی اصلی (منبع واحد برای تشخیص و برای خروج از جریان ویرایش) */
+    protected const MAIN_MENU_TEXTS = [
+        '🛒 خرید اکانت', '🔍 استعلام و تمدید اکانت', '💰 کیف پول و شارژ حساب',
+        '👤 حساب کاربری', '🎁 دعوت از دوستان', '🧪 دریافت اکانت تست',
+        '📜 قوانین خرید و آموزش', '🎧 پشتیبانی', '🤖 درخواست ربات نماینده و همکاری',
+    ];
+
     protected function routeMainMenuText(int $chatId, User $user, string $text): bool
     {
+        // B3.5: دکمه‌ی منو یعنی «از جریان ویرایش پروفایل خارج شدم»؛ وگرنه متن آزادِ بعدی به‌عنوان نام/موبایل ذخیره می‌شد.
+        if (in_array($text, self::MAIN_MENU_TEXTS, true)) {
+            $this->profile->abandonEdit($chatId);
+        }
+
         match ($text) {
             '🛒 خرید اکانت' => $this->buy->start($chatId, $user),
             '🔍 استعلام و تمدید اکانت' => $this->accounts->list($chatId, $user),
             '💰 کیف پول و شارژ حساب' => $this->wallet->showBalance($chatId, $user),
-            '👤 حساب کاربری' => $this->showProfile($chatId, $user),
+            '👤 حساب کاربری' => $this->profile->show($chatId, $user),
             '🎁 دعوت از دوستان' => $this->misc->referral($chatId, $user),
             '🧪 دریافت اکانت تست' => $this->misc->testAccount($chatId, $user),
             '📜 قوانین خرید و آموزش' => $this->misc->rules($chatId),
@@ -107,12 +118,7 @@ class UpdateRouter
             default => null,
         };
 
-        return match ($text) {
-            '🛒 خرید اکانت', '🔍 استعلام و تمدید اکانت', '💰 کیف پول و شارژ حساب',
-            '👤 حساب کاربری', '🎁 دعوت از دوستان', '🧪 دریافت اکانت تست',
-            '📜 قوانین خرید و آموزش', '🎧 پشتیبانی', '🤖 درخواست ربات نماینده و همکاری' => true,
-            default => false,
-        };
+        return in_array($text, self::MAIN_MENU_TEXTS, true);
     }
 
     protected function routeFreeText(int $chatId, User $user, string $text): void
@@ -126,6 +132,8 @@ class UpdateRouter
             ConversationState::BUY_AWAITING_CUSTOM_NAME => $this->buy->handleCustomNameText($chatId, $user, $text),
             ConversationState::RESELLER_REQUEST_AWAITING_DESCRIPTION => $this->misc->resellerRequestSubmit($chatId, $user, $text),
             ConversationState::TICKET_AWAITING_REPLY => $this->misc->ticketReplySubmit($chatId, $user, $text),
+            ConversationState::PROFILE_AWAITING_NAME => $this->profile->submitName($chatId, $user, $text),
+            ConversationState::PROFILE_AWAITING_PHONE => $this->profile->submitPhone($chatId, $user, $text),
             default => $this->start->showMainMenu($chatId),
         };
     }
@@ -143,6 +151,7 @@ class UpdateRouter
             'wallet:method' => $this->wallet->chooseMethod($chatId, $user, (int) $value),
             'account:renew' => $this->accounts->renew($chatId, $user, (int) $value),
             'account:config' => $this->accounts->sendConfig($chatId, $user, (int) $value),
+            'profile:edit' => $this->profile->editStart($chatId, $user, (string) $value),
             default => null,
         };
     }
@@ -185,26 +194,6 @@ class UpdateRouter
         $this->telegram->sendMessage([
             'chat_id' => $chatId,
             'text' => "🔑 دسترسی ادمین تایید شد.\n\nمدیریت کامل سیستم (سرورها، محصولات، پرداخت‌ها، کاربران) از طریق پنل مدیریت تحت وب انجام می‌شود:\n".config('app.url').'/admin',
-        ]);
-    }
-
-    /**
-     * طبق درخواست صریح: «حساب کاربری» و «کیف پول» باید در یک نگاه دیده
-     * شوند، و شناسه‌ی نمایشی باید همان شناسه‌ی عددی تلگرام (telegram_id)
-     * باشد — نه id داخلی دیتابیس، چون آن عدد برای خودِ کاربر و ادمین در
-     * تطبیق با تلگرام بی‌معنی و گیج‌کننده است.
-     */
-    protected function showProfile(int $chatId, User $user): void
-    {
-        $balance = $this->walletService->balance($user);
-
-        $this->telegram->sendMessage([
-            'chat_id' => $chatId,
-            'text' => "👤 حساب کاربری\n\n"
-                ."شناسه‌ی تلگرام: {$user->telegram_id}\n"
-                ."نام: {$user->full_name}\n"
-                ."تاریخ عضویت: {$user->created_at->format('Y-m-d')}\n"
-                .'💰 موجودی کیف پول: '.Money::format($balance),
         ]);
     }
 }

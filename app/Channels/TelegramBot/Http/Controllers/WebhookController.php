@@ -4,6 +4,7 @@ namespace App\Channels\TelegramBot\Http\Controllers;
 
 use App\Channels\TelegramBot\UpdateRouter;
 use App\Models\User;
+use App\Services\Core\Customer\ProfileCenterService;
 use App\Services\Core\Store\IdentityService;
 use App\Services\Core\Store\StoreContext;
 use Illuminate\Http\Request;
@@ -124,15 +125,11 @@ class WebhookController
             $user->joined_from = 'bot';
         }
 
-        // نام کاربر همیشه با آخرین نام نمایشی تلگرامش هماهنگ نگه داشته
-        // می‌شود (نه فقط در اولین پیام) — چون کاربران گاهی نام نمایشی
-        // تلگرامشان را عوض می‌کنند و اگر نام فقط یک‌بار در ساخت رکورد
-        // ذخیره می‌شد، در پنل مدیریت با نام قدیمی/نامرتبط نمایش داده
-        // می‌شد. شناسه‌ی عددی تلگرام (telegram_id) همیشه ثابت و قابل
-        // اتکا می‌ماند؛ full_name صرفاً یک برچسب نمایشی است.
-        if ($freshName !== '') {
-            $user->full_name = $freshName;
-        }
+        // نام نمایشی تلگرام فقط روی نامی می‌نشیند که «متعلق به تلگرام» است (B3.5): کاربری که نامش را در پروفایل
+        // (سایت یا ربات) ویرایش کرده، یا از Website ثبت‌نام کرده و بعد تلگرام وصل کرده، نامش با هر پیام بازنویسی
+        // نمی‌شود. قاعده‌ی واحد در Core است (`ProfileCenterService::applyTelegramName`)؛ شناسه‌ی عددی تلگرام
+        // (telegram_id) همچنان تنها کلید اتکاست و full_name صرفاً برچسب نمایشی است.
+        app(ProfileCenterService::class)->applyTelegramName($user, $freshName);
 
         $user->save();
 

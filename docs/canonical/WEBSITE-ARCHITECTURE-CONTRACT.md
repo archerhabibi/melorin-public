@@ -131,7 +131,7 @@ TBD ≠ اجازه‌ی تصمیم در Channel. هر TBD: `Analyze → Check Ma
 
 Email Verification (فقط Context اصلی، پشت `auth`): `GET /email/verify` (notice)، `GET /email/verify/{id}/{hash}` (`signed` + `throttle:6,1`)، `POST /email/verification-notification` (`throttle:6,1`).
 
-**حذف‌شده در فاز ۴ (DEPRECATED X4):** `POST /guest-checkout/purchase` و `/complete-profile` (تنظیم رمز برای User بدون رمز). `/profile` فقط اتصال Telegram است (G10).
+**حذف‌شده در فاز ۴ (DEPRECATED X4):** `POST /guest-checkout/purchase` و `/complete-profile` (تنظیم رمز برای User بدون رمز). `/profile` از B3.5 «Profile Center» است (نمای کلی + ویرایش نام/موبایل با `POST /profile`، `throttle:10,1`؛ مرجع: `CUSTOMER-PROFILE-CONTRACT.md`) و اتصال Telegram (G10) و کارت‌های B2.4/B2.5 را هم‌چنان دارد.
 
 ## 22. Rate Limit Matrix (مقادیر واقعی Release 3.3.0)
 
