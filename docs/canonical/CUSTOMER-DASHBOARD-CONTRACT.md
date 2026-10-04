@@ -31,7 +31,7 @@
 | `service.expiring.{id}` | فعال و انقضا ≤ ۷ روز | warning |
 | `service.traffic.{id}` | مصرف ≥ ۹۰٪ (۱۰۰٪ ⇒ danger) | warning/danger |
 | `order.attention.{id}` | سفارش `provision_failed` همین عضویت+Context | info |
-| `payment.pending` | شارژ `wallet_charge` در انتظار تأیید (`user_id` + `reseller_id`) | info |
+| `payment.pending` | شارژ `wallet_charge` در انتظار (`user_id` + `reseller_id`)؛ تعریف «در انتظار» از `WalletCenterService` (B3.3 — W5.1؛ درگاهِ رهاشده > ۲۴ ساعت شمرده نمی‌شود) | info |
 | `wallet.empty` | موجودی ≤ ۰ و سرویس رو‌به‌انقضا/تازه‌منقضی | info |
 
 مرکز اعلان ماندگار (ذخیره، خوانده‌شدن، Push/Email) **خارج از B3.1** است و در صورت نیاز Contract جدا می‌گیرد.
@@ -52,4 +52,4 @@
 
 ## D6. Out of Scope
 
-Ticket Center (B3.4)، Service Management (انجام شد در B3.2؛ `CUSTOMER-SERVICES-CONTRACT.md`؛ ارتقا عمداً نیست)، Wallet Center (B3.3)، مرکز اعلان ماندگار، نمودار مصرف.
+Ticket Center (B3.4)، Service Management (انجام شد در B3.2؛ `CUSTOMER-SERVICES-CONTRACT.md`؛ ارتقا عمداً نیست)، Wallet Center (انجام شد در B3.3؛ `CUSTOMER-WALLET-CONTRACT.md`)، مرکز اعلان ماندگار، نمودار مصرف.

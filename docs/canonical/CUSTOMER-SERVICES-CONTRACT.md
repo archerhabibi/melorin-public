@@ -65,5 +65,5 @@ route، Core API و Audit برای تغییر پلن ساخته نشد (`Service
 
 ## S6. Out of Scope
 
-ارتقا/تغییر پلن (S2)، Ticket Center (B3.4)، Wallet Center (B3.3)، نمودار تاریخچه‌ی مصرف، حذف/لغو سرویس توسط مشتری،
+ارتقا/تغییر پلن (S2)، Ticket Center (B3.4)، Wallet Center (انجام شد در B3.3)، نمودار تاریخچه‌ی مصرف، حذف/لغو سرویس توسط مشتری،
 تغییر لینک اشتراک، اعلان Push/Email انقضا.

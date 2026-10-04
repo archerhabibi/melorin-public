@@ -3,36 +3,86 @@
 namespace App\Channels\Website\Services;
 
 use App\Models\User;
+use App\Models\WalletTransaction;
+use App\Services\Core\Customer\WalletCenterFilter;
+use App\Services\Core\Customer\WalletCenterService;
+use App\Services\Core\Customer\WalletChargeEntry;
+use App\Services\Core\Customer\WalletOverview;
 use App\Services\Core\Store\StoreContext;
 use App\Services\Core\WalletService;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 
 /**
- * Adapter نازک روی WalletService. هیچ منطقی
- * غیر از صدا زدن مستقیم Core اینجا نیست.
+ * Adapter نازک روی WalletService (Checkout) و WalletCenterService (B3.3 — Wallet Center). هیچ منطقی
+ * غیر از صدا زدن مستقیم Core و نگاشت «هدف → URL» اینجا نیست.
  */
 class WebsiteWalletFacade
 {
-    public function __construct(protected WalletService $wallet) {}
+    public function __construct(
+        protected WalletService $wallet,
+        protected WalletCenterService $center,
+    ) {}
 
+    /** برای Checkout (مسیر قدیمی؛ Wallet را در صورت نبودن می‌سازد) */
     public function balance(User $user, StoreContext $store): int
     {
         return $this->wallet->balanceIn($user, $store);
     }
 
-    /**
-     * پنل کاربری → Wallet: «مشاهده‌ی گردش حساب» — بند
-     * ۳۰ زیرسند. این متد هیچ تصمیمی نمی‌گیرد؛ فقط تراکنش‌های همان
-     * Wallet‌ای که Core از قبل برای این User+Context ساخته را
-     * صفحه‌بندی‌شده برمی‌گرداند (بند ۳۱: Isolation از طریق همان
-     * WalletService::walletForContext که قبلاً هم در balance() استفاده
-     * شده — نه یک کوئری جدید و مستقل).
-     */
-    public function transactions(User $user, StoreContext $store, int $perPage = 20): LengthAwarePaginator
+    /** برای صفحه‌ی شارژ: موجودی بدون نوشتن در DB */
+    public function currentBalance(User $user, StoreContext $store): int
     {
-        return $this->wallet->walletForContext($user, $store)
-            ->transactions()
-            ->latest('id')
-            ->paginate($perPage);
+        return $this->center->balance($user, $store);
+    }
+
+    /** @param array<string, mixed> $query معمولاً `$request->query()` */
+    public function filter(array $query): WalletCenterFilter
+    {
+        return WalletCenterFilter::fromInput($query);
+    }
+
+    public function overview(User $user, StoreContext $store): WalletOverview
+    {
+        return $this->center->overview($user, $store);
+    }
+
+    /**
+     * گردش حساب فیلترشده. فقط مقدارهای پاک‌سازی‌شده‌ی فیلتر به لینک‌های صفحه‌بندی اضافه می‌شود
+     * (نه کل Query String کاربر).
+     *
+     * @return LengthAwarePaginator<WalletTransaction>
+     */
+    public function transactions(User $user, StoreContext $store, WalletCenterFilter $filter): LengthAwarePaginator
+    {
+        return $this->center->transactions($user, $store, $filter)->appends($filter->toQuery());
+    }
+
+    /** @return Collection<int, WalletChargeEntry> */
+    public function charges(User $user, StoreContext $store): Collection
+    {
+        return $this->center->charges($user, $store);
+    }
+
+    public function receiptUrl(WalletChargeEntry $charge, StoreContext $store): ?string
+    {
+        if (! $charge->canUploadReceipt()) {
+            return null;
+        }
+
+        return $this->url($store, 'wallet.receipt.show', ['payment' => $charge->paymentId]);
+    }
+
+    public function orderUrl(int $orderId, StoreContext $store): string
+    {
+        return $this->url($store, 'orders.show', ['order' => $orderId]);
+    }
+
+    /** @param array<string, mixed> $params */
+    protected function url(StoreContext $store, string $name, array $params): string
+    {
+        return $store->isReseller()
+            ? route('website.store.'.$name, ['slug' => $store->reseller->slug, ...$params])
+            : route('website.'.$name, $params);
     }
 }

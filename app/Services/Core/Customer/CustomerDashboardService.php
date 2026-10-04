@@ -5,7 +5,6 @@ namespace App\Services\Core\Customer;
 use App\Models\Account;
 use App\Models\CustomerAccount;
 use App\Models\Order;
-use App\Models\Payment;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Services\Core\Store\StoreContext;
@@ -43,6 +42,8 @@ class CustomerDashboardService
     public const NOTICES_LIMIT = 6;
 
     private const PER_KIND_LIMIT = 3;
+
+    public function __construct(protected WalletCenterService $walletCenter) {}
 
     public function snapshot(User $user, StoreContext $store, ?CustomerAccount $customer): CustomerDashboard
     {
@@ -204,20 +205,14 @@ class CustomerDashboardService
     }
 
     /**
-     * شارژ کارت‌به‌کارتِ در انتظار تأیید. همان کلیدِ مالکیت `findPendingForReceipt`:
-     * user_id + reseller_id (برای Main = null) + wallet_owner_type=user.
+     * شارژِ در انتظار. شمارش از `WalletCenterService` (B3.3) می‌آید تا داشبورد و صفحه‌ی کیف‌پول هیچ‌وقت
+     * دو عدد متفاوت نشان ندهند؛ شارژ درگاهیِ رهاشده (> ۲۴ ساعت) دیگر «در انتظار تأیید» حساب نمی‌شود.
      *
      * @return Collection<int, DashboardNotice>
      */
     protected function pendingPaymentNotices(User $user, StoreContext $store): Collection
     {
-        $count = Payment::query()
-            ->where('user_id', $user->id)
-            ->where('reseller_id', $store->resellerId())
-            ->where('wallet_owner_type', 'user')
-            ->where('purpose', 'wallet_charge')
-            ->where('status', 'pending')
-            ->count();
+        $count = $this->walletCenter->pendingChargeCount($user, $store);
 
         if ($count === 0) {
             return collect();

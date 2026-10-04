@@ -36,6 +36,17 @@ class WalletTransaction extends Model
         ];
     }
 
+    /**
+     * توضیحِ قابل‌نمایش به مالک Wallet (B3.3). `referral_bonus` عمداً نمایش داده نمی‌شود: توضیح آن نام کامل
+     * کاربر دعوت‌شده را دارد («پاداش دعوت: عضویت …») و متعلق به شخص دیگری است؛ برچسب نوع کافی است.
+     */
+    public function publicDescription(): ?string
+    {
+        $text = trim((string) $this->description);
+
+        return $text === '' || $this->type === 'referral_bonus' ? null : $text;
+    }
+
     public function wallet(): BelongsTo
     {
         return $this->belongsTo(Wallet::class);

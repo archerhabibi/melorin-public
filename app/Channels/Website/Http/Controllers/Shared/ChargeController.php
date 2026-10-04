@@ -5,6 +5,7 @@ namespace App\Channels\Website\Http\Controllers\Shared;
 use App\Support\Money;
 use App\Channels\Website\Services\WebsiteChargeFacade;
 use App\Channels\Website\Services\WebsiteCatalogFacade;
+use App\Channels\Website\Services\WebsiteWalletFacade;
 use App\Channels\Website\Support\CoreErrorMapper;
 use App\Channels\Website\Support\ResolvesWebsiteRouteNames;
 use App\Models\PaymentMethod;
@@ -37,14 +38,27 @@ class ChargeController
         protected WebsiteChargeFacade $charge,
         protected CoreErrorMapper $errors,
         protected WebsiteCatalogFacade $catalog,
+        protected WebsiteWalletFacade $wallet,
     ) {}
 
     public function show(Request $request, StoreContext $store): View
     {
+        $minimum = Money::minTopup();
+
+        // B3.3: مبلغ پیش‌فرض از Query (دکمه‌های پیشنهادی بدون JS). فقط مقدار معتبر و ≥ حداقل پذیرفته می‌شود؛
+        // این فقط مقدار اولیه‌ی فرم است و اعتبارسنجی واقعی همچنان در store() انجام می‌شود.
+        $raw = $request->query('amount');
+        $prefill = is_string($raw) ? Money::parse($raw) : null;
+        $prefill = $prefill !== null && $prefill >= $minimum ? $prefill : null;
+
         return view('website.shared.wallet-charge', [
             'methods' => PaymentMethod::query()->where('status', 'active')->get(),
             'store' => $store,
             'returnProduct' => $request->integer('product') ?: null,
+            'balance' => $this->wallet->currentBalance($request->user(), $store),
+            'minimum' => $minimum,
+            'presets' => array_values(array_filter(Money::topupPresets(), fn (int $p) => $p >= $minimum)),
+            'prefill' => $prefill,
         ]);
     }
 
