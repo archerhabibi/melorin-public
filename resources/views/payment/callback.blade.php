@@ -1,39 +1,60 @@
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
+{{--
+    B4.4 — نتیجه‌ی پرداخت آنلاین. صفحه‌ی مستقل (بدون Layout/StoreContext چون بدون ورود و بدون Session فروشگاه است)
+    ولی با دیزاین‌سیستم و تم Light/Dark. ورودی‌ها: $success، $message، $amount (اختیاری)، و فقط برای نتیجه‌ی واقعی
+    $walletUrl/$retryUrl/$homeUrl. خطاها (بدون این لینک‌ها) فقط پیام عمومی نشان می‌دهند.
+--}}
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
     <title>نتیجه پرداخت</title>
-    <style>
-        body { font-family: Tahoma, sans-serif; background: #0f172a; color: #e2e8f0;
-               display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
-        .card { background: #1e293b; padding: 2.5rem; border-radius: 1rem; max-width: 30rem;
-                text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,.4); }
-        .icon { font-size: 3.5rem; margin-bottom: 1rem; }
-        .ok { color: #4ade80; }
-        .fail { color: #f87171; }
-        p { line-height: 2; }
-        .amount { margin-top: 1rem; font-size: .9rem; color: #94a3b8; }
-        .back { display: inline-block; margin-top: 1.25rem; padding: .6rem 1.2rem; border-radius: .5rem;
-                background: #4ade80; color: #0f172a; text-decoration: none; font-weight: bold; }
-    </style>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <script src="{{ asset('js/theme-init.js') }}"></script>
 </head>
-<body>
-    <div class="card">
-        <div class="icon {{ $success ? 'ok' : 'fail' }}">{{ $success ? '✅' : '❌' }}</div>
-        <p>{{ $message }}</p>
-        @isset($amount)
-            <div class="amount">مبلغ: {{ \App\Support\Money::format((int) $amount) }}</div>
-        @endisset
+<body class="min-h-screen flex items-center justify-center px-4 py-8">
+    <main class="w-full max-w-md" role="main">
+        <x-ui.card class="text-center">
+            <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full {{ $success ? 'bg-success-soft text-success' : 'bg-danger-soft text-danger' }}">
+                <x-ui.icon :name="$success ? 'check' : 'alert'" :size="28" />
+            </div>
 
-        {{--
-            D-3 / Master 7.2 (شکاف C13): بعد از شارژ موفق، کاربر خودش به Checkout
-            برمی‌گردد؛ خرید به‌صورت خودکار انجام نمی‌شود. آدرس فقط از Session
-            سمت سرور می‌آید (ChargeController) و بیرون از سایت نیست.
-        --}}
-        @if($success && session('charge_return_checkout_url'))
-            <a class="back" href="{{ session('charge_return_checkout_url') }}">بازگشت به تکمیل خرید</a>
-        @endif
-    </div>
+            <h1 class="mt-4 text-lg font-bold">{{ $success ? 'پرداخت موفق' : 'پرداخت ناموفق' }}</h1>
+            <p class="mt-2 text-sm text-muted leading-7">{{ $message }}</p>
+
+            @isset($amount)
+                <div class="mt-4 rounded-md bg-surface-2 px-4 py-3 text-sm">
+                    <span class="text-muted">مبلغ:</span>
+                    <span class="font-bold tabular">{{ \App\Support\Money::format((int) $amount) }}</span>
+                </div>
+            @endisset
+
+            {{--
+                D-3 / Master 7.2 (شکاف C13): بعد از شارژ موفق، کاربر خودش به Checkout برمی‌گردد؛ خرید به‌صورت
+                خودکار انجام نمی‌شود. آدرس فقط از Session سمت سرور می‌آید (ChargeController) و بیرون از سایت نیست.
+            --}}
+            <div class="mt-6 flex flex-col gap-3">
+                @if($success && session('charge_return_checkout_url'))
+                    <x-ui.button :href="session('charge_return_checkout_url')" block>بازگشت به تکمیل خرید</x-ui.button>
+                @endif
+
+                @isset($walletUrl)
+                    @if($success)
+                        <x-ui.button :href="$walletUrl" :variant="session('charge_return_checkout_url') ? 'secondary' : 'primary'" block icon="wallet">مشاهده‌ی کیف‌پول</x-ui.button>
+                    @else
+                        <x-ui.button :href="$retryUrl" block icon="refresh">تلاش دوباره برای شارژ</x-ui.button>
+                        <x-ui.button :href="$walletUrl" variant="secondary" block>بازگشت به کیف‌پول</x-ui.button>
+                    @endif
+                @endisset
+            </div>
+
+            @if($success)
+                <p class="mt-4 text-xs text-subtle">اگر از ربات تلگرام آمده‌اید، می‌توانید به همان گفتگو برگردید.</p>
+            @else
+                <p class="mt-4 text-xs text-subtle">اگر مبلغ از حساب شما کسر شده، معمولاً تا چند ساعت برگشت می‌خورد؛ در غیر این صورت با پشتیبانی تماس بگیرید.</p>
+            @endif
+        </x-ui.card>
+    </main>
 </body>
 </html>

@@ -38,3 +38,28 @@ document.addEventListener('click', (e) => {
     document.documentElement.setAttribute('data-theme', next);
     try { localStorage.setItem('melorin-theme', next); } catch (_) {}
 });
+
+// ---- Payment submit lock (B4.4) ----
+// <form data-submit-lock> + <button data-busy-text="…">: بعد از ارسال، دکمه قفل می‌شود تا دوبار کلیک/لمس درخواست دوم نسازد
+// (لایه‌ی UX؛ ضدتکرار واقعی توکن Idempotency/Core است). دکمه بعد از ارسال disable می‌شود، نه داخل handler، تا فرم کامل ارسال شود.
+document.addEventListener('submit', (e) => {
+    const form = e.target.closest?.('form[data-submit-lock]');
+    if (!form || e.defaultPrevented) return;
+
+    setTimeout(() => {
+        form.querySelectorAll('button[type="submit"]').forEach((btn) => {
+            btn.disabled = true;
+            btn.setAttribute('aria-busy', 'true');
+            if (btn.dataset.busyText) btn.textContent = btn.dataset.busyText;
+        });
+    }, 0);
+});
+
+// برگشت با دکمه‌ی Back مرورگر (bfcache) دکمه را دوباره آزاد کن.
+window.addEventListener('pageshow', (e) => {
+    if (!e.persisted) return;
+    document.querySelectorAll('form[data-submit-lock] button[type="submit"]').forEach((btn) => {
+        btn.disabled = false;
+        btn.removeAttribute('aria-busy');
+    });
+});

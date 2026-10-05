@@ -10,6 +10,7 @@ use App\Channels\Website\Services\WebsiteWalletFacade;
 use App\Channels\Website\Support\CoreErrorMapper;
 use App\Channels\Website\Support\GuestCheckoutContinuation;
 use App\Channels\Website\Support\ResolvesWebsiteRouteNames;
+use App\Models\PaymentMethod;
 use App\Services\Core\Store\EmailNotVerifiedException;
 use App\Services\Core\Store\EmailVerificationGate;
 use App\Services\Core\Store\IdentityService;
@@ -54,20 +55,34 @@ class CheckoutController
      * Back مرورگر) دقیقاً همان Operation قبلی را idempotent برمی‌گرداند
      * و خرید دوم واقعی رخ نمی‌دهد.
      */
-    public function show(int $product, StoreContext $store): View|Response
+    public function show(Request $request, int $product, StoreContext $store): View|Response
     {
-        $productModel = $this->catalog->findVisibleProduct($product, $store);
+        $item = $this->catalog->item($product, $store);
 
-        if (! $productModel) {
+        if (! $item) {
             abort(404);
         }
 
+        // B4.4: پیش‌فاکتور از Core (کمبود، موجودی پس از خرید، مبلغ پیشنهادی شارژ)؛ این‌جا هیچ حسابی نیست.
+        $quote = $this->wallet->quote($request->user(), $store, $item->price);
+
+        // «ادامه‌ی خرید مهمان»: فقط برای نمایش مراحل (۳ مرحله‌ای)؛ مصرف نشست همچنان بعد از خرید موفق است.
+        $guest = $this->guestContinuation->activeFor($request, $store);
+
         return view('website.shared.checkout-show', [
-            'product' => $productModel,
-            'price' => $this->catalog->displayPrice($productModel, $store),
-            'balance' => $this->wallet->balance(auth()->user(), $store),
+            'item' => $item,
+            'product' => $item->product,
+            'price' => $item->price,
+            'balance' => $quote->balance,
+            'quote' => $quote,
+            'topup' => $quote->suggestedTopup(),
+            'canCharge' => PaymentMethod::query()->where('status', 'active')->exists(),
+            'fromGuest' => $guest !== null && (int) $guest->product_id === $item->id(),
             'store' => $store,
             'idempotencyToken' => (string) Str::uuid(),
+            'route' => fn (string $name, array $params = []) => $store->isReseller()
+                ? route('website.store.'.$name, ['slug' => $store->reseller->slug, ...$params])
+                : route('website.'.$name, $params),
         ]);
     }
 

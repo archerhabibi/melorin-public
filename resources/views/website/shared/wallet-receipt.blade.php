@@ -3,47 +3,85 @@
 @section('title', 'ثبت رسید کارت‌به‌کارت')
 
 @section('content')
-    <div class="bg-surface border rounded-lg p-6 max-w-xl">
-        <h1 class="text-xl font-bold">ثبت رسید واریز</h1>
+    {{--
+        B4.4 — صفحه‌ی ثبت رسید. ورودی: $payment، $instructions (تنظیمات روش پرداخت)، $returnUrl (فقط Session سرور)، $route.
+        مراحل: ۱ واریز ← ۲ ثبت رسید ← ۳ تأیید ادمین. بدون JS: کپی شماره کارت/مبلغ با data-copy-value (کمکی دیزاین‌سیستم).
+    --}}
+    @php($submitted = (bool) $payment->receipt_image)
 
-        @if(session('status'))
-            <div class="mt-4 rounded border border-success/30 bg-success-soft text-success px-4 py-3 text-sm">{{ session('status') }}</div>
-        @endif
+    <div class="max-w-xl">
+        <x-ui.page-header title="ثبت رسید واریز" subtitle="پس از تأیید ادمین، کیف‌پول شما شارژ می‌شود">
+            <x-slot:actions>
+                <x-ui.button :href="$route('wallet.show')" variant="ghost" size="sm">بازگشت به کیف‌پول</x-ui.button>
+            </x-slot:actions>
+        </x-ui.page-header>
 
-        <dl class="mt-4 space-y-2 text-sm text-muted">
-            <div class="flex justify-between"><dt>مبلغ</dt><dd class="font-bold text-text">{{ \App\Support\Money::format($payment->amount) }}</dd></div>
-            <div class="flex justify-between"><dt>شماره کارت</dt><dd>{{ $instructions['card_number'] ?? '—' }}</dd></div>
-            <div class="flex justify-between"><dt>به نام</dt><dd>{{ $instructions['card_holder_name'] ?? '—' }}</dd></div>
-        </dl>
+        <x-ui.steps :items="['واریز', 'ثبت رسید', 'تأیید ادمین']" :current="$submitted ? 3 : 2" />
 
-        @if($payment->receipt_image)
-            <div class="mt-4 rounded border border-border bg-surface-2 text-muted px-4 py-3 text-sm">
-                رسید شما ثبت شده و در انتظار بررسی ادمین است. پس از تایید، کیف پول شما شارژ خواهد شد.
+        <x-ui.card>
+            <div class="flex items-center justify-between gap-2">
+                <h2 class="text-sm font-semibold">اطلاعات واریز</h2>
+                <x-ui.badge :tone="$submitted ? 'info' : 'warning'">{{ $submitted ? 'در انتظار بررسی' : 'در انتظار ثبت رسید' }}</x-ui.badge>
             </div>
-        @else
-            @error('receipt')
-                <div class="mt-4 rounded border border-danger/30 bg-danger-soft text-danger px-4 py-3 text-sm">{{ $message }}</div>
-            @enderror
-            @error('depositor_name')
-                <div class="mt-4 rounded border border-danger/30 bg-danger-soft text-danger px-4 py-3 text-sm">{{ $message }}</div>
-            @enderror
 
-            <form method="POST"
-                  action="{{ $store->isReseller() ? route('website.store.wallet.receipt.store', ['slug' => $store->reseller->slug, 'payment' => $payment->id]) : route('website.wallet.receipt.store', $payment->id) }}"
-                  enctype="multipart/form-data" class="mt-6 space-y-4">
-                @csrf
-                <div>
-                    <label class="block text-sm text-muted mb-1">نام و نام خانوادگی صاحب کارت واریزکننده</label>
-                    <input type="text" name="depositor_name" required class="w-full border rounded px-3 py-2 text-sm">
+            <dl class="mt-4 space-y-3 text-sm">
+                <div class="flex items-center justify-between gap-3">
+                    <dt class="text-muted">مبلغ دقیق واریز</dt>
+                    <dd class="flex items-center gap-2">
+                        <span class="font-bold tabular">{{ \App\Support\Money::format($payment->amount) }}</span>
+                        <button type="button" class="link text-xs" data-copy-value="{{ \App\Support\Money::toMajorString($payment->amount) }}" data-copied="کپی شد">کپی مبلغ</button>
+                    </dd>
                 </div>
-                <div>
-                    <label class="block text-sm text-muted mb-1">تصویر رسید</label>
-                    <input type="file" name="receipt" accept="image/jpeg,image/png,image/webp,application/pdf" required class="w-full text-sm">
+                <div class="flex items-center justify-between gap-3">
+                    <dt class="text-muted">شماره کارت</dt>
+                    <dd class="flex items-center gap-2">
+                        <span class="tabular" dir="ltr">{{ $instructions['card_number'] ?? '—' }}</span>
+                        @if(! empty($instructions['card_number']))
+                            <button type="button" class="link text-xs" data-copy-value="{{ preg_replace('/\D+/', '', (string) $instructions['card_number']) }}" data-copied="کپی شد">کپی</button>
+                        @endif
+                    </dd>
                 </div>
-                <button type="submit" class="bg-brand px-4 py-2 rounded text-on-brand text-sm font-medium">
-                    ثبت رسید
-                </button>
-            </form>
-        @endif
+                <div class="flex justify-between gap-3"><dt class="text-muted">به نام</dt><dd>{{ $instructions['card_holder_name'] ?? '—' }}</dd></div>
+            </dl>
+
+            @unless($submitted)
+                <x-ui.alert type="info" class="mt-4">
+                    همین مبلغ را به کارت بالا واریز کنید، سپس تصویر رسید را همین‌جا ثبت کنید. بدون ثبت رسید، شارژ بررسی نمی‌شود.
+                </x-ui.alert>
+            @endunless
+        </x-ui.card>
+
+        <x-ui.card class="mt-4">
+            @if($submitted)
+                <x-ui.alert type="success">
+                    رسید شما ثبت شد و در انتظار بررسی ادمین است. پس از تأیید، کیف‌پول شما شارژ می‌شود.
+                </x-ui.alert>
+
+                <div class="mt-5 flex flex-wrap gap-3">
+                    @if(! empty($returnUrl))
+                        {{-- D-3: بعد از شارژ، کاربر خودش به همان خرید برمی‌گردد (خرید خودکار ممنوع). --}}
+                        <x-ui.button :href="$returnUrl">بازگشت به تکمیل خرید</x-ui.button>
+                    @endif
+                    <x-ui.button :href="$route('wallet.show')" variant="secondary">وضعیت شارژ در کیف‌پول</x-ui.button>
+                </div>
+                @if(! empty($returnUrl))
+                    <p class="mt-3 text-xs text-muted">تا زمان تأیید ادمین موجودی افزایش نمی‌یابد؛ پس از تأیید می‌توانید خرید را کامل کنید.</p>
+                @endif
+            @else
+                <form method="POST"
+                      action="{{ $route('wallet.receipt.store', ['payment' => $payment->id]) }}"
+                      enctype="multipart/form-data" class="space-y-4" data-submit-lock>
+                    @csrf
+                    <x-ui.field name="depositor_name" label="نام و نام خانوادگی صاحب کارت واریزکننده" required
+                                autocomplete="name" minlength="2" maxlength="100" />
+
+                    <x-ui.field name="receipt" type="file" label="تصویر رسید" required
+                                accept="image/jpeg,image/png,image/webp,application/pdf"
+                                hint="فرمت‌های JPG، PNG، WebP یا PDF؛ حداکثر ۵ مگابایت." />
+
+                    <x-ui.button type="submit" block icon="check" data-busy-text="در حال ارسال رسید…">ثبت رسید</x-ui.button>
+                </form>
+            @endif
+        </x-ui.card>
     </div>
 @endsection

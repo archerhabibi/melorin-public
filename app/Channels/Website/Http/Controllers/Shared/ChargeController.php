@@ -51,11 +51,25 @@ class ChargeController
         $prefill = is_string($raw) ? Money::parse($raw) : null;
         $prefill = $prefill !== null && $prefill >= $minimum ? $prefill : null;
 
+        $balance = $this->wallet->currentBalance($request->user(), $store);
+
+        // B4.4: وقتی از Checkout آمده‌ایم، خلاصه‌ی همان خرید (و کمبود) بالای فرم نشان داده می‌شود و اگر کاربر
+        // مبلغ نداده باشد، کمبود دقیق (حداقل = حداقل شارژ) پیش‌فرض است. فقط تعرفه‌ی قابل‌مشاهده در همین Store.
+        $returnProductId = $request->integer('product') ?: null;
+        $returnItem = $returnProductId ? $this->catalog->item($returnProductId, $store) : null;
+        $quote = $returnItem ? $this->wallet->quote($request->user(), $store, $returnItem->price, readOnly: true) : null;
+
+        if ($prefill === null && $quote) {
+            $prefill = $quote->suggestedTopup($minimum);
+        }
+
         return view('website.shared.wallet-charge', [
             'methods' => PaymentMethod::query()->where('status', 'active')->get(),
             'store' => $store,
-            'returnProduct' => $request->integer('product') ?: null,
-            'balance' => $this->wallet->currentBalance($request->user(), $store),
+            'returnProduct' => $returnProductId, // همان قرارداد قبلی؛ دیده‌بودن تعرفه در store() بررسی می‌شود
+            'returnItem' => $returnItem,
+            'quote' => $quote,
+            'balance' => $balance,
             'minimum' => $minimum,
             'presets' => array_values(array_filter(Money::topupPresets(), fn (int $p) => $p >= $minimum)),
             'prefill' => $prefill,

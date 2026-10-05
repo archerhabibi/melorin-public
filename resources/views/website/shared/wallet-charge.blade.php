@@ -24,6 +24,22 @@
             </x-slot:actions>
         </x-ui.page-header>
 
+        @if(! empty($returnItem) && $quote)
+            {{-- B4.4: خرید در انتظار — مشتری می‌داند برای چه چیزی و چقدر شارژ می‌کند و بعدش کجا برمی‌گردد. --}}
+            <x-ui.alert :type="$quote->isAffordable() ? 'success' : 'info'" class="mb-4">
+                <div class="font-medium">خرید در انتظار: {{ $returnItem->product->name }}</div>
+                <div class="mt-1 text-xs">
+                    مبلغ {{ \App\Support\Money::format($quote->price) }}
+                    @if($quote->isAffordable())
+                        · موجودی شما برای این خرید کافی است.
+                    @else
+                        · کمبود <span class="tabular font-bold">{{ \App\Support\Money::format($quote->shortfall()) }}</span>
+                    @endif
+                    — بعد از شارژ به صفحه‌ی همین خرید برمی‌گردید.
+                </div>
+            </x-ui.alert>
+        @endif
+
         <x-ui.card>
             <div class="flex items-center justify-between text-sm">
                 <span class="text-muted">موجودی فعلی</span>
@@ -39,7 +55,7 @@
             @else
                 <form method="POST"
                       action="{{ $store->isReseller() ? route('website.store.wallet.charge.store', $store->reseller->slug) : route('website.wallet.charge.store') }}"
-                      class="mt-6 space-y-5">
+                      class="mt-6 space-y-5" data-submit-lock>
                     @csrf
                     @if(! empty($returnProduct))
                         {{-- D-3: بعد از شارژ به Checkout همین محصول برگرد (خرید خودکار ممنوع). --}}
@@ -90,7 +106,7 @@
                         </div>
                     </fieldset>
 
-                    <x-ui.button type="submit" block>ادامه</x-ui.button>
+                    <x-ui.button type="submit" block data-busy-text="در حال انتقال…">ادامه به پرداخت</x-ui.button>
                 </form>
             @endif
         </x-ui.card>

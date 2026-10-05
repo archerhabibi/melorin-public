@@ -8,6 +8,7 @@ use App\Services\Core\Customer\WalletCenterFilter;
 use App\Services\Core\Customer\WalletCenterService;
 use App\Services\Core\Customer\WalletChargeEntry;
 use App\Services\Core\Customer\WalletOverview;
+use App\Services\Core\Payments\CheckoutQuote;
 use App\Services\Core\Store\StoreContext;
 use App\Services\Core\WalletService;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -28,6 +29,18 @@ class WebsiteWalletFacade
     public function balance(User $user, StoreContext $store): int
     {
         return $this->wallet->balanceIn($user, $store);
+    }
+
+    /**
+     * B4.4 — پیش‌فاکتور (کمبود/موجودی پس از خرید/مبلغ پیشنهادی شارژ) از Core. `$readOnly=true` در DB نمی‌نویسد
+     * (صفحه‌ی شارژ)؛ Checkout همان مسیر قدیمی `balance()` را نگه می‌دارد.
+     */
+    public function quote(User $user, StoreContext $store, int $price, bool $readOnly = false): CheckoutQuote
+    {
+        return new CheckoutQuote(
+            $price,
+            $readOnly ? $this->currentBalance($user, $store) : $this->balance($user, $store),
+        );
     }
 
     /** برای صفحه‌ی شارژ: موجودی بدون نوشتن در DB */

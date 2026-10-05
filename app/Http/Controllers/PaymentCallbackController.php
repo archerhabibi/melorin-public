@@ -66,12 +66,22 @@ class PaymentCallbackController
 
         $confirmed = $payment->status === 'confirmed';
 
+        // B4.4: لینک‌های «قدم بعدی» فقط از خودِ Payment (فروشگاه مبدأ) ساخته می‌شوند؛ هیچ داده‌ی مالی/شخصی نشان
+        // داده نمی‌شود (این مسیر بدون ورود است). مقصد «بازگشت به خرید» فقط از Session سمت سرور می‌آید.
+        $slug = $payment->reseller_id ? $payment->reseller?->slug : null;
+        $link = fn (string $name) => $slug ? route('website.store.'.$name, $slug) : route('website.'.$name);
+
         return response()->view('payment.callback', [
             'success' => $confirmed,
             'message' => $confirmed
-                ? 'پرداخت با موفقیت تأیید و کیف پول شما شارژ شد. می‌توانید به ربات بازگردید.'
+                ? 'پرداخت با موفقیت تأیید و کیف پول شما شارژ شد.'
                 : 'پرداخت تأیید نشد یا توسط شما لغو شد.',
             'amount' => $payment->amount,
+            // شارژ اعتبار خودِ نماینده (wallet_owner_type=reseller) در پنل نماینده است؛ لینک کیف‌پول مشتری برایش بی‌معناست.
+            ...($payment->wallet_owner_type === 'reseller' ? [] : [
+                'walletUrl' => $link('wallet.show'),
+                'retryUrl' => $link('wallet.charge.show'),
+            ]),
         ]);
     }
 }

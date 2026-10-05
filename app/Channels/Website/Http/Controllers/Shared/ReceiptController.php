@@ -43,6 +43,11 @@ class ReceiptController
             'payment' => $paymentModel,
             'instructions' => $paymentModel->paymentMethod->settings ?? [],
             'store' => $store,
+            // B4.4: مقصد «بازگشت به تکمیل خرید» فقط از Session سمت سرور (ChargeController::store) می‌آید، نه از Query.
+            'returnUrl' => $request->session()->get(ChargeController::RETURN_SESSION_KEY),
+            'route' => fn (string $name, array $params = []) => $store->isReseller()
+                ? route('website.store.'.$name, ['slug' => $store->reseller->slug, ...$params])
+                : route('website.'.$name, $params),
         ]);
     }
 
