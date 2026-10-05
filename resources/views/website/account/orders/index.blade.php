@@ -5,45 +5,63 @@
 @section('content')
     @include('website.account._nav')
 
-    <div class="bg-surface border rounded-lg overflow-hidden">
-        <h1 class="px-6 py-3 border-b font-medium text-sm text-muted">سفارش‌های من</h1>
+    {{--
+        B4.5 — فهرست سفارش‌ها. ورودی: $orders، $counts (Core: total + گروه‌ها)، $group، $groupLabels، $tracking (سرویس Core)، $route.
+        فیلتر با لینک GET (بدون JS؛ سازگار با CSP). وضعیت هر ردیف از Core می‌آید.
+    --}}
+    <x-ui.page-header title="سفارش‌های من" subtitle="پیگیری خرید و تمدیدها" />
 
-        @if($orders->isEmpty())
-            <p class="px-6 py-8 text-center text-subtle text-sm">هنوز سفارشی ثبت نشده است.</p>
+    <nav class="flex flex-wrap gap-2 mb-4 text-sm" aria-label="فیلتر وضعیت سفارش">
+        @php
+            $tabs = [[null, 'همه', $counts['total']]];
+            foreach ($groupLabels as $key => $label) { $tabs[] = [$key, $label, $counts[$key]]; }
+        @endphp
+        @foreach($tabs as [$value, $label, $count])
+            <a href="{{ $value ? $route('orders.index').'?group='.$value : $route('orders.index') }}"
+               @if($group === $value) aria-current="true" @endif
+               class="btn btn-sm {{ $group === $value ? 'btn-primary' : 'btn-secondary' }}">
+                {{ $label }} <span class="tabular">({{ number_format($count) }})</span>
+            </a>
+        @endforeach
+    </nav>
+
+    @if($orders->isEmpty())
+        @if($group)
+            <x-ui.empty-state icon="orders" title="سفارشی با این وضعیت ندارید">
+                <div class="mt-4"><x-ui.button :href="$route('orders.index')" variant="ghost" size="sm">نمایش همه</x-ui.button></div>
+            </x-ui.empty-state>
         @else
-            <table class="w-full text-sm">
-                <thead class="bg-surface-2 text-muted text-xs">
-                    <tr>
-                        <th class="px-6 py-2 text-right">شماره</th>
-                        <th class="px-6 py-2 text-right">تعرفه</th>
-                        <th class="px-6 py-2 text-right">تاریخ</th>
-                        <th class="px-6 py-2 text-right">وضعیت</th>
-                        <th class="px-6 py-2 text-right"></th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y">
-                    @foreach($orders as $order)
-                        <tr>
-                            <td class="px-6 py-3 text-muted">#{{ $order->id }}</td>
-                            <td class="px-6 py-3">{{ $order->product->name ?? '—' }}</td>
-                            <td class="px-6 py-3 text-muted">{{ $order->created_at->format('Y/m/d H:i') }}</td>
-                            <td class="px-6 py-3 {{ $order->needsAttention() ? 'text-danger font-medium' : '' }}">
-                                {{ \App\Models\Order::statusLabels()[$order->status] ?? $order->status }}
-                            </td>
-                            <td class="px-6 py-3">
-                                <a href="{{ $store->isReseller() ? route('website.store.orders.show', [$store->reseller->slug, $order->id]) : route('website.orders.show', $order->id) }}"
-                                   class="text-brand text-sm hover:underline">
-                                    مشاهده
-                                </a>
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-
-            <div class="px-6 py-3 border-t">
-                {{ $orders->links() }}
-            </div>
+            <x-ui.empty-state icon="orders" title="هنوز سفارشی ثبت نشده است">
+                بعد از اولین خرید، وضعیت آن را از همین‌جا پیگیری می‌کنید.
+                <div class="mt-4"><x-ui.button :href="$route('home')" size="sm">مشاهده‌ی تعرفه‌ها</x-ui.button></div>
+            </x-ui.empty-state>
         @endif
-    </div>
+    @else
+        <ul class="space-y-3">
+            @foreach($orders as $order)
+                @php($t = $tracking->track($order))
+                <li class="card">
+                    <div class="flex flex-wrap items-start justify-between gap-2">
+                        <div class="min-w-0">
+                            <a href="{{ $route('orders.show', ['order' => $order->id]) }}" class="font-medium link break-words">{{ $order->product->name ?? '—' }}</a>
+                            <div class="mt-1 text-xs text-muted tabular">
+                                #{{ $order->id }} · {{ \App\Support\JalaliDate::format($order->created_at, true) }} ·
+                                {{ \App\Support\Money::format($tracking->amount($order)) }}
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            @if($t->isRenewal)<x-ui.badge tone="info">تمدید</x-ui.badge>@endif
+                            <x-ui.badge :tone="$t->tone">{{ $t->headline }}</x-ui.badge>
+                        </div>
+                    </div>
+
+                    @if($t->needsSupport)
+                        <p class="mt-2 text-xs text-danger">پرداخت انجام شده ولی سرویس کامل نشده؛ جزئیات و راه پیگیری در صفحه‌ی سفارش است.</p>
+                    @endif
+                </li>
+            @endforeach
+        </ul>
+
+        <div class="mt-4">{{ $orders->links() }}</div>
+    @endif
 @endsection

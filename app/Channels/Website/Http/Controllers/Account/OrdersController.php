@@ -3,7 +3,7 @@
 namespace App\Channels\Website\Http\Controllers\Account;
 
 use App\Models\CustomerAccount;
-use App\Models\Order;
+use App\Services\Core\Customer\OrderTrackingService;
 use App\Services\Core\Store\StoreContext;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -17,21 +17,28 @@ use Illuminate\View\View;
  */
 class OrdersController
 {
+    public function __construct(protected OrderTrackingService $tracking) {}
+
     public function index(Request $request, StoreContext $store): View
     {
         /** @var CustomerAccount|null $customer */
         $customer = $request->attributes->get('customerAccount');
 
-        $orders = Order::query()
-            ->with('product')
-            ->where('customer_account_id', $customer?->id)
-            ->where('reseller_id', $store->resellerId())
-            ->latest('id')
-            ->paginate(15);
+        // B4.5: فیلتر با «گروه» (نه وضعیت خام)؛ مقدار نامعتبر ⇒ همه. عضویت نیست ⇒ فهرست خالی (id=0 هیچ‌چیز نمی‌یابد).
+        $group = $this->tracking->group($request->query('group'));
+        $customerId = (int) $customer?->id;
 
         return view('website.account.orders.index', [
-            'orders' => $orders,
+            'orders' => $this->tracking->paginate($customerId, $store->resellerId(), $group)
+                ->appends(array_filter(['group' => $group])),
+            'counts' => $this->tracking->counts($customerId, $store->resellerId()),
+            'group' => $group,
+            'groupLabels' => OrderTrackingService::groupLabels(),
+            'tracking' => $this->tracking,
             'store' => $store,
+            'route' => fn (string $name, array $params = []) => $store->isReseller()
+                ? route('website.store.'.$name, ['slug' => $store->reseller->slug, ...$params])
+                : route('website.'.$name, $params),
         ]);
     }
 }

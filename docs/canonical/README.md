@@ -19,6 +19,7 @@
 | CUSTOMER-CATALOG-CONTRACT.md | 1.0 (Parent: Master 2.8 / Website 1.9 / Profile 1.0) | Product Catalog: سرویس واحد Core برای سایت و دو ربات، جست‌وجو/فیلتر/مرتب‌سازی، ظرفیت تکمیل، بدون N+1 (B4.1؛ C1–C9) |
 | CUSTOMER-GUEST-CHECKOUT-UX-CONTRACT.md | 1.0 (Parent: Master 2.8 / Website 1.9 / Catalog 1.0) | Guest Checkout UX: مراحل، خلاصه‌ی خرید، ویرایش اطلاعات (Prefill)، محافظ ظرفیت تکمیل، فرم دسترس‌پذیر؛ بدون تغییر قرارداد داده (B4.3؛ U1–U7) |
 | CUSTOMER-PAYMENT-EXPERIENCE-CONTRACT.md | 1.0 (Parent: Master 2.8 / Website 1.9 / Wallet 1.0 / Guest UX 1.0) | Payment Experience: پیش‌فاکتور Core، کمبود دقیق و شارژ یک‌کلیکی، خلاصه‌ی خرید در شارژ، رسید راهنما، صفحه‌ی نتیجه‌ی درگاه، قفل ارسال؛ بدون تغییر منطق مالی (B4.4؛ E1–E7) |
+| CUSTOMER-ORDER-TRACKING-CONTRACT.md | 1.0 (Parent: Master 2.8 / Website 1.9 / Payment Experience 1.0) | Order Tracking: مراحل و وضعیت از Core، فیلتر گروهی فهرست، صفحه‌ی پیگیری با تازه‌سازی خودکار، لینک سرویس هم‌مالک، راه پشتیبانی بدون نشت علت داخلی (B4.5؛ O1–O4) |
 | DATA-RETENTION.md | — | Retention (Guest ۶۰ روز؛ بقیه تأییدشده) |
 
 ## سایر پوشه‌ها
