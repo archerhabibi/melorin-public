@@ -22,6 +22,7 @@
 | CUSTOMER-ORDER-TRACKING-CONTRACT.md | 1.0 (Parent: Master 2.8 / Website 1.9 / Payment Experience 1.0) | Order Tracking: مراحل و وضعیت از Core، فیلتر گروهی فهرست، صفحه‌ی پیگیری با تازه‌سازی خودکار، لینک سرویس هم‌مالک، راه پشتیبانی بدون نشت علت داخلی (B4.5؛ O1–O4) |
 | RESELLER-DASHBOARD-CONTRACT.md | 1.0 (Parent: Master 2.8 / Website 1.9 / Order Tracking 1.0) | Reseller Dashboard: سرویس فقط‌خواندنی Core، بازه‌ی قابل‌انتخاب با مقایسه، نیازمند توجه، روند روزانه، آخرین سفارش‌ها، بدون نوشتن در DB (B5.1؛ D1–D8) |
 | RESELLER-CUSTOMERS-CONTRACT.md | 1.0 (Parent: Master 2.8 / Website 1.9 / Reseller Dashboard 1.0) | Reseller Customers: سرویس فقط‌خواندنی Core، جداسازی سفارش/سرویس/موجودی به فروشگاه همین نماینده، بخش‌بندی (فعال/رو‌به‌انقضا/نیازمند تمدید/بدون خرید/موجودی)، خلاصه، پرونده‌ی مشتری، بدون نوشتن در DB (B5.2؛ C1–C8) |
+| RESELLER-PRODUCTS-CONTRACT.md | 1.0 (Parent: Master 2.8 / Website 1.9 / Reseller Dashboard 1.0 / Reseller Customers 1.0) | Reseller Products: سرویس فقط‌خواندنی Core، وضعیت فروش با تعریف واحد برای فیلتر و خلاصه (هم‌ارز `isSellable`)، سود و محدوده‌ی مجاز قیمت از یک منبع (`PriceBounds`)، قیمت‌گذاری/فعال‌سازی گروهی با ردِ صریح و دلیل، صفحه‌ی جزئیات با سابقه‌ی قیمت؛ بدون Migration (B5.3؛ P1–P9) |
 | DATA-RETENTION.md | — | Retention (Guest ۶۰ روز؛ بقیه تأییدشده) |
 
 ## سایر پوشه‌ها

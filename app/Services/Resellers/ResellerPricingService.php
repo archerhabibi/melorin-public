@@ -9,6 +9,7 @@ use App\Models\Reseller;
 use App\Models\ResellerCategorySetting;
 use App\Models\ResellerProductPrice;
 use App\Services\Core\AuditService;
+use App\Services\Resellers\Products\PriceBounds;
 use Illuminate\Support\Collection;
 use InvalidArgumentException;
 
@@ -50,6 +51,38 @@ class ResellerPricingService
         );
 
         return $setting;
+    }
+
+    /**
+     * فعال‌سازی دوباره با قیمتِ ذخیره‌شده‌ی قبلی (بدون وارد کردن مجدد قیمت).
+     *
+     * قیمتِ قدیمی ممکن است با قوانینِ فعلی (که ادمین از آن زمان عوض کرده) دیگر مجاز نباشد؛ در آن صورت یک قیمت
+     * نامعتبر بی‌صدا دوباره فعال نمی‌شود و نماینده باید قیمت جدید بدهد.
+     *
+     * @throws InvalidArgumentException بدون قیمت ذخیره‌شده، یا قیمتی که دیگر مجاز نیست
+     */
+    public function enable(Reseller $reseller, Product $product): ResellerProductPrice
+    {
+        $stored = ResellerProductPrice::query()
+            ->where('reseller_id', $reseller->id)
+            ->where('product_id', $product->id)
+            ->first();
+
+        if (! $stored) {
+            throw new InvalidArgumentException('برای این محصول هنوز قیمتی ثبت نشده است.');
+        }
+
+        try {
+            return $this->setCustomersPrice($reseller, $product, (int) $stored->customers_price);
+        } catch (InvalidArgumentException $e) {
+            throw new InvalidArgumentException('قیمت قبلی دیگر مجاز نیست: '.$e->getMessage(), previous: $e);
+        }
+    }
+
+    /** محدوده‌ی مجازِ قیمت فروش این محصول برای این نماینده (همان که ثبت قیمت با آن سنجیده می‌شود) */
+    public function priceBounds(Reseller $reseller, Product $product): PriceBounds
+    {
+        return PriceBounds::for($reseller, $product);
     }
 
     public function disable(Reseller $reseller, Product $product): void
@@ -216,34 +249,13 @@ class ResellerPricingService
      */
     protected function assertPriceAllowed(Reseller $reseller, Product $product, int $customersPrice): void
     {
-        $rule = $reseller->min_sale_price_rule ?? [];
-        // مبنای سود همیشه reseller_price است (بند ۱۴): حاشیه یعنی
-        // customers_price − reseller_price. محاسبه‌ی آن با main_price
-        // باعث می‌شد نماینده هیچ‌وقت نتواند در بازه‌ی سودآورِ واقعی
-        // قیمت‌گذاری کند.
-        $resellerPrice = $product->resellerPrice();
-        $profit = $customersPrice - $resellerPrice;
+        // مبنای سود همیشه reseller_price است (بند ۱۴): حاشیه یعنی customers_price − reseller_price.
+        // قوانین و ترتیب و متن پیام‌ها در PriceBounds (B5.3) است تا فرم پنل و ثبت واقعی از یک جا بیایند؛
+        // Rule 8 (کف مطلق reseller_price) هم آنجاست.
+        $violation = PriceBounds::for($reseller, $product)->violation($customersPrice);
 
-        if (isset($rule['min_price']) && $customersPrice < (int) $rule['min_price']) {
-            throw new InvalidArgumentException('قیمت فروش کمتر از حداقل مجاز است.');
-        }
-
-        if (isset($rule['max_price']) && $customersPrice > (int) $rule['max_price']) {
-            throw new InvalidArgumentException('قیمت فروش بیشتر از حداکثر مجاز است.');
-        }
-
-        if (isset($rule['min_profit']) && $profit < (int) $rule['min_profit']) {
-            throw new InvalidArgumentException('سود این قیمت کمتر از حداقل مجاز است.');
-        }
-
-        if (isset($rule['max_profit']) && $profit > (int) $rule['max_profit']) {
-            throw new InvalidArgumentException('سود این قیمت بیشتر از سقف مجاز است.');
-        }
-
-        // Rule 8: reseller_price کف مطلق customers_price است — فروش
-        // زیر قیمت تأمین یعنی نماینده با هر فروش ضرر کند.
-        if ($customersPrice < $resellerPrice) {
-            throw new InvalidArgumentException('قیمت فروش نمی‌تواند کمتر از قیمت نمایندگان (reseller_price) باشد.');
+        if ($violation !== null) {
+            throw new InvalidArgumentException($violation);
         }
     }
 }
