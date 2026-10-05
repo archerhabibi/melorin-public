@@ -20,6 +20,7 @@
 | CUSTOMER-GUEST-CHECKOUT-UX-CONTRACT.md | 1.0 (Parent: Master 2.8 / Website 1.9 / Catalog 1.0) | Guest Checkout UX: مراحل، خلاصه‌ی خرید، ویرایش اطلاعات (Prefill)، محافظ ظرفیت تکمیل، فرم دسترس‌پذیر؛ بدون تغییر قرارداد داده (B4.3؛ U1–U7) |
 | CUSTOMER-PAYMENT-EXPERIENCE-CONTRACT.md | 1.0 (Parent: Master 2.8 / Website 1.9 / Wallet 1.0 / Guest UX 1.0) | Payment Experience: پیش‌فاکتور Core، کمبود دقیق و شارژ یک‌کلیکی، خلاصه‌ی خرید در شارژ، رسید راهنما، صفحه‌ی نتیجه‌ی درگاه، قفل ارسال؛ بدون تغییر منطق مالی (B4.4؛ E1–E7) |
 | CUSTOMER-ORDER-TRACKING-CONTRACT.md | 1.0 (Parent: Master 2.8 / Website 1.9 / Payment Experience 1.0) | Order Tracking: مراحل و وضعیت از Core، فیلتر گروهی فهرست، صفحه‌ی پیگیری با تازه‌سازی خودکار، لینک سرویس هم‌مالک، راه پشتیبانی بدون نشت علت داخلی (B4.5؛ O1–O4) |
+| RESELLER-DASHBOARD-CONTRACT.md | 1.0 (Parent: Master 2.8 / Website 1.9 / Order Tracking 1.0) | Reseller Dashboard: سرویس فقط‌خواندنی Core، بازه‌ی قابل‌انتخاب با مقایسه، نیازمند توجه، روند روزانه، آخرین سفارش‌ها، بدون نوشتن در DB (B5.1؛ D1–D8) |
 | DATA-RETENTION.md | — | Retention (Guest ۶۰ روز؛ بقیه تأییدشده) |
 
 ## سایر پوشه‌ها

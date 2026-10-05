@@ -12,7 +12,6 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
@@ -99,9 +98,8 @@ class ResellerPanelProvider extends PanelProvider
             ->maxContentWidth('full')
             ->discoverResources(in: app_path('Filament/Reseller/Resources'), for: 'App\\Filament\\Reseller\\Resources')
             ->discoverPages(in: app_path('Filament/Reseller/Pages'), for: 'App\\Filament\\Reseller\\Pages')
-            ->pages([
-                Pages\Dashboard::class,
-            ])
+            // داشبورد نماینده (B5.1) = App\Filament\Reseller\Pages\Dashboard که با discoverPages بالا
+            // پیدا می‌شود؛ Pages\Dashboard پیش‌فرض Filament عمداً ثبت نمی‌شود تا دو داشبورد با یک مسیر نباشد.
             ->discoverWidgets(in: app_path('Filament/Reseller/Widgets'), for: 'App\\Filament\\Reseller\\Widgets')
             ->middleware([
                 SecurityHeaders::class,

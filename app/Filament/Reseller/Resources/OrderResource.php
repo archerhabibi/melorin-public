@@ -2,10 +2,10 @@
 
 namespace App\Filament\Reseller\Resources;
 
-use App\Support\Money;
 use App\Filament\Reseller\ResolvesCurrentReseller;
 use App\Filament\Reseller\Resources\OrderResource\Pages;
 use App\Models\Order;
+use App\Support\Money;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -55,7 +55,10 @@ class OrderResource extends Resource
             ->defaultSort('created_at', 'desc')
             ->filters([
                 Tables\Filters\SelectFilter::make('status')->options([
-                    'pending' => 'در انتظار', 'paid' => 'پرداخت‌شده', 'account_created' => 'تحویل‌شده',
+                    'pending' => 'در انتظار', 'paid' => 'پرداخت‌شده', 'provisioning' => 'در حال ساخت',
+                    'account_created' => 'تحویل‌شده',
+                    // B5.1: داشبورد به همین فیلتر لینک می‌دهد؛ بدون این گزینه «نیازمند رسیدگی» در فهرست قابل‌یافتن نبود.
+                    'provision_failed' => 'ساخت ناموفق — نیازمند رسیدگی',
                     'failed' => 'ناموفق', 'refunded' => 'بازگشت‌شده',
                 ]),
             ]);
