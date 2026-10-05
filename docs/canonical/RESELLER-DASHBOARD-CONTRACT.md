@@ -45,7 +45,7 @@
 | `attention_orders` | خطر | سفارش `provision_failed` (همه‌ی زمان‌ها) |
 | `pending_payments` | هشدار | شارژ مشتری با `wallet_owner_type=user`، `reseller_id` همین نماینده، `pending` |
 | `expiring_services` | اطلاع | سرویس غیرآزمایشی با انقضا ≤ ۷ روز |
-Core فقط «هدف» را می‌گوید؛ ساخت URL کار Channel است (Core هیچ Route نمی‌شناسد). `pending_payments` ⇒ صفحه‌ی شارژها؛ `attention_orders` ⇒ سفارش‌ها با فیلتر `provision_failed` (فیلتر وضعیت سفارش‌های نماینده حالا `provisioning` و `provision_failed` را هم دارد). اعتبار و سرویس‌های رو‌به‌انقضا صفحه‌ی مقصدی در پنل ندارند ⇒ بدون لینک.
+Core فقط «هدف» را می‌گوید؛ ساخت URL کار Channel است (Core هیچ Route نمی‌شناسد). `pending_payments` ⇒ صفحه‌ی شارژها؛ `attention_orders` ⇒ سفارش‌ها با فیلتر `provision_failed` (فیلتر وضعیت سفارش‌های نماینده حالا `provisioning` و `provision_failed` را هم دارد). `expiring_services` ⇒ فهرست مشتریان با فیلتر `expiring` (B5.2، `RESELLER-CUSTOMERS-CONTRACT.md` C7). اعتبار صفحه‌ی مقصدی در پنل ندارد ⇒ بدون لینک.
 شارژ اعتبار خودِ نماینده (`wallet_owner_type=reseller`) در شارژهای در انتظار **نمی‌آید**؛ تأییدش با ادمین اصلی است (هم‌قاعده با `PaymentResource` نماینده).
 
 ## D6. صفحه (Filament)

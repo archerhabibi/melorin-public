@@ -3,9 +3,11 @@
 namespace App\Filament\Reseller\Widgets;
 
 use App\Filament\Reseller\ResolvesCurrentReseller;
+use App\Filament\Reseller\Resources\CustomerResource;
 use App\Filament\Reseller\Resources\OrderResource;
 use App\Filament\Reseller\Resources\PaymentResource;
 use App\Models\Order;
+use App\Services\Resellers\Customers\CustomerSegment;
 use App\Services\Resellers\Dashboard\ResellerAlert;
 use App\Services\Resellers\Dashboard\ResellerDashboardService;
 use Filament\Widgets\Widget;
@@ -45,6 +47,9 @@ class AttentionAlerts extends Widget
             ResellerAlert::TARGET_PAYMENTS => PaymentResource::getUrl('index'),
             ResellerAlert::TARGET_ATTENTION_ORDERS => OrderResource::getUrl('index', [
                 'tableFilters' => ['status' => ['value' => Order::STATUS_PROVISION_FAILED]],
+            ]),
+            ResellerAlert::TARGET_EXPIRING_SERVICES => CustomerResource::getUrl('index', [
+                'tableFilters' => ['segment' => ['value' => CustomerSegment::Expiring->value]],
             ]),
             default => null,
         };
