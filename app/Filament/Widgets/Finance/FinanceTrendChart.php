@@ -15,6 +15,12 @@ class FinanceTrendChart extends ChartWidget
 {
     use InteractsWithPageFilters;
 
+    /**
+     * Avoid dispatching Filament's internal __lazyLoad hook to the parent
+     * page when running older Livewire/Filament combinations.
+     */
+    protected static bool $isLazy = false;
+
     protected static ?string $heading = 'روند درآمد، ورودی نقد و بازگشت‌ها';
 
     protected static ?int $sort = 50;

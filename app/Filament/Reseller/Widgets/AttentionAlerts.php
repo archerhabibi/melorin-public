@@ -20,6 +20,12 @@ class AttentionAlerts extends Widget
 {
     use ResolvesCurrentReseller;
 
+    /**
+     * Avoid dispatching Filament's internal __lazyLoad hook to the parent
+     * page when running older Livewire/Filament combinations.
+     */
+    protected static bool $isLazy = false;
+
     protected static string $view = 'filament.reseller.widgets.attention-alerts';
 
     protected static ?int $sort = 10;

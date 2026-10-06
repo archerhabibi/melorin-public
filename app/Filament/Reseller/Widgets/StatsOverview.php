@@ -21,6 +21,12 @@ class StatsOverview extends BaseWidget
     use InteractsWithPageFilters;
     use ResolvesCurrentReseller;
 
+    /**
+     * Avoid dispatching Filament's internal __lazyLoad hook to the parent
+     * page when running older Livewire/Filament combinations.
+     */
+    protected static bool $isLazy = false;
+
     protected static ?int $sort = 20;
 
     protected function getColumns(): int

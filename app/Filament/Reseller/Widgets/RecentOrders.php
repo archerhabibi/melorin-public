@@ -15,6 +15,12 @@ class RecentOrders extends BaseWidget
 {
     use ResolvesCurrentReseller;
 
+    /**
+     * Avoid dispatching Filament's internal __lazyLoad hook to the parent
+     * page when running older Livewire/Filament combinations.
+     */
+    protected static bool $isLazy = false;
+
     protected static ?string $heading = 'آخرین سفارش‌ها';
 
     protected static ?int $sort = 40;

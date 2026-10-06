@@ -17,6 +17,12 @@ class RevenueTrendChart extends ChartWidget
     use InteractsWithPageFilters;
     use ResolvesCurrentReseller;
 
+    /**
+     * Avoid dispatching Filament's internal __lazyLoad hook to the parent
+     * page when running older Livewire/Filament combinations.
+     */
+    protected static bool $isLazy = false;
+
     protected static ?string $heading = 'روند فروش و سود';
 
     protected static ?int $sort = 30;

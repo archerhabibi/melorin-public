@@ -12,6 +12,12 @@ class PaymentMethodBreakdown extends Widget
 {
     use InteractsWithPageFilters;
 
+    /**
+     * Avoid dispatching Filament's internal __lazyLoad hook to the parent
+     * page when running older Livewire/Filament combinations.
+     */
+    protected static bool $isLazy = false;
+
     protected static string $view = 'filament.widgets.finance.payment-methods';
 
     protected static ?int $sort = 60;

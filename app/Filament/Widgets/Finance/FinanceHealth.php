@@ -16,6 +16,12 @@ use Filament\Widgets\Widget;
  */
 class FinanceHealth extends Widget
 {
+    /**
+     * Avoid dispatching Filament's internal __lazyLoad hook to the parent
+     * page when running older Livewire/Filament combinations.
+     */
+    protected static bool $isLazy = false;
+
     protected static string $view = 'filament.widgets.finance.finance-health';
 
     protected static ?int $sort = 10;

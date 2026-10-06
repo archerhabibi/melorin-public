@@ -368,7 +368,7 @@ class GlobalFinanceService
             ->selectRaw('coalesce(sum(case when '.$this->cashInSql().' then 1 else 0 end), 0) as cash_in_count')
             ->selectRaw('coalesce(sum(case when '.self::STORE." and {$t}.type = 'charge' and {$t}.amount > 0 then {$t}.amount else 0 end), 0) as store_cash_in")
             ->selectRaw('coalesce(sum(case when '.$this->paymentRefundSql()." then -{$t}.amount else 0 end), 0) as payment_refunds", [$payment])
-            ->selectRaw("coalesce(sum(case when {$main} and {$t}.type = 'admin_adjust' and ({$t}.reference_type is null or {$t}.reference_type <> ?) then {$t}.amount else 0 end), 0) as manual", [$payment])
+            ->selectRaw("coalesce(sum(case when {$main} and {$t}.type = 'admin_adjust' and ({$t}.reference_type is null or {$t}.reference_type <> ?) then {$t}.amount else 0 end), 0) as manual_adjustments", [$payment])
             ->selectRaw("coalesce(sum(case when {$main} and {$t}.type = 'commission' and {$t}.amount > 0 then {$t}.amount else 0 end), 0) as commissions")
             ->selectRaw("coalesce(sum(case when {$main} and {$t}.type = 'referral_bonus' and {$t}.amount > 0 then {$t}.amount else 0 end), 0) as bonuses")
             ->selectRaw('coalesce(sum(case when '.$this->orderRefundSql()." then {$t}.amount else 0 end), 0) as order_refunds", [$order])
@@ -387,7 +387,7 @@ class GlobalFinanceService
             cashIn: (int) ($ledger->cash_in ?? 0),
             cashInCount: (int) ($ledger->cash_in_count ?? 0),
             paymentRefunds: (int) ($ledger->payment_refunds ?? 0),
-            manualAdjustments: (int) ($ledger->manual ?? 0),
+            manualAdjustments: (int) ($ledger->manual_adjustments ?? 0),
             resellerStoreCashIn: (int) ($ledger->store_cash_in ?? 0),
         );
     }

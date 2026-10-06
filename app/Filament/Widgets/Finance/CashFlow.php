@@ -21,6 +21,12 @@ class CashFlow extends BaseWidget
 
     protected ?string $heading = 'جریان نقد';
 
+    /**
+     * Avoid dispatching Filament's internal __lazyLoad hook to the parent
+     * page when running older Livewire/Filament combinations.
+     */
+    protected static bool $isLazy = false;
+
     protected static ?int $sort = 30;
 
     protected function getColumns(): int
