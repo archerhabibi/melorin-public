@@ -7,6 +7,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Commission extends Model
 {
+    /** درصدی روی هر خرید زیرمجموعه (Master §11) */
+    public const TYPE_ONGOING = 'ongoing_commission';
+
+    /** پاداش ثابت اولین خرید زیرمجموعه؛ مفهومی مستقل از کمیسیون (Master §11) */
+    public const TYPE_FIRST_PURCHASE = 'first_purchase_bonus';
+
+    public const STATUS_PENDING = 'pending';
+
+    public const STATUS_PAID = 'paid';
+
     protected $fillable = [
         'referrer_id',
         'referred_user_id',
@@ -39,5 +49,31 @@ class Commission extends Model
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);
+    }
+
+    public function referrerAccount(): BelongsTo
+    {
+        return $this->belongsTo(CustomerAccount::class, 'referrer_customer_account_id');
+    }
+
+    public function referredAccount(): BelongsTo
+    {
+        return $this->belongsTo(CustomerAccount::class, 'referred_customer_account_id');
+    }
+
+    public static function typeLabels(): array
+    {
+        return [
+            self::TYPE_ONGOING => 'کمیسیون خرید',
+            self::TYPE_FIRST_PURCHASE => 'پاداش معرفی',
+        ];
+    }
+
+    public static function statusLabels(): array
+    {
+        return [
+            self::STATUS_PAID => 'پرداخت‌شده',
+            self::STATUS_PENDING => 'در انتظار',
+        ];
     }
 }
