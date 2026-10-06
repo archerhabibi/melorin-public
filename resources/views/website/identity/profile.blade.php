@@ -76,7 +76,8 @@
         </form>
 
         <dl class="mt-5 space-y-2 border-t border-border pt-4 text-xs text-muted">
-            @if($overview->memberSince)
+            {{-- B5.7: در فروشگاه نماینده نام پلتفرم (Melorin) به مشتری نشان داده نمی‌شود؛ فقط عضویت در همین فروشگاه. --}}
+            @if($overview->memberSince && ! $isReseller)
                 <div class="flex justify-between"><dt>عضو Melorin از</dt><dd>{{ \App\Support\JalaliDate::format($overview->memberSince) }}</dd></div>
             @endif
             @if($overview->storeMemberSince)

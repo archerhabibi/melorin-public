@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Payment;
 use App\Services\Core\Payments\InvalidGatewayCallbackException;
 use App\Services\Core\PaymentService;
+use App\Services\Resellers\Branding\StoreBrandResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -23,7 +24,7 @@ use Illuminate\Support\Facades\Log;
  */
 class PaymentCallbackController
 {
-    public function zarinpal(Request $request, PaymentService $paymentService)
+    public function zarinpal(Request $request, PaymentService $paymentService, StoreBrandResolver $brands)
     {
         $paymentId = $request->query('payment_id');
 
@@ -77,6 +78,8 @@ class PaymentCallbackController
                 ? 'پرداخت با موفقیت تأیید و کیف پول شما شارژ شد.'
                 : 'پرداخت تأیید نشد یا توسط شما لغو شد.',
             'amount' => $payment->amount,
+            // B5.7: صفحه‌ی نتیجه با رنگ/نام فروشگاه مبدأ (نماینده)؛ Main = برند پیش‌فرض. فقط‌خواندنی و بدون داده‌ی شخصی.
+            'brand' => $brands->forReseller($payment->reseller_id ? $payment->reseller : null),
             // شارژ اعتبار خودِ نماینده (wallet_owner_type=reseller) در پنل نماینده است؛ لینک کیف‌پول مشتری برایش بی‌معناست.
             ...($payment->wallet_owner_type === 'reseller' ? [] : [
                 'walletUrl' => $link('wallet.show'),

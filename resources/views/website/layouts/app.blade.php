@@ -3,12 +3,12 @@
 {{--
     Branding (نام نمایشی/لوگو/رنگ/تماس)
     و منوی اختصاصی نماینده. برندینگِ Main همیشه پیش‌فرض‌های ثابت است؛
-    برای نماینده از ResellerWebsiteSetting::brandingFor() می‌آید که خودش
-    fallback امن دارد (نمایندهٔ بدون تنظیمات هم به همان شکلِ قبلی دیده
-    می‌شود).
+    برای نماینده از StoreBrandResolver (B5.7) می‌آید که خودش fallback امن
+    دارد (نمایندهٔ بدون تنظیمات هم به همان شکلِ قبلی دیده می‌شود).
 --}}
 @php
-    $branding = \App\Models\ResellerWebsiteSetting::brandingFor($storeContext->isReseller() ? $storeContext->reseller : null);
+    // B5.7: یک منبع واحد برندینگ (StoreBrandResolver)؛ در طول Request فقط یک بار خوانده می‌شود.
+    $brand = app(\App\Services\Resellers\Branding\StoreBrandResolver::class)->forContext($storeContext);
     $canManageStore = $storeContext->isReseller()
         && auth()->check()
         && app(\App\Services\Resellers\ResellerService::class)->isAdminOf($storeContext->reseller, auth()->user());
@@ -18,16 +18,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    {{-- بند ۹.۷ (SEO): صفحات نماینده پیش‌فرض noindex مگر خودش بخواهد. --}}
-    @if(isset($storeContext) && $storeContext->isReseller())
-        <meta name="robots" content="noindex, nofollow">
+    {{-- بند ۹.۷ (SEO): صفحات نماینده پیش‌فرض noindex مگر خودش (در تنظیمات فروشگاه) ایندکس را روشن کرده باشد (B5.7). --}}
+    {{-- قاعده‌ی سخت‌گیرانه‌تر برنده است: فروشگاهِ غیرایندکس `noindex, nofollow` دارد حتی اگر صفحه `@section('robots')` بدهد. --}}
+    @php($robots = $brand->robots() ?? (trim($__env->yieldContent('robots')) ?: null))
+    @if($robots)
+        <meta name="robots" content="{{ $robots }}">
     @endif
+    @if($brand->description())
+        <meta name="description" content="{{ $brand->description() }}">
+    @endif
+    <meta name="theme-color" content="{{ $brand->color }}">
 
-    <title>@yield('title', isset($storeContext) && $storeContext->isReseller() ? $branding['name'] : 'Melorin')</title>
+    <title>@yield('title', $brand->name)</title>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <script src="{{ asset('js/theme-init.js') }}"></script>
-    <style>:root { --brand: {{ $branding['color'] }}; --brand-contrast: {{ \App\Support\Branding\BrandColor::onColor($branding['color']) }}; }</style>
+    <style>:root { --brand: {{ $brand->color }}; --brand-contrast: {{ $brand->onColor() }}; }</style>
     @stack('head')
 </head>
 <body class="min-h-screen flex flex-col">
@@ -39,10 +45,10 @@
         <div class="@yield('container', 'max-w-5xl') mx-auto px-4 py-3 flex items-center justify-between">
             <a href="{{ $storeContext->isReseller() ? route('website.store.home', $storeContext->reseller->slug) : route('website.home') }}"
                class="text-brand font-bold text-lg flex items-center gap-2">
-                @if($storeContext->isReseller() && $branding['logo_url'])
-                    <img src="{{ $branding['logo_url'] }}" alt="{{ $branding['name'] }}" class="h-8 w-8 rounded object-contain">
+                @if($brand->logoUrl)
+                    <img src="{{ $brand->logoUrl }}" alt="{{ $brand->name }}" class="h-8 w-8 rounded object-contain">
                 @endif
-                {{ $storeContext->isReseller() ? $branding['name'] : 'Melorin' }}
+                {{ $brand->name }}
             </a>
 
             <nav class="flex flex-wrap items-center justify-end gap-x-4 gap-y-2 text-sm" aria-label="منوی اصلی">
@@ -91,14 +97,14 @@
     </main>
 
     <footer class="border-t border-border bg-surface py-6 text-center text-xs text-subtle">
-        <div>© {{ now()->format('Y') }} {{ $storeContext->isReseller() ? $branding['name'] : 'Melorin' }}</div>
+        <div>© {{ now()->format('Y') }} {{ $brand->name }}</div>
 
         {{-- بند ۴۶: اطلاعات تماس نماینده، فقط اگر خودش ثبت کرده باشد --}}
-        @if($storeContext->isReseller() && ($branding['phone'] || $branding['email']))
+        @if($brand->hasContact())
             <div class="mt-1">
-                @if($branding['phone']) <span>{{ $branding['phone'] }}</span> @endif
-                @if($branding['phone'] && $branding['email']) <span class="mx-1">·</span> @endif
-                @if($branding['email']) <span>{{ $branding['email'] }}</span> @endif
+                @if($brand->phone) <span>{{ $brand->phone }}</span> @endif
+                @if($brand->phone && $brand->email) <span class="mx-1">·</span> @endif
+                @if($brand->email) <span>{{ $brand->email }}</span> @endif
             </div>
         @endif
     </footer>

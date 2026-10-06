@@ -4,7 +4,7 @@
 
 {{-- نتیجه‌ی جست‌وجو/فیلتر یک صفحه‌ی «مشتق» است، نه صفحه‌ی اصلی؛ ایندکس نشود (لینک‌ها دنبال شوند). --}}
 @if($catalog->query->isFiltered() || $catalog->query->sort !== \App\Services\Core\Catalog\CatalogQuery::SORT_DEFAULT)
-    @push('head')<meta name="robots" content="noindex,follow">@endpush
+    @section('robots', 'noindex,follow')
 @endif
 
 @section('content')

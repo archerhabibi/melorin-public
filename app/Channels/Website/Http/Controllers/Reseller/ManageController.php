@@ -2,19 +2,19 @@
 
 namespace App\Channels\Website\Http\Controllers\Reseller;
 
-use App\Support\Money;
 use App\Models\Product;
 use App\Models\Reseller;
 use App\Models\ResellerProductPrice;
-use App\Models\ResellerWebsiteSetting;
 use App\Services\Core\Store\StoreContext;
 use App\Services\Core\WalletService;
+use App\Services\Resellers\Branding\ResellerBrandingService;
+use App\Services\Resellers\Branding\StoreBrandResolver;
 use App\Services\Resellers\ResellerCustomerService;
 use App\Services\Resellers\ResellerPricingService;
 use App\Services\Resellers\ResellerService;
+use App\Support\Money;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use InvalidArgumentException;
 
@@ -41,6 +41,8 @@ class ManageController
         protected ResellerCustomerService $customerService,
         protected ResellerService $resellers,
         protected WalletService $wallet,
+        protected ResellerBrandingService $branding,
+        protected StoreBrandResolver $brands,
     ) {}
 
     /**
@@ -191,7 +193,7 @@ class ManageController
         return back()->with('status', 'محصول برای فروشگاه شما غیرفعال شد.');
     }
 
-    /** بند ۴۶: مشاهده/ویرایشِ Branding (نام نمایشی، لوگو، رنگ، اطلاعات تماس). */
+    /** بند ۴۶: مشاهده/ویرایشِ Branding (نام نمایشی، لوگو، رنگ، تماس) + تنظیمات White Label (B5.7: ایندکس/توضیح متا). */
     public function branding(StoreContext $store): View
     {
         $reseller = $this->authorize($store);
@@ -199,8 +201,9 @@ class ManageController
         return view('website.reseller.manage.branding', [
             'store' => $store,
             'reseller' => $reseller,
-            'branding' => ResellerWebsiteSetting::brandingFor($reseller),
-            'setting' => ResellerWebsiteSetting::forReseller($reseller),
+            'brand' => $this->brands->forReseller($reseller),
+            'setting' => $this->branding->setting($reseller),
+            'readiness' => $this->branding->readiness($reseller),
         ]);
     }
 
@@ -208,33 +211,19 @@ class ManageController
     {
         $reseller = $this->authorize($store);
 
-        $data = $request->validate([
-            'display_name' => ['nullable', 'string', 'max:100'],
-            'brand_color' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
-            'contact_phone' => ['nullable', 'string', 'max:30'],
-            'contact_email' => ['nullable', 'email', 'max:190'],
-            'about_text' => ['nullable', 'string', 'max:2000'],
-            'logo' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp', 'max:1024'],
-        ]);
+        $data = $request->validate($this->branding->rules());
 
-        $setting = ResellerWebsiteSetting::forReseller($reseller);
-
-        if ($request->hasFile('logo')) {
-            // لوگوی قبلی (اگر بود) پاک می‌شود تا دیسکِ عمومی انباشته نشود.
-            if ($setting?->logo_path) {
-                Storage::disk('public')->delete($setting->logo_path);
-            }
-
-            $data['logo_path'] = $request->file('logo')->store('reseller-logos/'.$reseller->id, 'public');
-        }
-
-        unset($data['logo']);
-
-        ResellerWebsiteSetting::query()->updateOrCreate(
-            ['reseller_id' => $reseller->id],
+        // هیچ Business Rule اینجا نیست: پاک‌سازی، لوگو، تشخیص «بدون تغییر» و Audit همه در Core است.
+        $changed = $this->branding->update(
+            $reseller,
+            $request->user(),
             $data,
+            $request->file('logo'),
+            (bool) ($data['remove_logo'] ?? false),
         );
 
-        return back()->with('status', 'اطلاعات فروشگاه به‌روزرسانی شد.');
+        return back()->with('status', $changed === []
+            ? 'تغییری برای ذخیره وجود نداشت.'
+            : 'اطلاعات فروشگاه به‌روزرسانی شد.');
     }
 }

@@ -5,8 +5,7 @@ namespace App\Providers\Filament;
 use App\Filament\Support\PanelDefaults;
 use App\Http\Middleware\SecurityHeaders;
 use App\Models\Reseller;
-use App\Models\ResellerWebsiteSetting;
-use App\Support\Branding\BrandColor;
+use App\Services\Resellers\Branding\StoreBrandResolver;
 use Filament\Facades\Filament;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -80,13 +79,29 @@ class ResellerPanelProvider extends PanelProvider
             // B1.4: رنگ اصلی پنل = رنگ Brand خودِ نماینده (همان منبعی که Website می‌خواند).
             // Closure است چون Tenant فقط هنگام رندر مشخص است؛ در صفحه‌ی ورود (بدون Tenant) پیش‌فرض می‌ماند.
             ->colors(fn (): array => ($tenant = Filament::getTenant())
-                ? ['primary' => BrandColor::readableWithWhite(ResellerWebsiteSetting::brandingFor($tenant)['color'])]
+                ? ['primary' => app(StoreBrandResolver::class)->forReseller($tenant)->panelColor()]
                 : [])
             // نامِ برند در پنل نماینده، نامِ خودِ نماینده است نه
             // «ملورین» — نماینده این پنل را به‌عنوان فروشگاه خودش
             // می‌بیند. از Tenant فعلی خوانده می‌شود، و در صفحه‌ی ورود
             // (که هنوز Tenant حل نشده) به یک نام عمومی سقوط می‌کند.
-            ->brandName(fn () => Filament::getTenant()?->getFilamentName() ?? 'پنل نمایندگی')
+            // B5.7: نام و لوگوی پنل از همان منبع واحدِ Website (StoreBrandResolver)؛ اگر نماینده نام نمایشی
+            // نداده باشد همان `getFilamentName()` قبلی می‌ماند. لوگو فقط وقتی هست که خودش آپلود کرده باشد.
+            ->brandName(function (): string {
+                $tenant = Filament::getTenant();
+
+                if (! $tenant) {
+                    return 'پنل نمایندگی';
+                }
+
+                $brand = app(StoreBrandResolver::class)->forReseller($tenant);
+
+                return $brand->nameIsCustom ? $brand->name : $tenant->getFilamentName();
+            })
+            ->brandLogo(fn (): ?string => ($tenant = Filament::getTenant())
+                ? app(StoreBrandResolver::class)->forReseller($tenant)->logoUrl
+                : null)
+            ->brandLogoHeight('2rem')
             ->navigationGroups([
                 'فروشگاه من',
                 'مشتریان و فروش',

@@ -9,9 +9,13 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
-    <title>نتیجه پرداخت</title>
+    <title>نتیجه پرداخت@isset($brand) — {{ $brand->name }}@endisset</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <script src="{{ asset('js/theme-init.js') }}"></script>
+    {{-- B5.7: رنگ فروشگاه مبدأ (فقط وقتی پرداخت از مسیر واقعی آمده؛ خطاهای عمومی بدون Payment برند ندارند) --}}
+    @isset($brand)
+        <style>:root { --brand: {{ $brand->color }}; --brand-contrast: {{ $brand->onColor() }}; }</style>
+    @endisset
 </head>
 <body class="min-h-screen flex items-center justify-center px-4 py-8">
     <main class="w-full max-w-md" role="main">
