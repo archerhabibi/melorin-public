@@ -47,5 +47,3 @@ auth.json
 
 # فایل webhook  برای وصل شدن به تلگرام !
 webhook.json
-
-documents/

@@ -25,6 +25,9 @@ final class ExecutiveAlert
 
     public const TARGET_RESELLERS = 'resellers';
 
+    /** مقصد پیمایشی ندارد (مثلاً ناترازی دفتر؛ رسیدگی با Preflight) — B7.3 */
+    public const TARGET_NONE = 'none';
+
     public function __construct(
         public readonly string $key,
         public readonly string $tone,
