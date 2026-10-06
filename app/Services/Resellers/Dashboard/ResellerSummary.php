@@ -2,6 +2,7 @@
 
 namespace App\Services\Resellers\Dashboard;
 
+use App\Support\PercentChange;
 use Carbon\CarbonImmutable;
 
 /**
@@ -18,24 +19,12 @@ final class ResellerSummary
     ) {}
 
     /**
-     * درصد تغییر نسبت به دوره‌ی قبل (عدد صحیح، گرد به نزدیک‌ترین).
-     * بدون مبنا (دوره‌ی قبل صفر) ⇒ null — «۰ → X» درصدِ بی‌معنی است و نباید «∞٪» نشان داده شود.
+     * درصد تغییر نسبت به دوره‌ی قبل — محاسبه‌ی واحد در `App\Support\PercentChange` (B7.1).
+     * بدون مبنا (دوره‌ی قبل صفر) ⇒ null.
      */
     public static function percentChange(int $current, int $previous): ?int
     {
-        if ($previous === 0) {
-            return null;
-        }
-
-        $diff = $current - $previous;
-        $base = abs($previous);
-
-        // محاسبه‌ی صحیح با گرد؛ برای مقادیر بسیار بزرگ (سرریز ×۱۰۰) از مقیاس‌کردن مبنا استفاده می‌شود.
-        $percent = abs($diff) > intdiv(PHP_INT_MAX, 100)
-            ? intdiv(abs($diff), max(1, intdiv($base, 100)))
-            : intdiv(abs($diff) * 100 + intdiv($base, 2), $base);
-
-        return $diff < 0 ? -$percent : $percent;
+        return PercentChange::of($current, $previous);
     }
 
     public function revenueChange(): ?int

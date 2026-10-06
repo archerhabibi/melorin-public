@@ -5,8 +5,8 @@ namespace Tests\Feature;
 use App\Channels\TelegramBot\Handlers\MiscHandler;
 use App\Filament\Pages\PurchaseRulesSettings;
 use App\Filament\Resources\UserResource\Pages\ListUsers;
-use App\Filament\Widgets\SalesChartWidget;
-use App\Filament\Widgets\SalesOverviewWidget;
+use App\Filament\Widgets\Executive\RevenueTrendChart;
+use App\Filament\Widgets\Executive\StatsOverview;
 use App\Models\Admin;
 use App\Models\BotContentSetting;
 use App\Models\Order;
@@ -119,7 +119,7 @@ class AdminPanelUpdatesTest extends TestCase
             'created_at' => today(),
         ]);
 
-        Livewire::test(SalesOverviewWidget::class)->assertSuccessful();
-        Livewire::test(SalesChartWidget::class)->assertSuccessful();
+        Livewire::test(StatsOverview::class)->assertSuccessful();
+        Livewire::test(RevenueTrendChart::class)->assertSuccessful();
     }
 }
