@@ -14,7 +14,7 @@
     <script src="{{ asset('js/theme-init.js') }}"></script>
     {{-- B5.7: رنگ فروشگاه مبدأ (فقط وقتی پرداخت از مسیر واقعی آمده؛ خطاهای عمومی بدون Payment برند ندارند) --}}
     @isset($brand)
-        <style>:root { --brand: {{ $brand->color }}; --brand-contrast: {{ $brand->onColor() }}; }</style>
+        @include('website.partials.brand-head', ['brand' => $brand])
     @endisset
 </head>
 <body class="min-h-screen flex items-center justify-center px-4 py-8">

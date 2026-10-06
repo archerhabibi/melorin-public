@@ -9,6 +9,7 @@ use App\Services\Core\AuditService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 /**
@@ -19,6 +20,8 @@ use Throwable;
  *  - متن‌ها از نویسه‌ی کنترلی/صفر-عرض/جهت‌دهی دوطرفه پاک می‌شوند (نیم‌فاصله‌ی فارسی می‌ماند)؛ تهی ⇒ NULL.
  *  - لوگو: فایل جدید **اول** ذخیره می‌شود و فایل قبلی **بعد از موفقیتِ DB** پاک می‌شود (قبلاً ترتیب برعکس بود:
  *    اگر ذخیره‌ی جدید خطا می‌داد، لوگوی قبلی بی‌دلیل از بین رفته بود). حذف لوگو = `removeLogo`.
+ *  - B6.2: همین قاعده برای سه «دارایی تصویری» (`logo`، `logo_dark`، `favicon`) یکسان است؛ لوگوی تیره بدون لوگوی
+ *    اصلی پذیرفته نمی‌شود و حذف لوگوی اصلی، نسخه‌ی تیره‌اش را هم پاک می‌کند (تنها نمی‌ماند).
  *  - بدون تغییر واقعی ⇒ نه نوشتن، نه Audit.
  *  - Audit `reseller.branding.updated` فقط با **نام فیلدها** (مقدار تماس/متن ثبت نمی‌شود).
  */
@@ -27,6 +30,19 @@ class ResellerBrandingService
     public const LOGO_MAX_KB = 1024;
 
     public const LOGO_MAX_PIXELS = 2000;
+
+    public const FAVICON_MAX_KB = 200;
+
+    public const FAVICON_MIN_PIXELS = 32;
+
+    public const FAVICON_MAX_PIXELS = 512;
+
+    /** ستون ذخیره و پوشه‌ی هر دارایی تصویری. */
+    private const ASSETS = [
+        'logo' => ['column' => 'logo_path', 'dir' => 'reseller-logos'],
+        'logo_dark' => ['column' => 'logo_dark_path', 'dir' => 'reseller-logos'],
+        'favicon' => ['column' => 'favicon_path', 'dir' => 'reseller-favicons'],
+    ];
 
     public const TEXT_FIELDS = ['display_name', 'contact_phone', 'contact_email', 'about_text', 'meta_description'];
 
@@ -55,6 +71,18 @@ class ResellerBrandingService
                 'nullable', 'image', 'mimes:png,jpg,jpeg,webp', 'max:'.self::LOGO_MAX_KB,
                 'dimensions:max_width='.self::LOGO_MAX_PIXELS.',max_height='.self::LOGO_MAX_PIXELS,
             ],
+            'remove_logo_dark' => ['nullable', 'boolean'],
+            'logo_dark' => [
+                'nullable', 'image', 'mimes:png,jpg,jpeg,webp', 'max:'.self::LOGO_MAX_KB,
+                'dimensions:max_width='.self::LOGO_MAX_PIXELS.',max_height='.self::LOGO_MAX_PIXELS,
+            ],
+            'remove_favicon' => ['nullable', 'boolean'],
+            // Favicon مربعی و کوچک؛ SVG/ICO عمداً پذیرفته نمی‌شود (همان سیاست لوگو).
+            'favicon' => [
+                'nullable', 'image', 'mimes:png,webp', 'max:'.self::FAVICON_MAX_KB,
+                'dimensions:ratio=1,min_width='.self::FAVICON_MIN_PIXELS.',min_height='.self::FAVICON_MIN_PIXELS
+                    .',max_width='.self::FAVICON_MAX_PIXELS.',max_height='.self::FAVICON_MAX_PIXELS,
+            ],
         ];
     }
 
@@ -71,14 +99,32 @@ class ResellerBrandingService
     /**
      * @param  array<string, mixed>  $data  فقط کلیدهای فهرست‌سفید خوانده می‌شود
      * @return list<string> نام فیلدهای واقعاً تغییرکرده (خالی = هیچ تغییری)
+     *
+     * @throws ValidationException لوگوی تیره بدون هیچ لوگوی اصلی
      */
-    public function update(Reseller $reseller, User $actor, array $data, ?UploadedFile $logo = null, bool $removeLogo = false): array
-    {
-        $newLogoPath = null;
-        $oldLogoToDelete = null;
+    public function update(
+        Reseller $reseller,
+        User $actor,
+        array $data,
+        ?UploadedFile $logo = null,
+        bool $removeLogo = false,
+        ?UploadedFile $logoDark = null,
+        bool $removeLogoDark = false,
+        ?UploadedFile $favicon = null,
+        bool $removeFavicon = false,
+    ): array {
+        /** @var array<string, array{0: ?UploadedFile, 1: bool}> $assets */
+        $assets = [
+            'logo' => [$logo, $removeLogo],
+            'logo_dark' => [$logoDark, $removeLogoDark],
+            'favicon' => [$favicon, $removeFavicon],
+        ];
+
+        $newPaths = [];
+        $oldToDelete = [];
 
         try {
-            $changed = DB::transaction(function () use ($reseller, $data, $logo, $removeLogo, &$newLogoPath, &$oldLogoToDelete): array {
+            $changed = DB::transaction(function () use ($reseller, $data, $assets, &$newPaths, &$oldToDelete): array {
                 $setting = ResellerWebsiteSetting::query()->where('reseller_id', $reseller->id)->lockForUpdate()->first();
 
                 $incoming = [];
@@ -100,13 +146,30 @@ class ResellerBrandingService
                     $incoming['allow_indexing'] = filter_var($data['allow_indexing'], FILTER_VALIDATE_BOOLEAN);
                 }
 
-                $oldPath = $setting?->logo_path;
+                // ─── دارایی‌های تصویری (لوگو، لوگوی تیره، Favicon) ───
+                // لوگوی اصلی پس از این درخواست وجود دارد؟ (لوگوی تیره فقط کنار آن معنی دارد)
+                [$logoFile, $logoRemoved] = $assets['logo'];
+                $oldLogo = $setting?->logo_path;
+                $logoWillExist = $logoFile !== null || (! $logoRemoved && $oldLogo);
 
-                if ($logo) {
-                    $newLogoPath = $logo->store('reseller-logos/'.$reseller->id, 'public');
-                    $incoming['logo_path'] = $newLogoPath;
-                } elseif ($removeLogo && $oldPath) {
-                    $incoming['logo_path'] = null;
+                if ($assets['logo_dark'][0] !== null && ! $logoWillExist) {
+                    throw ValidationException::withMessages([
+                        'logo_dark' => 'لوگوی حالت تیره فقط کنار لوگوی اصلی معنی دارد؛ ابتدا لوگوی اصلی را بارگذاری کنید.',
+                    ]);
+                }
+
+                foreach ($assets as $slot => [$file, $remove]) {
+                    $column = self::ASSETS[$slot]['column'];
+                    $old = $setting?->{$column};
+
+                    if ($file) {
+                        $path = $file->store(self::ASSETS[$slot]['dir'].'/'.$reseller->id, 'public');
+                        $newPaths[] = $path;
+                        $incoming[$column] = $path;
+                    } elseif (($remove || ($slot === 'logo_dark' && ! $logoWillExist)) && $old) {
+                        // نسخه‌ی تیره‌ی بی‌لوگوی اصلی تنها نمی‌ماند.
+                        $incoming[$column] = null;
+                    }
                 }
 
                 $changed = [];
@@ -133,16 +196,20 @@ class ResellerBrandingService
                     array_intersect_key($incoming, array_flip($changed)),
                 );
 
-                if (in_array('logo_path', $changed, true) && $oldPath) {
-                    $oldLogoToDelete = $oldPath;
+                foreach (self::ASSETS as $meta) {
+                    $old = $setting?->{$meta['column']};
+
+                    if ($old && in_array($meta['column'], $changed, true)) {
+                        $oldToDelete[] = $old;
+                    }
                 }
 
                 return $changed;
             });
         } catch (Throwable $e) {
-            // DB شکست خورد ⇒ فایلِ تازه ذخیره‌شده را رها نکن؛ لوگوی قبلی دست‌نخورده می‌ماند.
-            if ($newLogoPath) {
-                Storage::disk('public')->delete($newLogoPath);
+            // DB (یا اعتبارسنجی) شکست خورد ⇒ فایل‌های تازه ذخیره‌شده را رها نکن؛ دارایی‌های قبلی دست‌نخورده می‌مانند.
+            foreach ($newPaths as $path) {
+                Storage::disk('public')->delete($path);
             }
 
             throw $e;
@@ -152,8 +219,8 @@ class ResellerBrandingService
             return [];
         }
 
-        if ($oldLogoToDelete) {
-            Storage::disk('public')->delete($oldLogoToDelete);
+        foreach ($oldToDelete as $path) {
+            Storage::disk('public')->delete($path);
         }
 
         $this->resolver->forget($reseller);

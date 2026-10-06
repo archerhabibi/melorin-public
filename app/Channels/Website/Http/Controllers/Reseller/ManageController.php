@@ -13,6 +13,7 @@ use App\Services\Resellers\Domains\ResellerDomainService;
 use App\Services\Resellers\ResellerCustomerService;
 use App\Services\Resellers\ResellerPricingService;
 use App\Services\Resellers\ResellerService;
+use App\Support\Branding\BrandColor;
 use App\Support\Money;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -200,10 +201,13 @@ class ManageController
     {
         $reseller = $this->authorize($store);
 
+        $brand = $this->brands->forReseller($reseller);
+
         return view('website.reseller.manage.branding', [
             'store' => $store,
             'reseller' => $reseller,
-            'brand' => $this->brands->forReseller($reseller),
+            'brand' => $brand,
+            'colorReport' => BrandColor::report($brand->color),
             'setting' => $this->branding->setting($reseller),
             'readiness' => $this->branding->readiness($reseller),
         ]);
@@ -222,6 +226,10 @@ class ManageController
             $data,
             $request->file('logo'),
             (bool) ($data['remove_logo'] ?? false),
+            $request->file('logo_dark'),
+            (bool) ($data['remove_logo_dark'] ?? false),
+            $request->file('favicon'),
+            (bool) ($data['remove_favicon'] ?? false),
         );
 
         return back()->with('status', $changed === []

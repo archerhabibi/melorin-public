@@ -28,12 +28,36 @@ final class StoreBrand
         public readonly bool $isMain,
         /** true = نماینده خودش نام نمایشی داده؛ false = `name` همان برچسب پیش‌فرض Context است */
         public readonly bool $nameIsCustom = false,
+        /** B6.2: لوگوی حالت تیره؛ فقط وقتی لوگوی اصلی هم هست (وگرنه null) */
+        public readonly ?string $logoDarkUrl = null,
+        /** B6.2: Favicon اختصاصی؛ null = بدون Favicon اختصاصی */
+        public readonly ?string $faviconUrl = null,
     ) {}
 
     /** رنگ متن روی پس‌زمینه‌ی Brand (WCAG). */
     public function onColor(): string
     {
         return BrandColor::onColor($this->color);
+    }
+
+    /**
+     * رنگ **متن/لینک** برند روی سطح روشن (contrast ≥ ۴.۵). خودِ `color` برای پس‌زمینه‌ی دکمه‌ها می‌ماند؛
+     * ولی به‌عنوان رنگ متن، برندِ روشن (مثل زرد) ناخوانا می‌شد (B6.2).
+     */
+    public function textColor(): string
+    {
+        return BrandColor::textOnLight($this->color);
+    }
+
+    /** مثل `textColor` برای سطح تیره (برندِ تیره روی پس‌زمینه‌ی تیره دیده نمی‌شد). */
+    public function darkTextColor(): string
+    {
+        return BrandColor::textOnDark($this->color);
+    }
+
+    public function hasDarkLogo(): bool
+    {
+        return $this->logoUrl !== null && $this->logoDarkUrl !== null;
     }
 
     /** رنگ اصلی پنل Filament (متن سفید روی آن خوانا است). */

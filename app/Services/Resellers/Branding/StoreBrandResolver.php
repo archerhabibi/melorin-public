@@ -74,7 +74,15 @@ class StoreBrandResolver
             metaDescription: $this->clean($setting?->meta_description),
             isMain: false,
             nameIsCustom: (bool) $setting?->display_name,
+            // لوگوی تیره بدون لوگوی اصلی بی‌معنی است (Layout هر دو را با هم نشان می‌دهد)؛ پس نادیده.
+            logoDarkUrl: ($setting?->logo_path && $setting?->logo_dark_path) ? $this->url($setting->logo_dark_path) : null,
+            faviconUrl: $setting?->favicon_path ? $this->url($setting->favicon_path) : null,
         );
+    }
+
+    private function url(string $path): string
+    {
+        return Storage::disk('public')->url($path);
     }
 
     private function clean(?string $value): ?string

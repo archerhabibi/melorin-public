@@ -101,6 +101,13 @@ class ResellerPanelProvider extends PanelProvider
             ->brandLogo(fn (): ?string => ($tenant = Filament::getTenant())
                 ? app(StoreBrandResolver::class)->forReseller($tenant)->logoUrl
                 : null)
+            // B6.2: لوگوی حالت تیره (فقط وقتی نماینده آپلود کرده؛ وگرنه Filament همان لوگوی اصلی را نشان می‌دهد) و Favicon اختصاصی.
+            ->darkModeBrandLogo(fn (): ?string => ($tenant = Filament::getTenant())
+                ? app(StoreBrandResolver::class)->forReseller($tenant)->logoDarkUrl
+                : null)
+            ->favicon(fn (): ?string => ($tenant = Filament::getTenant())
+                ? app(StoreBrandResolver::class)->forReseller($tenant)->faviconUrl
+                : null)
             ->brandLogoHeight('2rem')
             ->navigationGroups([
                 'فروشگاه من',

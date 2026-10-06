@@ -42,7 +42,7 @@
                     <label class="label" for="f-logo">لوگو</label>
                     @if($brand->logoUrl)
                         <div class="mt-1 mb-2 flex items-center gap-3">
-                            <img src="{{ $brand->logoUrl }}" alt="لوگوی فعلی" class="h-12 w-12 rounded object-contain border">
+                            <img src="{{ $brand->logoUrl }}" alt="لوگوی فعلی" class="h-12 w-auto max-w-[10rem] rounded object-contain border">
                             <label class="flex items-center gap-2 text-sm">
                                 <input type="checkbox" name="remove_logo" value="1" @checked(old('remove_logo'))>
                                 حذف لوگوی فعلی
@@ -50,7 +50,39 @@
                         </div>
                     @endif
                     <input id="f-logo" type="file" name="logo" accept="image/png,image/jpeg,image/webp" class="mt-1 w-full text-sm">
-                    <p class="hint">PNG، JPG یا WebP — حداکثر ۱ مگابایت و ۲۰۰۰×۲۰۰۰ پیکسل. لوگوی مربعی بهتر دیده می‌شود.</p>
+                    <p class="hint">PNG، JPG یا WebP — حداکثر ۱ مگابایت و ۲۰۰۰×۲۰۰۰ پیکسل. لوگو در سربرگ با ارتفاع ثابت نشان داده می‌شود؛ لوگوی افقی هم له نمی‌شود.</p>
+                </div>
+
+                {{-- B6.2: لوگوی حالت تیره (اختیاری) --}}
+                <div>
+                    <label class="label" for="f-logo_dark">لوگوی حالت تیره <span class="text-muted font-normal">(اختیاری)</span></label>
+                    @if($brand->logoDarkUrl)
+                        <div class="mt-1 mb-2 flex items-center gap-3">
+                            <img src="{{ $brand->logoDarkUrl }}" alt="لوگوی فعلی حالت تیره" class="h-12 w-auto max-w-[10rem] rounded object-contain border bg-surface-2">
+                            <label class="flex items-center gap-2 text-sm">
+                                <input type="checkbox" name="remove_logo_dark" value="1" @checked(old('remove_logo_dark'))>
+                                حذف لوگوی حالت تیره
+                            </label>
+                        </div>
+                    @endif
+                    <input id="f-logo_dark" type="file" name="logo_dark" accept="image/png,image/jpeg,image/webp" class="mt-1 w-full text-sm">
+                    <p class="hint">اگر لوگوی شما روی پس‌زمینه‌ی تیره دیده نمی‌شود، نسخه‌ی روشن آن را اینجا بگذارید. بدون آن، همان لوگوی اصلی نشان داده می‌شود. فقط کنار لوگوی اصلی کار می‌کند؛ حذف لوگوی اصلی نسخه‌ی تیره را هم پاک می‌کند.</p>
+                </div>
+
+                {{-- B6.2: Favicon --}}
+                <div>
+                    <label class="label" for="f-favicon">آیکن تب مرورگر (Favicon) <span class="text-muted font-normal">(اختیاری)</span></label>
+                    @if($brand->faviconUrl)
+                        <div class="mt-1 mb-2 flex items-center gap-3">
+                            <img src="{{ $brand->faviconUrl }}" alt="Favicon فعلی" class="h-8 w-8 rounded object-contain border">
+                            <label class="flex items-center gap-2 text-sm">
+                                <input type="checkbox" name="remove_favicon" value="1" @checked(old('remove_favicon'))>
+                                حذف Favicon
+                            </label>
+                        </div>
+                    @endif
+                    <input id="f-favicon" type="file" name="favicon" accept="image/png,image/webp" class="mt-1 w-full text-sm">
+                    <p class="hint">PNG یا WebP مربعی — بین ۳۲ تا ۵۱۲ پیکسل و حداکثر ۲۰۰ کیلوبایت.</p>
                 </div>
 
                 <div>
@@ -58,6 +90,31 @@
                     <input id="f-brand_color" type="color" name="brand_color" value="{{ old('brand_color', $setting?->brand_color ?: '#2563eb') }}"
                            class="mt-1 h-10 w-20 border rounded">
                     <p class="hint">رنگ متن روی دکمه‌ها خودکار طوری انتخاب می‌شود که خوانا بماند.</p>
+
+                    {{-- B6.2: خوانایی رنگ ذخیره‌شده (فقط راهنما؛ هیچ رنگی رد نمی‌شود) --}}
+                    <ul class="mt-3 space-y-1 text-sm" aria-label="خوانایی رنگ برند">
+                        <li>
+                            متن روی دکمه:
+                            <strong class="tabular" dir="ltr">{{ $colorReport['button'] }}:1</strong>
+                        </li>
+                        <li>
+                            متن و لینک برند در حالت روشن:
+                            @if($colorReport['light_adjusted'])
+                                <span class="text-muted">برای خوانایی کمی تیره‌تر نشان داده می‌شود (<span dir="ltr">{{ $colorReport['light_text'] }}</span>)</span>
+                            @else
+                                <x-ui.badge tone="success">خوانا</x-ui.badge>
+                            @endif
+                        </li>
+                        <li>
+                            متن و لینک برند در حالت تیره:
+                            @if($colorReport['dark_adjusted'])
+                                <span class="text-muted">برای خوانایی روشن‌تر نشان داده می‌شود (<span dir="ltr">{{ $colorReport['dark_text'] }}</span>)</span>
+                            @else
+                                <x-ui.badge tone="success">خوانا</x-ui.badge>
+                            @endif
+                        </li>
+                    </ul>
+                    <p class="hint">رنگ اصلی همچنان برای دکمه‌ها و پس‌زمینه‌ها دقیقاً همان است که انتخاب کرده‌اید؛ فقط خودِ متن‌ها و لینک‌ها خودکار تنظیم می‌شوند.</p>
                 </div>
             </x-ui.card>
 
@@ -107,10 +164,14 @@
                 <h2 class="font-bold">پیش‌نمایش</h2>
                 <div class="mt-3 flex items-center gap-2 rounded-md border border-border bg-surface-2 px-3 py-2 text-brand font-bold">
                     @if($brand->logoUrl)
-                        <img src="{{ $brand->logoUrl }}" alt="" class="h-8 w-8 rounded object-contain">
+                        <img src="{{ $brand->logoUrl }}" alt="" class="brand-logo h-8 w-auto max-w-[10rem] rounded object-contain {{ $brand->hasDarkLogo() ? 'brand-logo-light' : '' }}">
+                        @if($brand->hasDarkLogo())
+                            <img src="{{ $brand->logoDarkUrl }}" alt="" class="brand-logo brand-logo-dark h-8 w-auto max-w-[10rem] rounded object-contain">
+                        @endif
                     @endif
                     <span>{{ $brand->name }}</span>
                 </div>
+                <div class="mt-2 text-sm"><span class="link-brand">لینک نمونه</span></div>
                 <div class="mt-3"><span class="btn btn-primary btn-sm">دکمه‌ی نمونه</span></div>
                 <p class="hint mt-2">مطابق آخرین ذخیره؛ بعد از ذخیره‌ی تغییرات به‌روز می‌شود.</p>
             </x-ui.card>

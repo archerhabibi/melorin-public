@@ -22,6 +22,8 @@ class ResellerWebsiteSetting extends Model
     protected $fillable = [
         'reseller_id', 'display_name', 'logo_path', 'brand_color', 'contact_phone', 'contact_email', 'about_text',
         'allow_indexing', 'meta_description',
+        // B6.2: لوگوی حالت تیره و Favicon (مسیر روی دیسک public؛ فقط ResellerBrandingService می‌نویسد).
+        'logo_dark_path', 'favicon_path',
     ];
 
     // ستون‌های custom_domain_* (B6.1) عمداً fillable نیستند: فقط ResellerDomainService با forceFill می‌نویسد.

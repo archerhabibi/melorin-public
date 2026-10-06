@@ -33,7 +33,7 @@
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <script src="{{ asset('js/theme-init.js') }}"></script>
-    <style>:root { --brand: {{ $brand->color }}; --brand-contrast: {{ $brand->onColor() }}; }</style>
+    @include('website.partials.brand-head', ['brand' => $brand])
     @stack('head')
 </head>
 <body class="min-h-screen flex flex-col">
@@ -45,8 +45,12 @@
         <div class="@yield('container', 'max-w-5xl') mx-auto px-4 py-3 flex items-center justify-between">
             <a href="{{ $storeContext->isReseller() ? route('website.store.home', $storeContext->reseller->slug) : route('website.home') }}"
                class="text-brand font-bold text-lg flex items-center gap-2">
+                {{-- B6.2: ارتفاع ثابت و عرض آزاد (لوگوی افقی کوچک/له نشود)؛ با لوگوی تیره، یکی از دو تصویر بر اساس تم نشان داده می‌شود. --}}
                 @if($brand->logoUrl)
-                    <img src="{{ $brand->logoUrl }}" alt="{{ $brand->name }}" class="h-8 w-8 rounded object-contain">
+                    <img src="{{ $brand->logoUrl }}" alt="{{ $brand->name }}" class="brand-logo h-8 w-auto max-w-[10rem] rounded object-contain {{ $brand->hasDarkLogo() ? 'brand-logo-light' : '' }}">
+                    @if($brand->hasDarkLogo())
+                        <img src="{{ $brand->logoDarkUrl }}" alt="{{ $brand->name }}" class="brand-logo brand-logo-dark h-8 w-auto max-w-[10rem] rounded object-contain">
+                    @endif
                 @endif
                 {{ $brand->name }}
             </a>

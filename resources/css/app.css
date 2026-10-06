@@ -68,10 +68,20 @@
     .page-title { @apply text-xl font-bold text-text; }
     .page-subtitle { @apply mt-1 text-sm text-muted; }
     .link { @apply text-muted hover:text-text transition; }
-    .link-brand { color: var(--brand); @apply hover:underline; }
-    /* Dark: Brandِ تیره روی سطح تیره دیده نمی‌شود → برای «متن/لینک برند» کمی روشن‌تر */
+    /*
+     * «متن/لینک برند» (B6.2): رنگ سرتاسری --brand برای پس‌زمینه‌ی دکمه‌ها است و به‌عنوان متن می‌تواند ناخوانا باشد
+     * (برند زرد روی سفید، برند سرمه‌ای روی تیره). Layout دو رنگ محاسبه‌شده با contrast ≥ ۴.۵ تزریق می‌کند:
+     * --brand-text (سطح روشن) و --brand-text-dark (سطح تیره). `:root` برای برتری بر ابزارک Tailwind است.
+     */
+    .link-brand { color: var(--brand-text, var(--brand)); @apply hover:underline; }
+    :root .text-brand { color: var(--brand-text, var(--brand)); }
     :root[data-theme='dark'] .link-brand,
-    :root[data-theme='dark'] .text-brand { color: color-mix(in srgb, var(--brand) 60%, #fff); }
+    :root[data-theme='dark'] .text-brand { color: var(--brand-text-dark, color-mix(in srgb, var(--brand) 60%, #fff)); }
+
+    /* لوگوی اختصاصی حالت تیره: فقط وقتی هر دو نسخه هست، بر اساس تم یکی نشان داده می‌شود */
+    .brand-logo-dark { display: none; }
+    :root[data-theme='dark'] .brand-logo-light { display: none; }
+    :root[data-theme='dark'] .brand-logo-dark { display: inline-block; }
 
     /* Nav */
     .nav-link { @apply text-muted hover:text-text transition; }
