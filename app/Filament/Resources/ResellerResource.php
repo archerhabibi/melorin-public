@@ -5,7 +5,9 @@ namespace App\Filament\Resources;
 use App\Support\Money;
 use App\Filament\Resources\ResellerResource\Pages;
 use App\Models\Reseller;
+use App\Models\ResellerWebsiteSetting;
 use App\Models\User;
+use App\Services\Resellers\Domains\ResellerDomainService;
 use App\Services\Resellers\ResellerService;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -121,6 +123,16 @@ class ResellerResource extends Resource
                         default => '— ثبت نشده',
                     })
                     ->tooltip(fn (Reseller $record) => $record->webhook_error),
+                // B6.1 — فقط نمایش؛ ثبت/تأیید در پنل خودِ نماینده است. لغو: اکشن «لغو دامنه‌ی اختصاصی».
+                Tables\Columns\TextColumn::make('custom_domain')
+                    ->label('دامنه‌ی اختصاصی')
+                    ->state(fn (Reseller $record) => ResellerWebsiteSetting::forReseller($record)?->custom_domain)
+                    ->description(fn (Reseller $record) => match (ResellerWebsiteSetting::forReseller($record)?->custom_domain_status) {
+                        'verified' => 'تأیید شده',
+                        'pending' => 'در انتظار تأیید',
+                        default => null,
+                    })
+                    ->placeholder('—'),
                 Tables\Columns\TextColumn::make('created_at')->label('تاریخ ایجاد')->dateTime('Y-m-d'),
             ])
             ->actions([
@@ -143,6 +155,21 @@ class ResellerResource extends Resource
                         $record->isActive()
                             ? app(ResellerService::class)->deactivate($record)
                             : app(ResellerService::class)->activate($record);
+                    }),
+
+                Tables\Actions\Action::make('revoke_domain')
+                    ->label('لغو دامنه‌ی اختصاصی')
+                    ->icon('heroicon-o-no-symbol')
+                    ->color('danger')
+                    ->visible(fn (Reseller $record) => ResellerWebsiteSetting::forReseller($record)?->custom_domain !== null)
+                    ->requiresConfirmation()
+                    ->modalDescription('دامنه از نماینده گرفته می‌شود و فروشگاه فقط روی آدرس پلتفرم می‌ماند (مثلاً برای سوءاستفاده/فیشینگ). این کار در Audit ثبت می‌شود.')
+                    ->action(function (Reseller $record) {
+                        $admin = auth('admin')->user();
+
+                        if ($admin && app(ResellerDomainService::class)->revoke($record, $admin)) {
+                            Notification::make()->title('دامنه‌ی اختصاصی لغو شد.')->success()->send();
+                        }
                     }),
 
                 Tables\Actions\EditAction::make(),

@@ -9,6 +9,7 @@ use App\Services\Core\Store\StoreContext;
 use App\Services\Core\WalletService;
 use App\Services\Resellers\Branding\ResellerBrandingService;
 use App\Services\Resellers\Branding\StoreBrandResolver;
+use App\Services\Resellers\Domains\ResellerDomainService;
 use App\Services\Resellers\ResellerCustomerService;
 use App\Services\Resellers\ResellerPricingService;
 use App\Services\Resellers\ResellerService;
@@ -43,6 +44,7 @@ class ManageController
         protected WalletService $wallet,
         protected ResellerBrandingService $branding,
         protected StoreBrandResolver $brands,
+        protected ResellerDomainService $domains,
     ) {}
 
     /**
@@ -225,5 +227,65 @@ class ManageController
         return back()->with('status', $changed === []
             ? 'تغییری برای ذخیره وجود نداشت.'
             : 'اطلاعات فروشگاه به‌روزرسانی شد.');
+    }
+
+    // ─── B6.1 Custom Domain (RESELLER-CUSTOM-DOMAIN-CONTRACT.md) ───────────────
+    // هیچ Business Rule اینجا نیست؛ نرمال‌سازی، یکتایی، تأیید DNS و Audit در ResellerDomainService (Core) است.
+
+    public function domain(StoreContext $store): View
+    {
+        $reseller = $this->authorize($store);
+
+        return view('website.reseller.manage.domain', [
+            'store' => $store,
+            'reseller' => $reseller,
+            'brand' => $this->brands->forReseller($reseller),
+            'domain' => $this->domains->state($reseller),
+            'platformHost' => $this->domains->platformHost(),
+            'enabled' => (bool) config('melorin.domains.enabled', true),
+        ]);
+    }
+
+    public function saveDomain(Request $request, StoreContext $store): RedirectResponse
+    {
+        $reseller = $this->authorize($store);
+        abort_unless(config('melorin.domains.enabled', true), 404);
+
+        $data = $request->validate(['domain' => ['required', 'string', 'max:300']]);
+
+        try {
+            $changed = $this->domains->set($reseller, $request->user(), $data['domain']);
+        } catch (InvalidArgumentException $e) {
+            return back()->withInput()->withErrors(['domain' => $e->getMessage()]);
+        }
+
+        return back()->with('status', $changed
+            ? 'دامنه ثبت شد. رکورد TXT را در DNS اضافه کنید و سپس «بررسی DNS» را بزنید.'
+            : 'این دامنه از قبل ثبت شده است.');
+    }
+
+    public function verifyDomain(Request $request, StoreContext $store): RedirectResponse
+    {
+        $reseller = $this->authorize($store);
+        abort_unless(config('melorin.domains.enabled', true), 404);
+
+        try {
+            $verified = $this->domains->verify($reseller, $request->user());
+        } catch (InvalidArgumentException $e) {
+            return back()->withErrors(['domain' => $e->getMessage()]);
+        }
+
+        return $verified
+            ? back()->with('status', 'دامنه تأیید شد و از این پس فروشگاه شما روی آن در دسترس است.')
+            : back()->withErrors(['domain' => 'رکورد TXT پیدا نشد یا هنوز منتشر نشده است. انتشار DNS ممکن است تا چند ساعت طول بکشد؛ دوباره تلاش کنید.']);
+    }
+
+    public function removeDomain(Request $request, StoreContext $store): RedirectResponse
+    {
+        $reseller = $this->authorize($store);
+
+        $removed = $this->domains->remove($reseller, $request->user());
+
+        return back()->with('status', $removed ? 'دامنه‌ی اختصاصی حذف شد.' : 'دامنه‌ای برای حذف وجود نداشت.');
     }
 }

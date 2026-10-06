@@ -57,6 +57,7 @@
                     <a href="{{ route('website.store.manage.customers', $storeContext->reseller->slug) }}" class="nav-link">مشتریان</a>
                     <a href="{{ route('website.store.manage.products', $storeContext->reseller->slug) }}" class="nav-link">محصولات</a>
                     <a href="{{ route('website.store.manage.branding', $storeContext->reseller->slug) }}" class="nav-link">تنظیمات فروشگاه</a>
+                    <a href="{{ route('website.store.manage.domain', $storeContext->reseller->slug) }}" class="nav-link">دامنه</a>
                 @endif
 
                 <button type="button" data-theme-toggle class="nav-link" aria-label="تغییر حالت روشن/تیره" title="حالت روشن/تیره">

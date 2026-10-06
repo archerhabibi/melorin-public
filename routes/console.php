@@ -9,6 +9,7 @@ use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schedule;
+use App\Services\Resellers\Domains\ResellerDomainService;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -71,3 +72,17 @@ Artisan::command('provisioning:recover-stuck {--limit=50} {--minutes=15 : حدا
 })->purpose('Unstick orders left in provisioning after a crash (no financial movement)');
 
 Schedule::command('provisioning:recover-stuck')->everyFiveMinutes()->withoutOverlapping(10);
+
+// B6.1 — بازبررسی دامنه‌های اختصاصی نمایندگان: pending خودکار تأیید می‌شود (بدون کلیک «بررسی DNS»)، ادعای
+// تأییدنشده‌ی قدیمی آزاد می‌شود، و دامنه‌ی verified که TXT اش مدتی دیده نشود به pending برمی‌گردد
+// (مسیریابی/TLS قطع؛ دامنه‌ی از‌دست‌رفته به‌دست مالک جدید سرو نشود). فقط DNS می‌خواند؛ حرکت مالی ندارد.
+Artisan::command('melorin:domains:check {--limit=100 : حداکثر دامنه در هر اجرا}', function () {
+    $s = app(ResellerDomainService::class)->runChecks((int) $this->option('limit'));
+
+    $this->info(sprintf(
+        'checked=%d verified=%d confirmed=%d lost=%d expired=%d skipped=%d',
+        $s['checked'], $s['verified'], $s['confirmed'], $s['lost'], $s['expired'], $s['skipped'],
+    ));
+})->purpose('Re-check reseller custom-domain TXT ownership (auto-verify, expire stale claims, demote lost domains)');
+
+Schedule::command('melorin:domains:check')->everyTenMinutes()->withoutOverlapping(10);

@@ -56,9 +56,18 @@ class GoogleAuthController
      * Session؛ تفاوت فقط `mode = link` و `user_id` سمت سرور است. مقصد برگشت و خطاها همیشه
      * Profile فروشگاه مبدأ است (هیچ URL از Client پذیرفته نمی‌شود).
      */
+    /**
+     * B6.1: Redirect URI گوگل ثابت و روی Host پلتفرم است و Session هر Host جداست؛ پس روی دامنه‌ی اختصاصی
+     * جریان Google نمی‌تواند به همان نشست برگردد. تا طراحی مجزا، آنجا غیرفعال است (ورود با ایمیل کار می‌کند).
+     */
+    private function onCustomDomain(Request $request): bool
+    {
+        return $request->attributes->has(\App\Http\Middleware\RouteCustomDomainRequests::ATTRIBUTE);
+    }
+
     public function linkRedirect(Request $request, StoreContext $store): RedirectResponse
     {
-        abort_unless($this->google->enabled(), 404);
+        abort_unless($this->google->enabled() && ! $this->onCustomDomain($request), 404);
 
         $state = Str::random(40);
         $nonce = Str::random(40);
@@ -82,7 +91,7 @@ class GoogleAuthController
 
     public function redirect(Request $request, StoreContext $store): RedirectResponse
     {
-        abort_unless($this->google->enabled(), 404);
+        abort_unless($this->google->enabled() && ! $this->onCustomDomain($request), 404);
 
         // Referral: ?ref فقط اگر به User موجود اشاره کند (مثل Register).
         $ref = $request->integer('ref');

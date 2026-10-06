@@ -243,6 +243,11 @@ $registerResellerManagementRoutes = function () {
         Route::post('/products/{product}/disable', [ManageController::class, 'disable'])->name('products.disable');
         Route::get('/branding', [ManageController::class, 'branding'])->name('branding');
         Route::post('/branding', [ManageController::class, 'updateBranding'])->name('branding.update');
+        // B6.1 Custom Domain: ثبت/تأیید/حذف. همه نوشتن‌اند ⇒ throttle (verify یک DNS lookup است ⇒ سخت‌گیرتر).
+        Route::get('/domain', [ManageController::class, 'domain'])->name('domain');
+        Route::post('/domain', [ManageController::class, 'saveDomain'])->middleware('throttle:10,1')->name('domain.save');
+        Route::post('/domain/verify', [ManageController::class, 'verifyDomain'])->middleware('throttle:6,1')->name('domain.verify');
+        Route::post('/domain/remove', [ManageController::class, 'removeDomain'])->middleware('throttle:10,1')->name('domain.remove');
     });
 };
 

@@ -24,9 +24,15 @@ class ResellerWebsiteSetting extends Model
         'allow_indexing', 'meta_description',
     ];
 
+    // ستون‌های custom_domain_* (B6.1) عمداً fillable نیستند: فقط ResellerDomainService با forceFill می‌نویسد.
     protected $casts = [
         'allow_indexing' => 'boolean',
+        'custom_domain_verified_at' => 'datetime',
+        'custom_domain_checked_at' => 'datetime',
+        'custom_domain_claimed_at' => 'datetime',
     ];
+
+    protected $hidden = ['custom_domain_token'];
 
     public function reseller(): BelongsTo
     {

@@ -6,6 +6,8 @@ use App\Channels\Website\Http\Middleware\EnforceSessionPolicy;
 use App\Channels\Website\Http\Middleware\EnsureCustomerAccountResolved;
 use App\Channels\Website\Http\Middleware\ResolveStoreContext;
 use App\Channels\Website\Listeners\StampSessionLogin;
+use App\Services\Resellers\Domains\DnsTxtResolver;
+use App\Services\Resellers\Domains\NativeDnsTxtResolver;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
@@ -21,7 +23,11 @@ use Illuminate\Support\ServiceProvider;
  */
 class WebsiteServiceProvider extends ServiceProvider
 {
-    public function register(): void {}
+    public function register(): void
+    {
+        // B6.1: Resolver پیش‌فرض TXT؛ تست‌ها آن را با Fake عوض می‌کنند.
+        $this->app->bind(DnsTxtResolver::class, NativeDnsTxtResolver::class);
+    }
 
     public function boot(): void
     {

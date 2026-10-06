@@ -66,4 +66,26 @@ return [
             'supply_presets' => env('MELORIN_SUPPLY_TOPUP_PRESETS', '1000000,5000000'),
         ],
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Custom Domain (B6.1)
+    |--------------------------------------------------------------------------
+    | enabled: خاموش ⇒ هیچ Host اختصاصی مسیریابی نمی‌شود و مسیرها دقیقاً مثل قبل از B6.1 است.
+    | txt_prefix: رکورد TXT تأیید مالکیت: `{txt_prefix}.{domain}` = توکن.
+    | ask_token: اگر پر باشد، Endpoint مجوز صدور TLS (`/health/domain-allowed`) آن را (query `token`) می‌خواهد.
+    | pending_ttl_hours: ادعای تأییدنشده پس از این مدت آزاد می‌شود (جلوگیری از اشغال دامنه‌ی دیگران).
+    | recheck_hours: فاصله‌ی بازبررسی TXT دامنه‌های تأییدشده (Job زمان‌بندی‌شده).
+    | lost_grace_hours: اگر TXT این‌قدر پیوسته دیده نشود، دامنه از تأییدشده به pending برمی‌گردد (مسیریابی/TLS قطع).
+    | cache_ttl: ثانیه‌ی کش Host → نماینده در Middleware (۰ = بدون کش).
+    */
+    'domains' => [
+        'enabled' => (bool) env('MELORIN_CUSTOM_DOMAINS', true),
+        'txt_prefix' => env('MELORIN_DOMAIN_TXT_PREFIX', '_melorin-verify'),
+        'ask_token' => env('MELORIN_DOMAIN_ASK_TOKEN'),
+        'pending_ttl_hours' => (int) env('MELORIN_DOMAIN_PENDING_TTL_HOURS', 72),
+        'recheck_hours' => (int) env('MELORIN_DOMAIN_RECHECK_HOURS', 6),
+        'lost_grace_hours' => (int) env('MELORIN_DOMAIN_LOST_GRACE_HOURS', 72),
+        'cache_ttl' => (int) env('MELORIN_DOMAIN_CACHE_TTL', 60),
+    ],
 ];

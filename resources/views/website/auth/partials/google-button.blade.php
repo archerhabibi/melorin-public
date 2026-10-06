@@ -1,6 +1,6 @@
 {{-- B2.1 — «ادامه با Google». فقط وقتی GOOGLE_CLIENT_ID/SECRET تنظیم شده باشد نمایش داده می‌شود.
      لینک GET است (نه Form)، پس با CSP `form-action 'self'` تداخل ندارد؛ امنیت با state/nonce/PKCE است. --}}
-@if(config('services.google.enabled'))
+@if(config('services.google.enabled') && ! request()->attributes->has('melorin.custom_domain'))
     <div class="my-5 flex items-center gap-3 text-xs text-muted">
         <span class="divider flex-1"></span>
         <span>یا</span>
